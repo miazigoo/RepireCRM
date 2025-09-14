@@ -1,0 +1,45 @@
+// frontend/crm-app/src/custom-theme.scss
+@use '@angular/material' as mat;
+
+@include mat.core();
+
+// Определяем палитру цветов для ремонтной тематики
+$repair-primary: mat.define-palette(mat.$blue-palette, 600);
+$repair-accent: mat.define-palette(mat.$orange-palette, 500);
+$repair-warn: mat.define-palette(mat.$red-palette, 500);
+
+// Создаем светлую тему
+$repair-theme: mat.define-light-theme((
+  color: (
+    primary: $repair-primary,
+    accent: $repair-accent,
+    warn: $repair-warn,
+  ),
+  typography: mat.define-typography-config(),
+  density: 0,
+));
+
+// Применяем тему
+@include mat.all-component-themes($repair-theme);
+
+// Кастомные стили
+.repair-toolbar {
+  background: linear-gradient(45deg, #1976d2, #42a5f5);
+  color: white;
+}
+
+.status-chip {
+  &.received { background-color: #e3f2fd; color: #1976d2; }
+  &.diagnosed { background-color: #fff3e0; color: #f57c00; }
+  &.in-repair { background-color: #fff8e1; color: #ffa000; }
+  &.ready { background-color: #e8f5e8; color: #388e3c; }
+  &.completed { background-color: #e8f5e8; color: #2e7d32; }
+  &.cancelled { background-color: #ffebee; color: #d32f2f; }
+}
+
+.priority-chip {
+  &.low { background-color: #f3e5f5; color: #7b1fa2; }
+  &.normal { background-color: #e8eaf6; color: #3f51b5; }
+  &.high { background-color: #fff3e0; color: #f57c00; }
+  &.urgent { background-color: #ffebee; color: #d32f2f; }
+}

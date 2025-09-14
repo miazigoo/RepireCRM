@@ -1,0 +1,29 @@
+# requirements.txt
+Django>=5
+django-ninja>=1
+psycopg2-binary>=2.9.9
+redis>=5.0.1
+celery>=5.3.4
+django-cors-headers>=4.3.1
+Pillow
+python-decouple
+django-phonenumber-field
+phonenumbers
+
+
+# Development and testing
+pytest~=7.4.3
+pytest-django~=4.7.0
+pytest-cov~=4.1.0
+factory-boy~=3.3.0
+
+# Code quality
+black==23.12.1
+isort==5.13.2
+flake8==7.0.0
+mypy==1.8.0
+pre-commit==3.6.0
+
+# Type hints for Django
+django-stubs==4.2.7
+types-redis==4.6.0.11

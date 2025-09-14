@@ -1,0 +1,96 @@
+# .github/workflows/ci.yml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_repair_crm
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run linting
+      run: |
+        cd backend
+        black --check .
+        isort --check-only .
+        flake8 .
+        mypy .
+    
+    - name: Run tests
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_repair_crm
+      run: |
+        cd backend
+        python manage.py test
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: frontend/crm-app/package-lock.json
+    
+    - name: Install dependencies
+      run: |
+        cd frontend/crm-app
+        npm ci
+    
+    - name: Run linting
+      run: |
+        cd frontend/crm-app
+        npm run lint
+    
+    - name: Run tests
+      run: |
+        cd frontend/crm-app
+        npm run test -- --watch=false --browsers=ChromeHeadless
+
+  build-and-deploy:
+    needs: [test-backend, test-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build and push Docker images
+      run: |
+        docker build -f docker/Dockerfile.backend -t repair-crm-backend .
+        docker build -f docker/Dockerfile.frontend -t repair-crm-frontend .
+        # Здесь можно добавить push в registry
