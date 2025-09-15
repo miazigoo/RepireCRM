@@ -1,4 +1,3 @@
-// frontend/crm-app/src/app/routers/admin.routes.ts
 import { Routes } from '@angular/router';
 
 export const ADMIN_ROUTES: Routes = [
