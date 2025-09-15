@@ -1,0 +1,132 @@
+/* frontend/crm-app/src/app/features/customers/customers-list/customers-list.component.css */
+.customers-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  margin: 0;
+  color: #333;
+}
+
+.filters-card {
+  margin-bottom: 24px;
+}
+
+.filters-form {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.search-field {
+  min-width: 300px;
+}
+
+.table-card {
+  position: relative;
+}
+
+.table-container {
+  position: relative;
+  max-height: 600px;
+  overflow: auto;
+}
+
+.customers-table {
+  width: 100%;
+}
+
+.customer-link {
+  color: #1976d2;
+  text-decoration: none;
+}
+
+.customer-link:hover {
+  text-decoration: underline;
+}
+
+.customer-name {
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.customer-middle-name {
+  font-size: 12px;
+  color: #666;
+}
+
+.phone-link, .email-link {
+  color: #1976d2;
+  text-decoration: none;
+}
+
+.phone-link:hover, .email-link:hover {
+  text-decoration: underline;
+}
+
+.no-data, .no-orders, .no-spent, .no-source {
+  color: #999;
+  font-style: italic;
+}
+
+.orders-chip {
+  background-color: #e3f2fd;
+  color: #1976d2;
+  font-weight: 500;
+  min-height: 24px;
+  font-size: 12px;
+}
+
+.total-spent {
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+.source-chip {
+  background-color: #f3e5f5;
+  color: #7b1fa2;
+  font-size: 11px;
+  min-height: 24px;
+}
+
+.loading-shade {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 56px;
+  right: 0;
+  background: rgba(0, 0, 0, 0.15);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .filters-form {
+    grid-template-columns: 1fr;
+  }
+
+  .search-field {
+    min-width: auto;
+  }
+
+  .header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .customers-table {
+    font-size: 14px;
+  }
+}

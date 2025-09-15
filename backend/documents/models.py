@@ -1,5 +1,8 @@
 from django.db import models
 
+from orders.models import Order
+
+
 class Document(models.Model):
     class DocumentType(models.TextChoices):
         RECEIPT = 'receipt', 'Квитанция'

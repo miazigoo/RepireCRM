@@ -1,0 +1,184 @@
+
+<div class="customers-container">
+  <div class="header">
+    <h1>Клиенты</h1>
+    <button mat-raised-button color="primary" routerLink="/customers/new">
+      <mat-icon>person_add</mat-icon>
+      Новый клиент
+    </button>
+  </div>
+
+
+  <mat-card class="filters-card">
+    <mat-card-content>
+      <form [formGroup]="filtersForm" class="filters-form">
+        <mat-form-field class="search-field">
+          <mat-label>Поиск</mat-label>
+          <input matInput
+                 formControlName="search"
+                 placeholder="Имя, фамилия, телефон...">
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Источник</mat-label>
+          <mat-select formControlName="source">
+            <mat-option value="">Все источники</mat-option>
+            <mat-option *ngFor="let option of sourceOptions" [value]="option.value">
+              {{ option.label }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Наличие заказов</mat-label>
+          <mat-select formControlName="has_orders">
+            <mat-option value="">Все</mat-option>
+            <mat-option [value]="true">С заказами</mat-option>
+            <mat-option [value]="false">Без заказов</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <button mat-button (click)="clearFilters()">
+          <mat-icon>clear</mat-icon>
+          Очистить
+        </button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+
+  <mat-card class="table-card">
+    <mat-card-content>
+      <div class="table-container">
+        <table mat-table [dataSource]="dataSource" matSort class="customers-table">
+
+
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Имя</th>
+            <td mat-cell *matCellDef="let customer">
+              <a [routerLink]="['/customers', customer.id]" class="customer-link">
+                <div class="customer-name">
+                  {{ customer.last_name }} {{ customer.first_name }}
+                </div>
+                <div class="customer-middle-name" *ngIf="customer.middle_name">
+                  {{ customer.middle_name }}
+                </div>
+              </a>
+            </td>
+          </ng-container>
+
+
+          <ng-container matColumnDef="phone">
+            <th mat-header-cell *matHeaderCellDef>Телефон</th>
+            <td mat-cell *matCellDef="let customer">
+              <a href="tel:{{ customer.phone }}" class="phone-link">
+                {{ customer.phone }}
+              </a>
+            </td>
+          </ng-container>
+
+
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef>Email</th>
+            <td mat-cell *matCellDef="let customer">
+              <a href="mailto:{{ customer.email }}"
+                 class="email-link"
+                 *ngIf="customer.email; else noEmail">
+                {{ customer.email }}
+              </a>
+              <ng-template #noEmail>
+                <span class="no-data">—</span>
+              </ng-template>
+            </td>
+          </ng-container>
+
+
+          <ng-container matColumnDef="orders_count">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Заказов</th>
+            <td mat-cell *matCellDef="let customer">
+              <mat-chip class="orders-chip" *ngIf="customer.orders_count > 0">
+                {{ customer.orders_count }}
+              </mat-chip>
+              <span class="no-orders" *ngIf="customer.orders_count === 0">0</span>
+            </td>
+          </ng-container>
+
+
+          <ng-container matColumnDef="total_spent">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Потрачено</th>
+            <td mat-cell *matCellDef="let customer">
+              <span class="total-spent" *ngIf="customer.total_spent > 0">
+                {{ customer.total_spent | currency:'RUB':'symbol':'1.0-0' }}
+              </span>
+              <span class="no-spent" *ngIf="customer.total_spent === 0">—</span>
+            </td>
+          </ng-container>
+
+
+          <ng-container matColumnDef="source">
+            <th mat-header-cell *matHeaderCellDef>Источник</th>
+            <td mat-cell *matCellDef="let customer">
+              <mat-chip class="source-chip" *ngIf="customer.source">
+                {{ getSourceLabel(customer.source) }}
+              </mat-chip>
+              <span class="no-source" *ngIf="!customer.source">—</span>
+            </td>
+          </ng-container>
+
+
+          <ng-container matColumnDef="created_at">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Дата создания</th>
+            <td mat-cell *matCellDef="let customer">
+              {{ customer.created_at | date:'dd.MM.yyyy HH:mm' }}
+            </td>
+          </ng-container>
+
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Действия</th>
+            <td mat-cell *matCellDef="let customer">
+              <button mat-icon-button [matMenuTriggerFor]="actionsMenu">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #actionsMenu="matMenu">
+                <button mat-menu-item [routerLink]="['/customers', customer.id]">
+                  <mat-icon>visibility</mat-icon>
+                  <span>Просмотр</span>
+                </button>
+                <button mat-menu-item [routerLink]="['/customers', customer.id, 'edit']">
+                  <mat-icon>edit</mat-icon>
+                  <span>Редактировать</span>
+                </button>
+                <button mat-menu-item [routerLink]="['/orders/new']" [queryParams]="{customer_id: customer.id}">
+                  <mat-icon>add</mat-icon>
+                  <span>Новый заказ</span>
+                </button>
+                <mat-divider></mat-divider>
+                <button mat-menu-item
+                        (click)="deleteCustomer(customer)"
+                        [disabled]="customer.orders_count > 0">
+                  <mat-icon>delete</mat-icon>
+                  <span>Удалить</span>
+                </button>
+              </mat-menu>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        </table>
+
+        <div class="loading-shade" *ngIf="loading">
+          <mat-spinner></mat-spinner>
+        </div>
+      </div>
+
+      <mat-paginator
+        [pageSizeOptions]="[10, 20, 50, 100]"
+        [pageSize]="20"
+        showFirstLastButtons>
+      </mat-paginator>
+    </mat-card-content>
+  </mat-card>
+</div>

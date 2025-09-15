@@ -1,3 +1,4 @@
+// frontend/crm-app/src/app/app.routes.ts
 import { Routes } from '@angular/router';
 import { AuthGuard } from './core/guards/auth.guard';
 
@@ -9,23 +10,23 @@ export const routes: Routes = [
   {
     path: '',
     canActivate: [AuthGuard],
-    loadComponent: () => import('./layout/main-layout/main-layout.component').then(m => m.MainLayoutComponent),
+    loadComponent: () => import('./components/layout/main-layout/main-layout.component').then(m => m.MainLayoutComponent),
     children: [
       {
         path: 'dashboard',
-        loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent)
+        loadComponent: () => import('./components/dashboard/dashboard.component').then(m => m.DashboardComponent)
       },
       {
         path: 'orders',
-        loadChildren: () => import('./features/orders/orders.routes').then(m => m.ORDERS_ROUTES)
+        loadChildren: () => import('./routes/orders.routes').then(m => m.ORDERS_ROUTES)
       },
       {
         path: 'customers',
-        loadChildren: () => import('./features/customers/customers.routes').then(m => m.CUSTOMERS_ROUTES)
+        loadChildren: () => import('./routes/customers.routes').then(m => m.CUSTOMERS_ROUTES)
       },
       {
         path: 'admin',
-        loadChildren: () => import('./features/admin/admin.routes').then(m => m.ADMIN_ROUTES)
+        loadChildren: () => import('./routes/admin.routes').then(m => m.ADMIN_ROUTES)
       },
       {
         path: '',

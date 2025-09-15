@@ -1,0 +1,301 @@
+
+<div class="system-settings-container">
+  <div class="header">
+    <h1>Системные настройки</h1>
+    <p class="subtitle">Настройка общих параметров системы</p>
+  </div>
+
+  <mat-tab-group class="settings-tabs">
+    
+    
+    <mat-tab label="Общие">
+      <div class="tab-content">
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon>business</mat-icon>
+              Информация о компании
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <form [formGroup]="generalForm" (ngSubmit)="saveGeneralSettings()">
+              
+              <div class="form-row">
+                <mat-form-field>
+                  <mat-label>Название приложения</mat-label>
+                  <input matInput formControlName="app_name" required>
+                  <mat-error>{{ getFieldError(generalForm, 'app_name') }}</mat-error>
+                </mat-form-field>
+
+                <mat-form-field>
+                  <mat-label>Версия</mat-label>
+                  <input matInput formControlName="app_version" readonly>
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field>
+                  <mat-label>Название компании</mat-label>
+                  <input matInput formControlName="company_name" required>
+                  <mat-error>{{ getFieldError(generalForm, 'company_name') }}</mat-error>
+                </mat-form-field>
+
+                <mat-form-field>
+                  <mat-label>Телефон компании</mat-label>
+                  <input matInput formControlName="company_phone">
+                </mat-form-field>
+              </div>
+
+              <mat-form-field class="full-width">
+                <mat-label>Адрес компании</mat-label>
+                <textarea matInput formControlName="company_address" rows="2"></textarea>
+              </mat-form-field>
+
+              <mat-form-field class="full-width">
+                <mat-label>Email компании</mat-label>
+                <input matInput type="email" formControlName="company_email">
+                <mat-error>{{ getFieldError(generalForm, 'company_email') }}</mat-error>
+              </mat-form-field>
+
+              <div class="form-actions">
+                <button mat-raised-button color="primary" type="submit" [disabled]="loading">
+                  <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+                  <span *ngIf="!loading">Сохранить</span>
+                </button>
+              </div>
+            </form>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+    
+    <mat-tab label="Уведомления">
+      <div class="tab-content">
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon>notifications</mat-icon>
+              Настройки уведомлений
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <form [formGroup]="notificationsForm" (ngSubmit)="saveNotificationSettings()">
+              
+              <div class="settings-section">
+                <h3>Способы уведомлений</h3>
+                
+                <div class="toggle-row">
+                  <mat-slide-toggle formControlName="email_enabled" color="primary">
+                    Email уведомления
+                  </mat-slide-toggle>
+                  <button mat-button 
+                          (click)="testEmailSettings()" 
+                          [disabled]="!notificationsForm.get('email_enabled')?.value || loading">
+                    <mat-icon>send</mat-icon>
+                    Тест
+                  </button>
+                </div>
+
+                <div class="toggle-row">
+                  <mat-slide-toggle formControlName="sms_enabled" color="primary">
+                    SMS уведомления
+                  </mat-slide-toggle>
+                  <button mat-button 
+                          (click)="testSMSSettings()" 
+                          [disabled]="!notificationsForm.get('sms_enabled')?.value || loading">
+                    <mat-icon>send</mat-icon>
+                    Тест
+                  </button>
+                </div>
+
+                <div class="toggle-row">
+                  <mat-slide-toggle formControlName="push_enabled" color="primary">
+                    Push уведомления в браузере
+                  </mat-slide-toggle>
+                </div>
+              </div>
+
+              <mat-divider></mat-divider>
+
+              <div class="settings-section">
+                <h3>Автоматические уведомления</h3>
+                
+                <div class="toggle-row">
+                  <mat-slide-toggle formControlName="order_status_notifications" color="primary">
+                    Уведомления об изменении статуса заказа
+                  </mat-slide-toggle>
+                </div>
+
+                <div class="toggle-row">
+                  <mat-slide-toggle formControlName="daily_reports" color="primary">
+                    Ежедневные отчеты
+                  </mat-slide-toggle>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button mat-raised-button color="primary" type="submit" [disabled]="loading">
+                  <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+                  <span *ngIf="!loading">Сохранить</span>
+                </button>
+              </div>
+            </form>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+    
+    <mat-tab label="Безопасность">
+      <div class="tab-content">
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon>security</mat-icon>
+              Настройки безопасности
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <form [formGroup]="securityForm" (ngSubmit)="saveSecuritySettings()">
+              
+              <div class="settings-section">
+                <h3>Требования к паролям</h3>
+                
+                <div class="form-row">
+                  <mat-form-field>
+                    <mat-label>Минимальная длина пароля</mat-label>
+                    <input matInput type="number" formControlName="password_min_length" min="6" max="20">
+                    <mat-error>{{ getFieldError(securityForm, 'password_min_length') }}</mat-error>
+                  </mat-form-field>
+                </div>
+
+                <div class="toggle-row">
+                  <mat-slide-toggle formControlName="password_require_uppercase" color="primary">
+                    Требовать заглавные буквы
+                  </mat-slide-toggle>
+                </div>
+
+                <div class="toggle-row">
+                  <mat-slide-toggle formControlName="password_require_lowercase" color="primary">
+                    Требовать строчные буквы
+                  </mat-slide-toggle>
+                </div>
+
+                <div class="toggle-row">
+                  <mat-slide-toggle formControlName="password_require_numbers" color="primary">
+                    Требовать цифры
+                  </mat-slide-toggle>
+                </div>
+
+                <div class="toggle-row">
+                  <mat-slide-toggle formControlName="password_require_symbols" color="primary">
+                    Требовать специальные символы
+                  </mat-slide-toggle>
+                </div>
+              </div>
+
+              <mat-divider></mat-divider>
+
+              <div class="settings-section">
+                <h3>Сессии и аутентификация</h3>
+                
+                <div class="form-row">
+                  <mat-form-field>
+                    <mat-label>Время жизни сессии (минуты)</mat-label>
+                    <input matInput type="number" formControlName="session_timeout_minutes" min="30">
+                    <mat-error>{{ getFieldError(securityForm, 'session_timeout_minutes') }}</mat-error>
+                  </mat-form-field>
+
+                  <mat-form-field>
+                    <mat-label>Максимум попыток входа</mat-label>
+                    <input matInput type="number" formControlName="max_login_attempts" min="3" max="10">
+                    <mat-error>{{ getFieldError(securityForm, 'max_login_attempts') }}</mat-error>
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button mat-raised-button color="primary" type="submit" [disabled]="loading">
+                  <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+                  <span *ngIf="!loading">Сохранить</span>
+                </button>
+              </div>
+            </form>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+    
+    <mat-tab label="Резервное копирование">
+      <div class="tab-content">
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon>backup</mat-icon>
+              Настройки резервного копирования
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <form [formGroup]="backupForm" (ngSubmit)="saveBackupSettings()">
+              
+              <div class="settings-section">
+                <h3>Автоматическое резервное копирование</h3>
+                
+                <div class="toggle-row">
+                  <mat-slide-toggle formControlName="auto_backup_enabled" color="primary">
+                    Включить автоматическое резервное копирование
+                  </mat-slide-toggle>
+                </div>
+
+                <div class="form-row" *ngIf="backupForm.get('auto_backup_enabled')?.value">
+                  <mat-form-field>
+                    <mat-label>Частота создания (часы)</mat-label>
+                    <input matInput type="number" formControlName="backup_frequency_hours" min="1">
+                    <mat-error>{{ getFieldError(backupForm, 'backup_frequency_hours') }}</mat-error>
+                  </mat-form-field>
+
+                  <mat-form-field>
+                    <mat-label>Хранить резервные копии (дни)</mat-label>
+                    <input matInput type="number" formControlName="backup_retention_days" min="7">
+                    <mat-error>{{ getFieldError(backupForm, 'backup_retention_days') }}</mat-error>
+                  </mat-form-field>
+                </div>
+
+                <mat-form-field class="full-width">
+                  <mat-label>Путь для сохранения резервных копий</mat-label>
+                  <input matInput formControlName="backup_location">
+                  <mat-error>{{ getFieldError(backupForm, 'backup_location') }}</mat-error>
+                </mat-form-field>
+              </div>
+
+              <mat-divider></mat-divider>
+
+              <div class="settings-section">
+                <h3>Ручное резервное копирование</h3>
+                
+                <div class="manual-backup-section">
+                  <p>Создать резервную копию прямо сейчас:</p>
+                  <button mat-raised-button color="accent" (click)="createBackupNow()" [disabled]="loading">
+                    <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+                    <mat-icon *ngIf="!loading">backup</mat-icon>
+                    <span *ngIf="!loading">Создать резервную копию</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button mat-raised-button color="primary" type="submit" [disabled]="loading">
+                  <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+                  <span *ngIf="!loading">Сохранить настройки</span>
+                </button>
+              </div>
+            </form>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+  </mat-tab-group>
+</div>

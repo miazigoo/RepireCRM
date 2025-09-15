@@ -1,0 +1,233 @@
+
+<div class="order-form-container">
+  <div class="header">
+    <h1>{{ isEditMode ? 'Редактирование заказа' : 'Новый заказ' }}</h1>
+    <button mat-button (click)="cancel()">
+      <mat-icon>arrow_back</mat-icon>
+      Назад
+    </button>
+  </div>
+
+  <mat-card class="form-card">
+    <mat-card-content>
+      <mat-stepper #stepper orientation="horizontal" linear>
+
+
+        <mat-step [stepControl]="customerForm" [completed]="customerStepCompleted">
+          <form [formGroup]="customerForm">
+            <ng-template matStepLabel>Клиент</ng-template>
+
+            <div class="step-content">
+              <h3>Выберите клиента</h3>
+
+              <mat-form-field class="full-width">
+                <mat-label>Поиск клиента</mat-label>
+                <input matInput
+                       formControlName="customer"
+                       [matAutocomplete]="customerAuto"
+                       placeholder="Введите имя, фамилию или телефон">
+                <mat-autocomplete #customerAuto="matAutocomplete" [displayWith]="displayCustomer">
+                  <mat-option *ngFor="let customer of filteredCustomers | async" [value]="customer">
+                    <div class="customer-option">
+                      <div class="customer-name">{{ customer.last_name }} {{ customer.first_name }}</div>
+                      <div class="customer-phone">{{ customer.phone }}</div>
+                    </div>
+                  </mat-option>
+                </mat-autocomplete>
+              </mat-form-field>
+
+              <div class="step-actions">
+                <button mat-raised-button color="primary" (click)="onCustomerStepNext()">
+                  Далее
+                </button>
+              </div>
+            </div>
+          </form>
+        </mat-step>
+
+
+        <mat-step [stepControl]="deviceForm" [completed]="deviceStepCompleted">
+          <form [formGroup]="deviceForm">
+            <ng-template matStepLabel>Устройство</ng-template>
+
+            <div class="step-content">
+              <h3>Информация об устройстве</h3>
+
+              <div class="form-row">
+                <mat-form-field>
+                  <mat-label>Модель устройства</mat-label>
+                  <mat-select formControlName="model_id" required>
+                    <mat-option *ngFor="let model of deviceModels" [value]="model.id">
+                      {{ model.brand.name }} {{ model.name }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field>
+                  <mat-label>Серийный номер</mat-label>
+                  <input matInput formControlName="serial_number">
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field>
+                  <mat-label>IMEI</mat-label>
+                  <input matInput formControlName="imei">
+                </mat-form-field>
+
+                <mat-form-field>
+                  <mat-label>Цвет</mat-label>
+                  <input matInput formControlName="color">
+                </mat-form-field>
+              </div>
+
+              <mat-form-field class="full-width">
+                <mat-label>Объем памяти</mat-label>
+                <input matInput formControlName="storage_capacity" placeholder="например, 128GB">
+              </mat-form-field>
+
+              <div class="step-actions">
+                <button mat-button matStepperPrevious>Назад</button>
+                <button mat-raised-button color="primary" (click)="onDeviceStepNext()">
+                  Далее
+                </button>
+              </div>
+            </div>
+          </form>
+        </mat-step>
+
+
+        <mat-step [stepControl]="orderForm">
+          <form [formGroup]="orderForm">
+            <ng-template matStepLabel>Детали заказа</ng-template>
+
+            <div class="step-content">
+              <h3>Описание проблемы и условия ремонта</h3>
+
+              <mat-form-field class="full-width">
+                <mat-label>Описание проблемы</mat-label>
+                <textarea matInput
+                          formControlName="problem_description"
+                          rows="3"
+                          required
+                          placeholder="Опишите проблему с устройством"></textarea>
+              </mat-form-field>
+
+              <div class="form-row">
+                <mat-form-field>
+                  <mat-label>Комплектация</mat-label>
+                  <textarea matInput
+                            formControlName="accessories"
+                            rows="2"
+                            placeholder="Что принес клиент вместе с устройством"></textarea>
+                </mat-form-field>
+
+                <mat-form-field>
+                  <mat-label>Состояние устройства</mat-label>
+                  <textarea matInput
+                            formControlName="device_condition"
+                            rows="2"
+                            placeholder="Внешнее состояние, повреждения"></textarea>
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field>
+                  <mat-label>Предварительная стоимость</mat-label>
+                  <input matInput
+                         type="number"
+                         formControlName="cost_estimate"
+                         required
+                         min="0">
+                  <span matSuffix>₽</span>
+                </mat-form-field>
+
+                <mat-form-field>
+                  <mat-label>Приоритет</mat-label>
+                  <mat-select formControlName="priority">
+                    <mat-option value="low">Низкий</mat-option>
+                    <mat-option value="normal">Обычный</mat-option>
+                    <mat-option value="high">Высокий</mat-option>
+                    <mat-option value="urgent">Срочный</mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <mat-form-field class="full-width">
+                <mat-label>Планируемая дата готовности</mat-label>
+                <input matInput
+                       [matDatepicker]="picker"
+                       formControlName="estimated_completion">
+                <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+                <mat-datepicker #picker></mat-datepicker>
+              </mat-form-field>
+
+
+              <div class="additional-services-section">
+                <h4>Дополнительные услуги</h4>
+
+                <div class="services-grid">
+                  <mat-card *ngFor="let service of additionalServices"
+                            class="service-card"
+                            [class.selected]="selectedServices.includes(service)">
+                    <mat-card-content>
+                      <div class="service-info">
+                        <h5>{{ service.name }}</h5>
+                        <p class="service-description">{{ service.description }}</p>
+                        <div class="service-price">{{ service.price | currency:'RUB':'symbol':'1.0-0' }}</div>
+                      </div>
+                      <div class="service-actions">
+                        <button mat-icon-button
+                                *ngIf="!selectedServices.includes(service)"
+                                (click)="addService(service)"
+                                color="primary">
+                          <mat-icon>add</mat-icon>
+                        </button>
+                        <button mat-icon-button
+                                *ngIf="selectedServices.includes(service)"
+                                (click)="removeService(service)"
+                                color="warn">
+                          <mat-icon>remove</mat-icon>
+                        </button>
+                      </div>
+                    </mat-card-content>
+                  </mat-card>
+                </div>
+
+                <div class="selected-services" *ngIf="selectedServices.length > 0">
+                  <h5>Выбранные услуги:</h5>
+                  <mat-chip-set>
+                    <mat-chip *ngFor="let service of selectedServices"
+                              (removed)="removeService(service)">
+                      {{ service.name }} - {{ service.price | currency:'RUB':'symbol':'1.0-0' }}
+                      <mat-icon matChipRemove>cancel</mat-icon>
+                    </mat-chip>
+                  </mat-chip-set>
+                </div>
+              </div>
+
+              <mat-form-field class="full-width">
+                <mat-label>Внутренние заметки</mat-label>
+                <textarea matInput
+                          formControlName="notes"
+                          rows="2"
+                          placeholder="Заметки для внутреннего использования"></textarea>
+              </mat-form-field>
+
+              <div class="step-actions">
+                <button mat-button matStepperPrevious>Назад</button>
+                <button mat-raised-button
+                        color="primary"
+                        (click)="onSubmit()"
+                        [disabled]="loading">
+                  <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+                  <span *ngIf="!loading">{{ isEditMode ? 'Обновить заказ' : 'Создать заказ' }}</span>
+                </button>
+              </div>
+            </div>
+          </form>
+        </mat-step>
+      </mat-stepper>
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -1,0 +1,181 @@
+
+<div class="user-management-container">
+  <div class="header">
+    <h1>Управление пользователями</h1>
+    <button mat-raised-button color="primary" routerLink="/admin/users/new">
+      <mat-icon>person_add</mat-icon>
+      Новый пользователь
+    </button>
+  </div>
+
+  
+  <mat-card class="filters-card">
+    <mat-card-content>
+      <form [formGroup]="filtersForm" class="filters-form">
+        <mat-form-field class="search-field">
+          <mat-label>Поиск</mat-label>
+          <input matInput 
+                 formControlName="search" 
+                 placeholder="Имя, логин, email...">
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Роль</mat-label>
+          <mat-select formControlName="role_id">
+            <mat-option value="">Все роли</mat-option>
+            <mat-option *ngFor="let role of roles" [value]="role.id">
+              {{ role.name }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Статус</mat-label>
+          <mat-select formControlName="is_active">
+            <mat-option value="">Все</mat-option>
+            <mat-option [value]="true">Активные</mat-option>
+            <mat-option [value]="false">Неактивные</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <button mat-button (click)="clearFilters()">
+          <mat-icon>clear</mat-icon>
+          Очистить
+        </button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  
+  <mat-card class="table-card">
+    <mat-card-content>
+      <div class="table-container">
+        <table mat-table [dataSource]="dataSource" matSort class="users-table">
+          
+          
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Имя</th>
+            <td mat-cell *matCellDef="let user">
+              <div class="user-info">
+                <div class="user-name">
+                  {{ user.last_name }} {{ user.first_name }}
+                </div>
+                <div class="user-middle-name" *ngIf="user.middle_name">
+                  {{ user.middle_name }}
+                </div>
+              </div>
+            </td>
+          </ng-container>
+
+          
+          <ng-container matColumnDef="username">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Логин</th>
+            <td mat-cell *matCellDef="let user">
+              <span class="username">{{ user.username }}</span>
+            </td>
+          </ng-container>
+
+          
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef>Email</th>
+            <td mat-cell *matCellDef="let user">
+              <a href="mailto:{{ user.email }}" class="email-link">
+                {{ user.email }}
+              </a>
+            </td>
+          </ng-container>
+
+          
+          <ng-container matColumnDef="role">
+            <th mat-header-cell *matHeaderCellDef>Роль</th>
+            <td mat-cell *matCellDef="let user">
+              <mat-chip class="role-chip">
+                {{ getRoleName(user) }}
+              </mat-chip>
+              <mat-chip class="director-chip" *ngIf="user.is_director">
+                Директор
+              </mat-chip>
+            </td>
+          </ng-container>
+
+          
+          <ng-container matColumnDef="shops">
+            <th mat-header-cell *matHeaderCellDef>Магазины</th>
+            <td mat-cell *matCellDef="let user">
+              <span class="shops-info">{{ getShopsNames(user) }}</span>
+            </td>
+          </ng-container>
+
+          
+          <ng-container matColumnDef="is_active">
+            <th mat-header-cell *matHeaderCellDef>Статус</th>
+            <td mat-cell *matCellDef="let user">
+              <mat-slide-toggle 
+                [checked]="user.is_active"
+                (change)="toggleUserStatus(user)"
+                color="primary">
+              </mat-slide-toggle>
+              <span class="status-text" [class.active]="user.is_active" [class.inactive]="!user.is_active">
+                {{ user.is_active ? 'Активен' : 'Неактивен' }}
+              </span>
+            </td>
+          </ng-container>
+
+          
+          <ng-container matColumnDef="last_login">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Последний вход</th>
+            <td mat-cell *matCellDef="let user">
+              <span *ngIf="user.last_login; else neverLoggedIn">
+                {{ user.last_login | date:'dd.MM.yyyy HH:mm' }}
+              </span>
+              <ng-template #neverLoggedIn>
+                <span class="never-logged-in">Никогда</span>
+              </ng-template>
+            </td>
+          </ng-container>
+
+          
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Действия</th>
+            <td mat-cell *matCellDef="let user">
+              <button mat-icon-button [matMenuTriggerFor]="actionsMenu">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #actionsMenu="matMenu">
+                <button mat-menu-item [routerLink]="['/admin/users', user.id, 'edit']">
+                  <mat-icon>edit</mat-icon>
+                  <span>Редактировать</span>
+                </button>
+                <button mat-menu-item (click)="resetPassword(user)">
+                  <mat-icon>lock_reset</mat-icon>
+                  <span>Сбросить пароль</span>
+                </button>
+                <mat-divider></mat-divider>
+                <button mat-menu-item 
+                        (click)="deleteUser(user)"
+                        class="danger-action">
+                  <mat-icon>delete</mat-icon>
+                  <span>Удалить</span>
+                </button>
+              </mat-menu>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        </table>
+
+        <div class="loading-shade" *ngIf="loading">
+          <mat-spinner></mat-spinner>
+        </div>
+      </div>
+
+      <mat-paginator 
+        [pageSizeOptions]="[10, 20, 50, 100]"
+        [pageSize]="20"
+        showFirstLastButtons>
+      </mat-paginator>
+    </mat-card-content>
+  </mat-card>
+</div>

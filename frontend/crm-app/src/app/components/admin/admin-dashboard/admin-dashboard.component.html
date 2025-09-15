@@ -1,0 +1,113 @@
+
+<div class="admin-dashboard-container">
+  <div class="header">
+    <h1>Панель администрирования</h1>
+    <p class="subtitle">Управление системой и пользователями</p>
+  </div>
+
+  
+  <div class="stats-section" *ngIf="!loading && stats">
+    <h2>Системная статистика</h2>
+    <div class="stats-grid">
+      <mat-card class="stat-card users-card">
+        <mat-card-content>
+          <div class="stat-content">
+            <div class="stat-icon">
+              <mat-icon>people</mat-icon>
+            </div>
+            <div class="stat-info">
+              <h3>{{ stats.active_users }}/{{ stats.total_users }}</h3>
+              <p>Активные пользователи</p>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card shops-card">
+        <mat-card-content>
+          <div class="stat-content">
+            <div class="stat-icon">
+              <mat-icon>store</mat-icon>
+            </div>
+            <div class="stat-info">
+              <h3>{{ stats.active_shops }}/{{ stats.total_shops }}</h3>
+              <p>Активные магазины</p>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card orders-card">
+        <mat-card-content>
+          <div class="stat-content">
+            <div class="stat-icon">
+              <mat-icon>assignment</mat-icon>
+            </div>
+            <div class="stat-info">
+              <h3>{{ stats.total_orders_today }}</h3>
+              <p>Заказов сегодня</p>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card revenue-card">
+        <mat-card-content>
+          <div class="stat-content">
+            <div class="stat-icon">
+              <mat-icon>attach_money</mat-icon>
+            </div>
+            <div class="stat-info">
+              <h3>{{ stats.total_revenue_today | currency:'RUB':'symbol':'1.0-0' }}</h3>
+              <p>Выручка сегодня</p>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    
+    <mat-card class="health-card">
+      <mat-card-header>
+        <mat-card-title>Состояние системы</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="health-status">
+          <div class="health-indicator" 
+               [style.background-color]="getHealthStatusColor(stats.system_health)">
+          </div>
+          <span class="health-text">{{ getHealthStatusText(stats.system_health) }}</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  
+  <div class="actions-section">
+    <h2>Быстрые действия</h2>
+    <div class="actions-grid">
+      <mat-card *ngFor="let action of quickActions" 
+                class="action-card"
+                [routerLink]="action.route">
+        <mat-card-content>
+          <div class="action-icon">
+            <mat-icon [color]="action.color">{{ action.icon }}</mat-icon>
+          </div>
+          <div class="action-info">
+            <h3>{{ action.title }}</h3>
+            <p>{{ action.description }}</p>
+          </div>
+          <div class="action-arrow">
+            <mat-icon>arrow_forward</mat-icon>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+
+  
+  <div class="loading-container" *ngIf="loading">
+    <mat-spinner></mat-spinner>
+    <p>Загрузка статистики...</p>
+  </div>
+</div>

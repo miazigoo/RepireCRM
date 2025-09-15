@@ -1,0 +1,330 @@
+
+<div class="order-detail-container" *ngIf="!loading && order">
+
+
+  <div class="header">
+    <div class="header-info">
+      <button mat-icon-button routerLink="/orders">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div class="title-section">
+        <h1>Заказ {{ order.order_number }}</h1>
+        <div class="status-priority">
+          <mat-chip [class]="'status-chip ' + order.status">
+            <mat-icon>{{ getStatusIcon(order.status) }}</mat-icon>
+            {{ getStatusLabel(order.status) }}
+          </mat-chip>
+          <mat-chip [class]="'priority-chip ' + order.priority"
+                    *ngIf="order.priority !== 'normal'">
+            {{ getPriorityLabel(order.priority) }}
+          </mat-chip>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button mat-button [matMenuTriggerFor]="actionsMenu">
+        <mat-icon>more_vert</mat-icon>
+        Действия
+      </button>
+      <mat-menu #actionsMenu="matMenu">
+        <button mat-menu-item (click)="editOrder()">
+          <mat-icon>edit</mat-icon>
+          <span>Редактировать</span>
+        </button>
+        <button mat-menu-item (click)="changeStatus()">
+          <mat-icon>swap_horiz</mat-icon>
+          <span>Изменить статус</span>
+        </button>
+        <mat-divider></mat-divider>
+        <button mat-menu-item (click)="printReceipt()">
+          <mat-icon>print</mat-icon>
+          <span>Печать квитанции</span>
+        </button>
+        <button mat-menu-item (click)="sendNotification()">
+          <mat-icon>notifications</mat-icon>
+          <span>Уведомить клиента</span>
+        </button>
+      </mat-menu>
+
+      <button mat-raised-button color="primary" (click)="editOrder()">
+        <mat-icon>edit</mat-icon>
+        Редактировать
+      </button>
+    </div>
+  </div>
+
+
+  <div class="content-grid">
+
+
+    <div class="left-column">
+
+
+      <mat-card class="info-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>person</mat-icon>
+            Информация о клиенте
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="info-row">
+            <span class="label">Имя:</span>
+            <span class="value">{{ order.customer.last_name }} {{ order.customer.first_name }}</span>
+          </div>
+          <div class="info-row" *ngIf="order.customer.middle_name">
+            <span class="label">Отчество:</span>
+            <span class="value">{{ order.customer.middle_name }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Телефон:</span>
+            <span class="value">
+              <a href="tel:{{ order.customer.phone }}">{{ order.customer.phone }}</a>
+            </span>
+          </div>
+          <div class="info-row" *ngIf="order.customer.email">
+            <span class="label">Email:</span>
+            <span class="value">
+              <a href="mailto:{{ order.customer.email }}">{{ order.customer.email }}</a>
+            </span>
+          </div>
+          <div class="info-row">
+            <span class="label">Заказов:</span>
+            <span class="value">{{ order.customer.orders_count }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Потрачено:</span>
+            <span class="value">{{ order.customer.total_spent | currency:'RUB':'symbol':'1.0-0' }}</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+
+      <mat-card class="info-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>smartphone</mat-icon>
+            Информация об устройстве
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="info-row">
+            <span class="label">Устройство:</span>
+            <span class="value">{{ order.device.model.brand.name }} {{ order.device.model.name }}</span>
+          </div>
+          <div class="info-row" *ngIf="order.device.color">
+            <span class="label">Цвет:</span>
+            <span class="value">{{ order.device.color }}</span>
+          </div>
+          <div class="info-row" *ngIf="order.device.storage_capacity">
+            <span class="label">Память:</span>
+            <span class="value">{{ order.device.storage_capacity }}</span>
+          </div>
+          <div class="info-row" *ngIf="order.device.serial_number">
+            <span class="label">Серийный номер:</span>
+            <span class="value">{{ order.device.serial_number }}</span>
+          </div>
+          <div class="info-row" *ngIf="order.device.imei">
+            <span class="label">IMEI:</span>
+            <span class="value">{{ order.device.imei }}</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+
+      <mat-card class="info-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>attach_money</mat-icon>
+            Финансовая информация
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="info-row">
+            <span class="label">Предварительная стоимость:</span>
+            <span class="value">{{ order.cost_estimate | currency:'RUB':'symbol':'1.0-0' }}</span>
+          </div>
+          <div class="info-row" *ngIf="order.final_cost">
+            <span class="label">Итоговая стоимость:</span>
+            <span class="value final-cost">{{ order.final_cost | currency:'RUB':'symbol':'1.0-0' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Предоплата:</span>
+            <span class="value">{{ order.prepayment | currency:'RUB':'symbol':'1.0-0' }}</span>
+          </div>
+          <div class="info-row" *ngIf="order.remaining_payment > 0">
+            <span class="label">К доплате:</span>
+            <span class="value remaining-payment">{{ order.remaining_payment | currency:'RUB':'symbol':'1.0-0' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Общая стоимость:</span>
+            <span class="value total-cost">{{ order.total_cost | currency:'RUB':'symbol':'1.0-0' }}</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+
+    <div class="right-column">
+
+
+      <mat-card class="details-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>assignment</mat-icon>
+            Детали заказа
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+
+
+          <mat-tab-group>
+
+
+            <mat-tab label="Основная информация">
+              <div class="tab-content">
+                <div class="info-section">
+                  <h4>Описание проблемы</h4>
+                  <p class="problem-description">{{ order.problem_description }}</p>
+                </div>
+
+                <div class="info-section" *ngIf="order.diagnosis">
+                  <h4>Диагноз</h4>
+                  <p class="diagnosis">{{ order.diagnosis }}</p>
+                </div>
+
+                <div class="info-section" *ngIf="order.work_description">
+                  <h4>Выполненные работы</h4>
+                  <p class="work-description">{{ order.work_description }}</p>
+                </div>
+
+                <div class="info-section" *ngIf="order.accessories">
+                  <h4>Комплектация</h4>
+                  <p class="accessories">{{ order.accessories }}</p>
+                </div>
+
+                <div class="info-section" *ngIf="order.device_condition">
+                  <h4>Состояние устройства</h4>
+                  <p class="device-condition">{{ order.device_condition }}</p>
+                </div>
+
+                <div class="info-section" *ngIf="order.notes">
+                  <h4>Внутренние заметки</h4>
+                  <p class="notes">{{ order.notes }}</p>
+                </div>
+              </div>
+            </mat-tab>
+
+
+            <mat-tab label="Дополнительные услуги" *ngIf="order.additional_services.length > 0">
+              <div class="tab-content">
+                <div class="services-list">
+                  <div class="service-item" *ngFor="let orderService of order.additional_services">
+                    <div class="service-info">
+                      <h5>{{ orderService.service.name }}</h5>
+                      <p class="service-description">{{ orderService.service.description }}</p>
+                      <div class="service-details">
+                        <span class="quantity">Количество: {{ orderService.quantity }}</span>
+                        <span class="price">{{ orderService.price | currency:'RUB':'symbol':'1.0-0' }} за единицу</span>
+                      </div>
+                    </div>
+                    <div class="service-total">
+                      {{ orderService.total_price | currency:'RUB':'symbol':'1.0-0' }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </mat-tab>
+
+
+            <mat-tab label="История статусов">
+              <div class="tab-content">
+                <div class="status-timeline">
+                  <div class="timeline-item" *ngFor="let item of statusHistory">
+                    <div class="timeline-marker">
+                      <mat-icon [class]="'status-icon ' + item.status">
+                        {{ getStatusIcon(item.status) }}
+                      </mat-icon>
+                    </div>
+                    <div class="timeline-content">
+                      <div class="timeline-header">
+                        <span class="status-name">{{ getStatusLabel(item.status) }}</span>
+                        <span class="timeline-date">{{ item.date | date:'dd.MM.yyyy HH:mm' }}</span>
+                      </div>
+                      <div class="timeline-details">
+                        <span class="user-name">{{ item.user }}</span>
+                        <span class="comment" *ngIf="item.comment">{{ item.comment }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </mat-tab>
+
+
+            <mat-tab label="Документы" *ngIf="orderDocuments.length > 0">
+              <div class="tab-content">
+                <div class="documents-list">
+                  <div class="document-item" *ngFor="let doc of orderDocuments">
+                    <mat-icon class="document-icon">description</mat-icon>
+                    <div class="document-info">
+                      <h5>{{ doc.name }}</h5>
+                      <p class="document-date">{{ doc.created_at | date:'dd.MM.yyyy HH:mm' }}</p>
+                    </div>
+                    <button mat-icon-button (click)="window.open(doc.file_url, '_blank')">
+                      <mat-icon>download</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </mat-tab>
+          </mat-tab-group>
+        </mat-card-content>
+      </mat-card>
+
+
+      <mat-card class="timeline-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>schedule</mat-icon>
+            Временная линия
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="date-info">
+            <div class="date-item">
+              <mat-icon>event</mat-icon>
+              <div>
+                <span class="date-label">Создан:</span>
+                <span class="date-value">{{ order.created_at | date:'dd.MM.yyyy HH:mm' }}</span>
+              </div>
+            </div>
+
+            <div class="date-item" *ngIf="order.estimated_completion">
+              <mat-icon>event_available</mat-icon>
+              <div>
+                <span class="date-label">Планируемая готовность:</span>
+                <span class="date-value">{{ order.estimated_completion | date:'dd.MM.yyyy HH:mm' }}</span>
+              </div>
+            </div>
+
+            <div class="date-item" *ngIf="order.completed_at">
+              <mat-icon>event_note</mat-icon>
+              <div>
+                <span class="date-label">Завершен:</span>
+                <span class="date-value">{{ order.completed_at | date:'dd.MM.yyyy HH:mm' }}</span>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+</div>
+
+
+<div class="loading-container" *ngIf="loading">
+  <mat-spinner></mat-spinner>
+  <p>Загрузка заказа...</p>
+</div>

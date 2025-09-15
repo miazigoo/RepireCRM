@@ -35,21 +35,21 @@ import { User, Shop } from '../../../core/models/models';
   ],
   template: `
     <mat-sidenav-container class="sidenav-container">
-      <mat-sidenav #drawer 
-                   class="sidenav" 
+      <mat-sidenav #drawer
+                   class="sidenav"
                    fixedInViewport
                    [attr.role]="(isHandset$ | async) ? 'dialog' : 'navigation'"
                    [mode]="(isHandset$ | async) ? 'over' : 'side'"
                    [opened]="(isHandset$ | async) === false">
-        
+
         <div class="sidenav-header">
           <mat-icon class="app-icon">build</mat-icon>
           <h3>Repair CRM</h3>
         </div>
 
-        
+
         <div class="shop-selector" *ngIf="currentUser?.is_director">
-          <mat-select 
+          <mat-select
             [value]="currentShop?.id"
             (selectionChange)="switchShop($event.value)"
             placeholder="Выберите магазин">
@@ -64,39 +64,39 @@ import { User, Shop } from '../../../core/models/models';
             <mat-icon matListItemIcon>dashboard</mat-icon>
             <span matListItemTitle>Панель управления</span>
           </a>
-          
+
           <a mat-list-item routerLink="/orders" routerLinkActive="active">
             <mat-icon matListItemIcon>assignment</mat-icon>
             <span matListItemTitle>Заказы</span>
-            <span matListItemMeta class="pending-orders-badge" 
+            <span matListItemMeta class="pending-orders-badge"
                   *ngIf="pendingOrdersCount > 0">
               {{ pendingOrdersCount }}
             </span>
           </a>
-          
+
           <a mat-list-item routerLink="/customers" routerLinkActive="active">
             <mat-icon matListItemIcon>people</mat-icon>
             <span matListItemTitle>Клиенты</span>
           </a>
-          
+
           <a mat-list-item routerLink="/inventory" routerLinkActive="active">
             <mat-icon matListItemIcon>inventory</mat-icon>
             <span matListItemTitle>Склад</span>
           </a>
-          
+
           <a mat-list-item routerLink="/reports" routerLinkActive="active">
             <mat-icon matListItemIcon>assessment</mat-icon>
             <span matListItemTitle>Отчеты</span>
           </a>
-          
+
           <mat-divider></mat-divider>
-          
-          <a mat-list-item routerLink="/admin" routerLinkActive="active" 
+
+          <a mat-list-item routerLink="/admin" routerLinkActive="active"
              *ngIf="currentUser?.is_director">
             <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
             <span matListItemTitle>Администрирование</span>
           </a>
-          
+
           <a mat-list-item routerLink="/settings" routerLinkActive="active">
             <mat-icon matListItemIcon>settings</mat-icon>
             <span matListItemTitle>Настройки</span>
@@ -113,43 +113,35 @@ import { User, Shop } from '../../../core/models/models';
                   *ngIf="isHandset$ | async">
             <mat-icon aria-label="Side nav toggle icon">menu</mat-icon>
           </button>
-          
+
           <span class="current-shop-name" *ngIf="currentShop">
             {{ currentShop.name }}
           </span>
-          
+
           <span class="spacer"></span>
-          
-          
+
+
           <button mat-icon-button [matMenuTriggerFor]="notificationsMenu">
-            <mat-icon [matBadge]="notificationsCount" 
+            <mat-icon [matBadge]="notificationsCount"
                       matBadgeColor="warn"
                       [matBadgeHidden]="notificationsCount === 0">
               notifications
             </mat-icon>
           </button>
-          
-          
+
+
           <button mat-icon-button [matMenuTriggerFor]="userMenu">
             <mat-icon>account_circle</mat-icon>
           </button>
         </mat-toolbar>
 
-        
+
         <mat-menu #notificationsMenu="matMenu">
           <div class="notifications-header">
             <h4>Уведомления</h4>
           </div>
           <mat-divider></mat-divider>
-          <div class="notifications-list" *ngIf="notifications.length > 0; else noNotifications">
-            <button mat-menu-item *ngFor="let notification of notifications" 
-                    (click)="handleNotification(notification)">
-              <mat-icon [color]="notification.type === 'urgent' ? 'warn' : 'primary'">
-                {{ getNotificationIcon(notification.type) }}
-              </mat-icon>
-              <span>{{ notification.message }}</span>
-            </button>
-          </div>
+         <app-notifications></app-notifications>
           <ng-template #noNotifications>
             <div class="no-notifications">
               <p>Нет новых уведомлений</p>
@@ -157,7 +149,7 @@ import { User, Shop } from '../../../core/models/models';
           </ng-template>
         </mat-menu>
 
-        
+
         <mat-menu #userMenu="matMenu">
           <div class="user-info">
             <p><strong>{{ currentUser?.first_name }} {{ currentUser?.last_name }}</strong></p>
@@ -174,7 +166,7 @@ import { User, Shop } from '../../../core/models/models';
           </button>
         </mat-menu>
 
-        
+
         <div class="content-container">
           <router-outlet></router-outlet>
         </div>
@@ -284,7 +276,7 @@ import { User, Shop } from '../../../core/models/models';
       .content-container {
         padding: 16px;
       }
-      
+
       .current-shop-name {
         display: none;
       }
@@ -304,7 +296,7 @@ export class MainLayoutComponent implements OnInit {
   currentShop$: Observable<Shop | null>;
   currentUser: User | null = null;
   currentShop: Shop | null = null;
-  
+
   availableShops: Shop[] = []; // Будет загружаться из API
   pendingOrdersCount = 0;
   notificationsCount = 0;

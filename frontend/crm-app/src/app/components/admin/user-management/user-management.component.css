@@ -1,0 +1,163 @@
+/* frontend/crm-app/src/app/components/admin/user-management/user-management.component.css */
+.user-management-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  margin: 0;
+  color: #333;
+}
+
+.filters-card {
+  margin-bottom: 24px;
+}
+
+.filters-form {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.search-field {
+  min-width: 300px;
+}
+
+.table-card {
+  position: relative;
+}
+
+.table-container {
+  position: relative;
+  max-height: 600px;
+  overflow: auto;
+}
+
+.users-table {
+  width: 100%;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.user-middle-name {
+  font-size: 12px;
+  color: #666;
+}
+
+.username {
+  font-family: 'Courier New', monospace;
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.email-link {
+  color: #1976d2;
+  text-decoration: none;
+}
+
+.email-link:hover {
+  text-decoration: underline;
+}
+
+.role-chip {
+  background-color: #e3f2fd;
+  color: #1976d2;
+  font-size: 11px;
+  min-height: 24px;
+  margin-right: 4px;
+}
+
+.director-chip {
+  background-color: #fff3e0;
+  color: #f57c00;
+  font-size: 11px;
+  min-height: 24px;
+}
+
+.shops-info {
+  font-size: 12px;
+  color: #666;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+.status-text {
+  margin-left: 8px;
+  font-size: 12px;
+}
+
+.status-text.active {
+  color: #4caf50;
+}
+
+.status-text.inactive {
+  color: #f44336;
+}
+
+.never-logged-in {
+  color: #999;
+  font-style: italic;
+  font-size: 12px;
+}
+
+.danger-action {
+  color: #f44336 !important;
+}
+
+.loading-shade {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 56px;
+  right: 0;
+  background: rgba(0, 0, 0, 0.15);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .filters-form {
+    grid-template-columns: 1fr;
+  }
+  
+  .search-field {
+    min-width: auto;
+  }
+  
+  .header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+  
+  .users-table {
+    font-size: 14px;
+  }
+  
+  .shops-info {
+    max-width: 100px;
+  }
+}

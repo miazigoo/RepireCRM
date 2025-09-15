@@ -1,0 +1,141 @@
+/* frontend/crm-app/src/app/components/admin/system-settings/system-settings.component.css */
+.system-settings-container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.header h1 {
+  margin: 0 0 8px 0;
+  color: #333;
+  font-size: 28px;
+}
+
+.subtitle {
+  margin: 0;
+  color: #666;
+  font-size: 16px;
+}
+
+.settings-tabs {
+  min-height: 600px;
+}
+
+.tab-content {
+  padding: 24px 0;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.settings-section {
+  margin-bottom: 32px;
+}
+
+.settings-section h3 {
+  margin: 0 0 20px 0;
+  color: #666;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.toggle-row:last-child {
+  border-bottom: none;
+}
+
+.toggle-row mat-slide-toggle {
+  flex: 1;
+}
+
+.toggle-row button {
+  margin-left: 16px;
+}
+
+.manual-backup-section {
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.manual-backup-section p {
+  margin: 0 0 16px 0;
+  color: #666;
+}
+
+.manual-backup-section button {
+  min-width: 200px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: flex-end;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.form-actions button {
+  min-width: 120px;
+}
+
+mat-card-header mat-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+mat-card-header mat-card-title mat-icon {
+  color: #666;
+}
+
+mat-divider {
+  margin: 24px 0;
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .toggle-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .toggle-row button {
+    margin-left: 0;
+    align-self: flex-end;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .manual-backup-section button {
+    min-width: auto;
+    width: 100%;
+  }
+}

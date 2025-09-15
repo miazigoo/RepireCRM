@@ -1,0 +1,236 @@
+
+<div class="customer-detail-container" *ngIf="!loading && customer">
+
+
+  <div class="header">
+    <div class="header-info">
+      <button mat-icon-button routerLink="/customers">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div class="title-section">
+        <h1>{{ customer.last_name }} {{ customer.first_name }}</h1>
+        <div class="customer-meta">
+          <mat-chip class="source-chip" *ngIf="customer.source">
+            {{ getSourceLabel(customer.source) }}
+          </mat-chip>
+          <span class="customer-id">ID: {{ customer.id }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button mat-button [matMenuTriggerFor]="actionsMenu">
+        <mat-icon>more_vert</mat-icon>
+        Действия
+      </button>
+      <mat-menu #actionsMenu="matMenu">
+        <button mat-menu-item (click)="editCustomer()">
+          <mat-icon>edit</mat-icon>
+          <span>Редактировать</span>
+        </button>
+        <button mat-menu-item (click)="createOrder()">
+          <mat-icon>add</mat-icon>
+          <span>Новый заказ</span>
+        </button>
+        <mat-divider></mat-divider>
+        <button mat-menu-item
+                (click)="deleteCustomer()"
+                [disabled]="customer.orders_count > 0">
+          <mat-icon>delete</mat-icon>
+          <span>Удалить</span>
+        </button>
+      </mat-menu>
+
+      <button mat-raised-button color="primary" (click)="createOrder()">
+        <mat-icon>add</mat-icon>
+        Новый заказ
+      </button>
+    </div>
+  </div>
+
+
+  <div class="content-grid">
+
+
+    <div class="left-column">
+
+
+      <mat-card class="info-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>person</mat-icon>
+            Личная информация
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="info-row">
+            <span class="label">Полное имя:</span>
+            <span class="value">
+              {{ customer.last_name }} {{ customer.first_name }}
+              <span *ngIf="customer.middle_name">{{ customer.middle_name }}</span>
+            </span>
+          </div>
+          <div class="info-row" *ngIf="customer.birth_date">
+            <span class="label">Дата рождения:</span>
+            <span class="value">{{ customer.birth_date | date:'dd.MM.yyyy' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Дата регистрации:</span>
+            <span class="value">{{ customer.created_at | date:'dd.MM.yyyy HH:mm' }}</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+
+      <mat-card class="info-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>contact_phone</mat-icon>
+            Контактная информация
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="info-row">
+            <span class="label">Телефон:</span>
+            <span class="value">
+              <a href="tel:{{ customer.phone }}" class="contact-link">
+                {{ customer.phone }}
+              </a>
+            </span>
+          </div>
+          <div class="info-row" *ngIf="customer.email">
+            <span class="label">Email:</span>
+            <span class="value">
+              <a href="mailto:{{ customer.email }}" class="contact-link">
+                {{ customer.email }}
+              </a>
+            </span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+
+      <mat-card class="info-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>analytics</mat-icon>
+            Статистика
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-value">{{ customer.orders_count }}</div>
+              <div class="stat-label">Заказов</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">{{ customer.total_spent | currency:'RUB':'symbol':'1.0-0' }}</div>
+              <div class="stat-label">Потрачено</div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+
+      <mat-card class="info-card" *ngIf="customer.source">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>source</mat-icon>
+            Источник
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="info-row">
+            <span class="label">Откуда узнали:</span>
+            <span class="value">{{ getSourceLabel(customer.source) }}</span>
+          </div>
+          <div class="info-row" *ngIf="customer.source_details">
+            <span class="label">Детали:</span>
+            <span class="value">{{ customer.source_details }}</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+
+    <div class="right-column">
+
+
+      <mat-card class="notes-card" *ngIf="customer.notes">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>note</mat-icon>
+            Заметки
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="notes-content">{{ customer.notes }}</p>
+        </mat-card-content>
+      </mat-card>
+
+
+      <mat-card class="orders-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>assignment</mat-icon>
+            История заказов ({{ customerOrders.length }})
+          </mat-card-title>
+          <button mat-button color="primary" (click)="createOrder()">
+            <mat-icon>add</mat-icon>
+            Новый заказ
+          </button>
+        </mat-card-header>
+        <mat-card-content>
+
+          <div class="orders-list" *ngIf="customerOrders.length > 0; else noOrders">
+            <div class="order-item" *ngFor="let order of customerOrders">
+              <div class="order-header">
+                <a [routerLink]="['/orders', order.id]" class="order-number">
+                  {{ order.order_number }}
+                </a>
+                <mat-chip [class]="'status-chip ' + order.status">
+                  {{ getStatusLabel(order.status) }}
+                </mat-chip>
+              </div>
+
+              <div class="order-details">
+                <div class="device-info">
+                  <mat-icon>smartphone</mat-icon>
+                  <span>{{ order.device }}</span>
+                </div>
+                <div class="order-cost">
+                  <mat-icon>attach_money</mat-icon>
+                  <span>{{ order.final_cost || order.cost_estimate | currency:'RUB':'symbol':'1.0-0' }}</span>
+                </div>
+                <div class="order-date">
+                  <mat-icon>event</mat-icon>
+                  <span>{{ order.created_at | date:'dd.MM.yyyy' }}</span>
+                </div>
+                <div class="order-shop">
+                  <mat-icon>store</mat-icon>
+                  <span>{{ order.shop }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <ng-template #noOrders>
+            <div class="no-orders">
+              <mat-icon>assignment</mat-icon>
+              <p>У клиента пока нет заказов</p>
+              <button mat-raised-button color="primary" (click)="createOrder()">
+                Создать первый заказ
+              </button>
+            </div>
+          </ng-template>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+</div>
+
+
+<div class="loading-container" *ngIf="loading">
+  <mat-spinner></mat-spinner>
+  <p>Загрузка клиента...</p>
+</div>

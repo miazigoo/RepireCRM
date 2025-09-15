@@ -1,0 +1,174 @@
+
+<div class="user-form-container">
+  <div class="header">
+    <h1>{{ isEditMode ? 'Редактирование пользователя' : 'Новый пользователь' }}</h1>
+    <button mat-button (click)="cancel()">
+      <mat-icon>arrow_back</mat-icon>
+      Назад
+    </button>
+  </div>
+
+  <mat-card class="form-card">
+    <mat-card-content>
+      <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
+        
+        
+        <div class="form-section">
+          <h3>Учетная запись</h3>
+          
+          <div class="form-row">
+            <mat-form-field>
+              <mat-label>Логин *</mat-label>
+              <input matInput 
+                     formControlName="username" 
+                     [readonly]="isEditMode"
+                     required>
+              <mat-error>{{ getFieldError('username') }}</mat-error>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Email *</mat-label>
+              <input matInput 
+                     type="email" 
+                     formControlName="email"
+                     required>
+              <mat-error>{{ getFieldError('email') }}</mat-error>
+            </mat-form-field>
+          </div>
+
+          <div class="form-row" *ngIf="!isEditMode">
+            <mat-form-field>
+              <mat-label>Пароль *</mat-label>
+              <input matInput 
+                     type="password" 
+                     formControlName="password"
+                     required>
+              <mat-error>{{ getFieldError('password') }}</mat-error>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Подтверждение пароля *</mat-label>
+              <input matInput 
+                     type="password" 
+                     formControlName="confirm_password"
+                     required>
+              <mat-error>{{ getFieldError('confirm_password') }}</mat-error>
+            </mat-form-field>
+          </div>
+        </div>
+
+        
+        <div class="form-section">
+          <h3>Личная информация</h3>
+          
+          <div class="form-row">
+            <mat-form-field>
+              <mat-label>Фамилия *</mat-label>
+              <input matInput formControlName="last_name" required>
+              <mat-error>{{ getFieldError('last_name') }}</mat-error>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Имя *</mat-label>
+              <input matInput formControlName="first_name" required>
+              <mat-error>{{ getFieldError('first_name') }}</mat-error>
+            </mat-form-field>
+          </div>
+
+          <div class="form-row">
+            <mat-form-field>
+              <mat-label>Отчество</mat-label>
+              <input matInput formControlName="middle_name">
+              <mat-error>{{ getFieldError('middle_name') }}</mat-error>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Телефон</mat-label>
+              <input matInput 
+                     formControlName="phone"
+                     placeholder="+7 (999) 123-45-67">
+              <mat-error>{{ getFieldError('phone') }}</mat-error>
+            </mat-form-field>
+          </div>
+        </div>
+
+        
+        <div class="form-section">
+          <h3>Роль и права доступа</h3>
+          
+          <div class="form-row">
+            <mat-form-field>
+              <mat-label>Роль</mat-label>
+              <mat-select formControlName="role_id">
+                <mat-option value="">Не назначена</mat-option>
+                <mat-option *ngFor="let role of roles" [value]="role.id">
+                  {{ role.name }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <div class="checkbox-field">
+              <mat-checkbox formControlName="is_director">
+                Директор (доступ ко всем магазинам)
+              </mat-checkbox>
+            </div>
+          </div>
+
+          <div class="shops-section">
+            <h4>Доступ к магазинам</h4>
+            
+            <mat-form-field class="full-width">
+              <mat-label>Выберите магазины</mat-label>
+              <mat-select formControlName="shop_ids" 
+                          multiple
+                          (selectionChange)="onShopSelectionChange($event.value)">
+                <mat-option *ngFor="let shop of shops" [value]="shop.id">
+                  {{ shop.name }} ({{ shop.code }})
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <div class="selected-shops" *ngIf="selectedShops.length > 0">
+              <h5>Выбранные магазины:</h5>
+              <mat-chip-set>
+                <mat-chip *ngFor="let shop of selectedShops" 
+                          (removed)="removeShop(shop)">
+                  {{ shop.name }}
+                  <mat-icon matChipRemove>cancel</mat-icon>
+                </mat-chip>
+              </mat-chip-set>
+            </div>
+          </div>
+        </div>
+
+        
+        <div class="form-section" *ngIf="isEditMode">
+          <h3>Статус</h3>
+          
+          <div class="checkbox-field">
+            <mat-checkbox formControlName="is_active">
+              Активный пользователь
+            </mat-checkbox>
+            <p class="help-text">
+              Неактивные пользователи не могут войти в систему
+            </p>
+          </div>
+        </div>
+
+        
+        <div class="form-actions">
+          <button mat-button type="button" (click)="cancel()">
+            Отмена
+          </button>
+          <button mat-raised-button 
+                  color="primary" 
+                  type="submit"
+                  [disabled]="loading">
+            <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+            <span *ngIf="!loading">{{ isEditMode ? 'Сохранить изменения' : 'Создать пользователя' }}</span>
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

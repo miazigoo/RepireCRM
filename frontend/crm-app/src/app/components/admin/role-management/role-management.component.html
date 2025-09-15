@@ -1,0 +1,205 @@
+
+<div class="role-management-container">
+  <div class="header">
+    <h1>Управление ролями и разрешениями</h1>
+    <button mat-raised-button color="primary" (click)="showCreateForm()" *ngIf="!showForm">
+      <mat-icon>add</mat-icon>
+      Новая роль
+    </button>
+  </div>
+
+  
+  <mat-card class="form-card" *ngIf="showForm">
+    <mat-card-header>
+      <mat-card-title>
+        {{ editingRole ? 'Редактирование роли' : 'Новая роль' }}
+      </mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <form [formGroup]="roleForm" (ngSubmit)="onSubmit()">
+        
+        
+        <div class="form-section">
+          <h3>Основная информация</h3>
+          
+          <div class="form-row">
+            <mat-form-field>
+              <mat-label>Название роли *</mat-label>
+              <input matInput formControlName="name" required>
+              <mat-error>{{ getFieldError('name') }}</mat-error>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Код роли *</mat-label>
+              <input matInput 
+                     formControlName="code" 
+                     placeholder="manager"
+                     [readonly]="editingRole"
+                     required>
+              <mat-hint>Только строчные буквы и подчеркивания</mat-hint>
+              <mat-error>{{ getFieldError('code') }}</mat-error>
+            </mat-form-field>
+          </div>
+
+          <mat-form-field class="full-width">
+            <mat-label>Описание</mat-label>
+            <textarea matInput 
+                      formControlName="description"
+                      rows="2"
+                      placeholder="Описание роли и её назначения"></textarea>
+            <mat-error>{{ getFieldError('description') }}</mat-error>
+          </mat-form-field>
+        </div>
+
+        
+        <div class="form-section">
+          <h3>Разрешения</h3>
+          <p class="permissions-hint">
+            Выберите разрешения, которые будут доступны пользователям с этой ролью
+          </p>
+
+          <mat-accordion class="permissions-accordion">
+            <mat-expansion-panel *ngFor="let category of getObjectKeys(permissionsByCategory)">
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  <mat-checkbox 
+                    [checked]="isCategoryFullySelected(category)"
+                    [indeterminate]="isCategoryPartiallySelected(category)"
+                    (change)="selectAllInCategory(category)">
+                    {{ getCategoryLabel(category) }}
+                  </mat-checkbox>
+                </mat-panel-title>
+                <mat-panel-description>
+                  {{ permissionsByCategory[category].length }} разрешений
+                </mat-panel-description>
+              </mat-expansion-panel-header>
+
+              <div class="permissions-list">
+                <mat-checkbox 
+                  *ngFor="let permission of permissionsByCategory[category]"
+                  [checked]="isPermissionSelected(permission)"
+                  (change)="togglePermission(permission)"
+                  class="permission-checkbox">
+                  <div class="permission-info">
+                    <div class="permission-name">{{ permission.name }}</div>
+                    <div class="permission-description" *ngIf="permission.description">
+                      {{ permission.description }}
+                    </div>
+                    <div class="permission-codename">{{ permission.codename }}</div>
+                  </div>
+                </mat-checkbox>
+              </div>
+            </mat-expansion-panel>
+          </mat-accordion>
+
+          <div class="selected-permissions-summary">
+            <p><strong>Выбрано разрешений:</strong> {{ selectedPermissions.size }}</p>
+          </div>
+        </div>
+
+        
+        <div class="form-actions">
+          <button mat-button type="button" (click)="cancelForm()">
+            Отмена
+          </button>
+          <button mat-raised-button 
+                  color="primary" 
+                  type="submit"
+                  [disabled]="loading">
+            <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+            <span *ngIf="!loading">{{ editingRole ? 'Сохранить изменения' : 'Создать роль' }}</span>
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  
+  <mat-card class="table-card" *ngIf="!showForm">
+    <mat-card-content>
+      <div class="table-container">
+        <table mat-table [dataSource]="dataSource" matSort class="roles-table">
+          
+          
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Название</th>
+            <td mat-cell *matCellDef="let role">
+              <div class="role-info">
+                <div class="role-name">{{ role.name }}</div>
+                <div class="role-code">{{ role.code }}</div>
+              </div>
+            </td>
+          </ng-container>
+
+          
+          <ng-container matColumnDef="code">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Код</th>
+            <td mat-cell *matCellDef="let role">
+              <span class="role-code-badge">{{ role.code }}</span>
+            </td>
+          </ng-container>
+
+          
+          <ng-container matColumnDef="description">
+            <th mat-header-cell *matHeaderCellDef>Описание</th>
+            <td mat-cell *matCellDef="let role">
+              <span class="role-description" *ngIf="role.description; else noDescription">
+                {{ role.description }}
+              </span>
+              <ng-template #noDescription>
+                <span class="no-data">Нет описания</span>
+              </ng-template>
+            </td>
+          </ng-container>
+
+          
+          <ng-container matColumnDef="permissions_count">
+            <th mat-header-cell *matHeaderCellDef>Разрешения</th>
+            <td mat-cell *matCellDef="let role">
+              <mat-chip class="permissions-chip">
+                {{ getPermissionsCount(role) }}
+              </mat-chip>
+            </td>
+          </ng-container>
+
+          
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Действия</th>
+            <td mat-cell *matCellDef="let role">
+              <button mat-icon-button [matMenuTriggerFor]="actionsMenu">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #actionsMenu="matMenu">
+                <button mat-menu-item (click)="editRole(role)">
+                  <mat-icon>edit</mat-icon>
+                  <span>Редактировать</span>
+                </button>
+                <mat-divider></mat-divider>
+                <button mat-menu-item 
+                        (click)="deleteRole(role)"
+                        class="danger-action"
+                        [disabled]="role.code === 'director'">
+                  <mat-icon>delete</mat-icon>
+                  <span>Удалить</span>
+                </button>
+              </mat-menu>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        </table>
+
+        <div class="loading-shade" *ngIf="loading">
+          <mat-spinner></mat-spinner>
+        </div>
+      </div>
+
+      <mat-paginator 
+        [pageSizeOptions]="[10, 20, 50]"
+        [pageSize]="20"
+        showFirstLastButtons>
+      </mat-paginator>
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -1,0 +1,130 @@
+
+<div class="customer-form-container">
+  <div class="header">
+    <h1>{{ isEditMode ? 'Редактирование клиента' : 'Новый клиент' }}</h1>
+    <button mat-button (click)="cancel()">
+      <mat-icon>arrow_back</mat-icon>
+      Назад
+    </button>
+  </div>
+
+  <mat-card class="form-card">
+    <mat-card-content>
+      <form [formGroup]="customerForm" (ngSubmit)="onSubmit()">
+
+
+        <div class="form-section">
+          <h3>Личная информация</h3>
+
+          <div class="form-row">
+            <mat-form-field>
+              <mat-label>Фамилия *</mat-label>
+              <input matInput formControlName="last_name" required>
+              <mat-error>{{ getFieldError('last_name') }}</mat-error>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Имя *</mat-label>
+              <input matInput formControlName="first_name" required>
+              <mat-error>{{ getFieldError('first_name') }}</mat-error>
+            </mat-form-field>
+          </div>
+
+          <mat-form-field class="full-width">
+            <mat-label>Отчество</mat-label>
+            <input matInput formControlName="middle_name">
+            <mat-error>{{ getFieldError('middle_name') }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field class="full-width">
+            <mat-label>Дата рождения</mat-label>
+            <input matInput
+                   [matDatepicker]="birthDatePicker"
+                   formControlName="birth_date">
+            <mat-datepicker-toggle matIconSuffix [for]="birthDatePicker"></mat-datepicker-toggle>
+            <mat-datepicker #birthDatePicker></mat-datepicker>
+          </mat-form-field>
+        </div>
+
+
+        <div class="form-section">
+          <h3>Контактная информация</h3>
+
+          <div class="form-row">
+            <mat-form-field>
+              <mat-label>Телефон *</mat-label>
+              <input matInput
+                     formControlName="phone"
+                     placeholder="+7 (999) 123-45-67"
+                     required>
+              <mat-error>{{ getFieldError('phone') }}</mat-error>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Email</mat-label>
+              <input matInput
+                     type="email"
+                     formControlName="email"
+                     placeholder="example@domain.com">
+              <mat-error>{{ getFieldError('email') }}</mat-error>
+            </mat-form-field>
+          </div>
+        </div>
+
+
+        <div class="form-section">
+          <h3>Откуда узнали о нас</h3>
+
+          <div class="form-row">
+            <mat-form-field>
+              <mat-label>Источник</mat-label>
+              <mat-select formControlName="source">
+                <mat-option value="">Не указано</mat-option>
+                <mat-option *ngFor="let option of sourceOptions" [value]="option.value">
+                  {{ option.label }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Детали источника</mat-label>
+              <input matInput
+                     formControlName="source_details"
+                     placeholder="Дополнительная информация">
+              <mat-error>{{ getFieldError('source_details') }}</mat-error>
+            </mat-form-field>
+          </div>
+        </div>
+
+
+        <div class="form-section">
+          <h3>Дополнительная информация</h3>
+
+          <mat-form-field class="full-width">
+            <mat-label>Заметки</mat-label>
+            <textarea matInput
+                      formControlName="notes"
+                      rows="3"
+                      placeholder="Дополнительная информация о клиенте"></textarea>
+            <mat-hint>{{ customerForm.get('notes')?.value?.length || 0 }}/1000</mat-hint>
+            <mat-error>{{ getFieldError('notes') }}</mat-error>
+          </mat-form-field>
+        </div>
+
+
+        <div class="form-actions">
+          <button mat-button type="button" (click)="cancel()">
+            Отмена
+          </button>
+          <button mat-raised-button
+                  color="primary"
+                  type="submit"
+                  [disabled]="loading">
+            <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+            <span *ngIf="!loading">{{ isEditMode ? 'Сохранить изменения' : 'Создать клиента' }}</span>
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>
