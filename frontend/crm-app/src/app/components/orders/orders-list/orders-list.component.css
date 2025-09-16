@@ -1,0 +1,105 @@
+.orders-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.header h1 {
+    margin: 0;
+    color: #333;
+}
+
+.filters-card {
+    margin-bottom: 24px;
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto;
+    gap: 16px;
+    align-items: center;
+}
+
+.search-field {
+    min-width: 300px;
+}
+
+.table-card {
+    position: relative;
+}
+
+.table-container {
+    position: relative;
+    max-height: 600px;
+    overflow: auto;
+}
+
+.orders-table {
+    width: 100%;
+}
+
+.order-link {
+    color: #1976d2;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.order-link:hover {
+    text-decoration: underline;
+}
+
+.customer-info, .device-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.customer-name, .device-name {
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.customer-phone, .device-details {
+    font-size: 12px;
+    color: #666;
+}
+
+.cost-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.final-cost {
+    font-weight: 500;
+    color: #2e7d32;
+}
+
+.estimated-cost {
+    color: #f57c00;
+}
+
+.remaining-payment {
+    font-size: 12px;
+    color: #d32f2f;
+}
+
+@media (max-width: 768px) {
+    .filters-form {
+    grid-template-columns: 1fr;
+    }
+    
+    .search-field {
+    min-width: auto;
+    }
+    
+    .header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+    }
+}

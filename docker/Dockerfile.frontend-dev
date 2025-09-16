@@ -1,0 +1,21 @@
+FROM node:24
+
+WORKDIR /app
+
+# Устанавливаем Angular CLI глобально
+RUN npm install -g @angular/cli
+
+# Копируем package.json и package-lock.json
+COPY package*.json ./
+
+# Устанавливаем зависимости
+RUN npm ci
+
+# Копируем исходный код
+COPY . .
+
+# Открываем порт
+EXPOSE 4200
+
+# Запускаем Angular dev server с прокси
+CMD ["npm", "run", "start-docker"]

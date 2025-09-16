@@ -272,7 +272,7 @@
                       <h5>{{ doc.name }}</h5>
                       <p class="document-date">{{ doc.created_at | date:'dd.MM.yyyy HH:mm' }}</p>
                     </div>
-                    <button mat-icon-button (click)="window.open(doc.file_url, '_blank')">
+                    <button mat-icon-button (click)="openDocument(doc.file_url)">
                       <mat-icon>download</mat-icon>
                     </button>
                   </div>

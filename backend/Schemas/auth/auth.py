@@ -1,6 +1,6 @@
 from ninja import Schema
 from typing import Optional
-from .common import UserSchema
+from Schemas.common import UserSchema
 
 
 class LoginSchema(Schema):

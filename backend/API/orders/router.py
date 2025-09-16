@@ -4,13 +4,13 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q, Prefetch
 from django.db import transaction
 from orders.models import Order, AdditionalService, OrderService
-from devices.models import Device, DeviceModel
+from device.models import Device, DeviceModel
 from customers.models import Customer
-from schemas.orders import (
+from Schemas.orders.orders import (
     OrderSchema, OrderCreateSchema, OrderUpdateSchema,
     OrderListSchema, OrderFilterSchema, AdditionalServiceSchema
 )
-from schemas.common import MessageSchema, ErrorSchema
+from Schemas.common import MessageSchema, ErrorSchema
 from typing import List
 
 router = Router(tags=["Заказы"])

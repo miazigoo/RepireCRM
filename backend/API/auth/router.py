@@ -3,8 +3,8 @@ from ninja.security import HttpBearer
 from django.contrib.auth import authenticate
 from django.http import JsonResponse
 from users.models import User
-from schemas.common import UserSchema, MessageSchema, ErrorSchema
-from schemas.auth import LoginSchema, TokenSchema, ChangePasswordSchema
+from Schemas.common import UserSchema, MessageSchema, ErrorSchema
+from Schemas.auth.auth import LoginSchema, TokenSchema, ChangePasswordSchema
 import jwt
 from django.conf import settings
 from datetime import datetime, timedelta

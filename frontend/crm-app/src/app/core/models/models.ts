@@ -7,9 +7,11 @@ export interface User {
   email: string;
   phone?: string;
   is_director: boolean;
+  is_active: boolean; 
   current_shop?: Shop;
   avatar?: string;
   role?: Role;
+  last_login?: string;
 }
 
 export interface Shop {
@@ -20,6 +22,17 @@ export interface Shop {
   phone?: string;
   email?: string;
   is_active: boolean;
+  timezone: string;
+  currency: string;
+}
+
+export interface ShopCreateRequest {
+  name: string;
+  code: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  is_active?: boolean; 
   timezone: string;
   currency: string;
 }
@@ -118,14 +131,14 @@ export interface Order {
   notes?: string;
 }
 
-export type OrderStatus = 
-  | 'received' 
-  | 'diagnosed' 
-  | 'waiting_parts' 
-  | 'in_repair' 
-  | 'testing' 
-  | 'ready' 
-  | 'completed' 
+export type OrderStatus =
+  | 'received'
+  | 'diagnosed'
+  | 'waiting_parts'
+  | 'in_repair'
+  | 'testing'
+  | 'ready'
+  | 'completed'
   | 'cancelled';
 
 export type OrderPriority = 'low' | 'normal' | 'high' | 'urgent';
@@ -174,4 +187,19 @@ export interface CustomerFilters {
   created_from?: string;
   created_to?: string;
   has_orders?: boolean;
+}
+
+export interface Permission {
+  id: number;
+  name: string;
+  code: string; // Добавлено недостающее свойство
+  description?: string;
+  category: string;
+}
+
+export interface UserFilters {
+  search?: string;
+  role?: string;
+  is_active?: boolean;
+  shop_id?: number;
 }

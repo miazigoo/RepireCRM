@@ -12,7 +12,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
-import { CustomersService } from '../../../core/services/customers.service';
+import { CustomersService } from '../../../services/customers.service';
 import { Customer } from '../../../core/models/models';
 
 @Component({

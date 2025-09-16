@@ -1,6 +1,6 @@
 // frontend/crm-app/src/app/features/orders/order-form/order-form.component.ts
 import { Component, OnInit } from '@angular/core';
-import { NgIf, NgFor, AsyncPipe } from '@angular/common';
+import { NgIf, NgFor, AsyncPipe, CurrencyPipe } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -16,16 +16,16 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { provideNativeDateAdapter } from '@angular/material/core';
-import { Observable, startWith, map } from 'rxjs';
-import { OrdersService } from '../../../core/services/orders.service';
-import { CustomersService } from '../../../core/services/customers.service';
+import { Observable, startWith, map, of } from 'rxjs';
+import { OrdersService } from '../../../services/orders.service';
+import { CustomersService } from '../../../services/customers.service';
 import { Customer, DeviceModel, AdditionalService } from '../../../core/models/models';
 
 @Component({
   selector: 'app-order-form',
   standalone: true,
   imports: [
-    NgIf, NgFor, AsyncPipe, ReactiveFormsModule,
+    NgIf, NgFor, AsyncPipe, CurrencyPipe, ReactiveFormsModule,
     MatCardModule, MatFormFieldModule, MatInputModule, MatSelectModule,
     MatButtonModule, MatIconModule, MatStepperModule, MatAutocompleteModule,
     MatChipsModule, MatDatepickerModule, MatProgressSpinnerModule, MatSnackBarModule
@@ -35,9 +35,9 @@ import { Customer, DeviceModel, AdditionalService } from '../../../core/models/m
   styleUrl: './order-form.component.css'
 })
 export class OrderFormComponent implements OnInit {
-  orderForm: FormGroup;
-  customerForm: FormGroup;
-  deviceForm: FormGroup;
+  orderForm!: FormGroup;
+  customerForm!: FormGroup;
+  deviceForm!: FormGroup;
 
   isEditMode = false;
   orderId: number | null = null;
@@ -45,7 +45,7 @@ export class OrderFormComponent implements OnInit {
 
   // Data for form
   customers: Customer[] = [];
-  filteredCustomers: Observable<Customer[]>;
+  filteredCustomers!: Observable<Customer[]>;
   deviceModels: DeviceModel[] = [];
   additionalServices: AdditionalService[] = [];
   selectedServices: AdditionalService[] = [];
@@ -62,14 +62,14 @@ export class OrderFormComponent implements OnInit {
     private customersService: CustomersService,
     private snackBar: MatSnackBar
   ) {
-    this.initializeForms();
-    this.filteredCustomers = this.customerForm.get('customer')!.valueChanges.pipe(
-      startWith(''),
-      map(value => this.filterCustomers(value))
-    );
+    // Инициализируем с пустым Observable, чтобы избежать ошибки
+    this.filteredCustomers = of([]);
   }
 
   ngOnInit(): void {
+    this.initializeForms();
+    this.setupFilteredCustomers();
+
     this.route.params.subscribe(params => {
       if (params['id']) {
         this.isEditMode = true;
@@ -79,6 +79,13 @@ export class OrderFormComponent implements OnInit {
     });
 
     this.loadFormData();
+  }
+
+  private setupFilteredCustomers(): void {
+    this.filteredCustomers = this.customerForm.get('customer')!.valueChanges.pipe(
+      startWith(''),
+      map(value => this.filterCustomers(value))
+    );
   }
 
   private initializeForms(): void {

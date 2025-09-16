@@ -3,11 +3,11 @@ from ninja.pagination import paginate, PageNumberPagination
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from customers.models import Customer
-from schemas.customers.customers import (
+from Schemas.customers.customers import (
     CustomerSchema, CustomerCreateSchema, CustomerUpdateSchema,
     CustomerListSchema, CustomerFilterSchema
 )
-from schemas.common import MessageSchema, ErrorSchema
+from Schemas.common import MessageSchema, ErrorSchema
 from typing import List
 
 router = Router(tags=["Клиенты"])

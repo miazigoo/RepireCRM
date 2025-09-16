@@ -1,0 +1,203 @@
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 24px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    height: 120px;
+}
+
+.stat-content {
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+.stat-icon {
+    margin-right: 16px;
+}
+
+.stat-icon mat-icon {
+    font-size: 48px;
+    height: 48px;
+    width: 48px;
+    opacity: 0.7;
+}
+
+.orders-card .stat-icon mat-icon { color: #2196f3; }
+.revenue-card .stat-icon mat-icon { color: #4caf50; }
+.avg-card .stat-icon mat-icon { color: #ff9800; }
+.total-card .stat-icon mat-icon { color: #9c27b0; }
+
+.stat-info h3 {
+    margin: 0 0 4px 0;
+    font-size: 24px;
+    font-weight: 500;
+}
+
+.stat-info p {
+    margin: 0 0 4px 0;
+    color: #666;
+    font-size: 14px;
+}
+
+.stat-change {
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 12px;
+}
+
+.stat-change.positive {
+    background: #e8f5e8;
+    color: #2e7d32;
+}
+
+.stat-change.neutral {
+    background: #f5f5f5;
+    color: #666;
+}
+
+.content-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.chart-card, .recent-orders-card {
+    height: 400px;
+}
+
+.chart-container {
+    height: 300px;
+    position: relative;
+}
+
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 300px;
+}
+
+.orders-list {
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.order-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.order-item:last-child {
+    border-bottom: none;
+}
+
+.order-info {
+    flex: 1;
+}
+
+.order-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.order-number {
+    font-weight: 500;
+    color: #1976d2;
+}
+
+.order-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 4px;
+}
+
+.customer-name {
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.device-info {
+    color: #666;
+    font-size: 12px;
+}
+
+.order-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #888;
+}
+
+.order-cost {
+    font-weight: 500;
+    color: #4caf50;
+}
+
+.quick-actions-card {
+    margin-bottom: 24px;
+}
+
+.actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.actions-grid button {
+    height: 56px;
+    font-size: 16px;
+}
+
+.actions-grid button mat-icon {
+    margin-right: 8px;
+}
+
+.no-data {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: #999;
+}
+
+.no-data mat-icon {
+    font-size: 48px;
+    height: 48px;
+    width: 48px;
+    margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+    .content-row {
+    grid-template-columns: 1fr;
+    }
+    
+    .stats-grid {
+    grid-template-columns: 1fr;
+    }
+    
+    .actions-grid {
+    grid-template-columns: 1fr;
+    }
+}

@@ -52,7 +52,7 @@ interface SystemSettings {
   selector: 'app-system-settings',
   standalone: true,
   imports: [
-    NgIf, NgFor, ReactiveFormsModule,
+    NgIf, ReactiveFormsModule,
     MatCardModule, MatFormFieldModule, MatInputModule, MatSelectModule,
     MatButtonModule, MatIconModule, MatSlideToggleModule,
     MatProgressSpinnerModule, MatSnackBarModule, MatTabsModule, MatDividerModule
@@ -61,10 +61,10 @@ interface SystemSettings {
   styleUrl: './system-settings.component.css'
 })
 export class SystemSettingsComponent implements OnInit {
-  generalForm: FormGroup;
-  notificationsForm: FormGroup;
-  securityForm: FormGroup;
-  backupForm: FormGroup;
+  generalForm!: FormGroup;
+  notificationsForm!: FormGroup;
+  securityForm!: FormGroup;
+  backupForm!: FormGroup;
   
   loading = false;
   settings: SystemSettings | null = null;
@@ -73,11 +73,10 @@ export class SystemSettingsComponent implements OnInit {
     private fb: FormBuilder,
     private adminService: AdminService,
     private snackBar: MatSnackBar
-  ) {
-    this.initializeForms();
-  }
+  ) {}
 
   ngOnInit(): void {
+    this.initializeForms();
     this.loadSettings();
   }
 

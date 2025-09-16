@@ -6,4 +6,4 @@ class Part(models.Model):
     quantity = models.PositiveIntegerField("Количество")
     min_quantity = models.PositiveIntegerField("Минимальное количество")
     price = models.DecimalField("Цена", max_digits=10, decimal_places=2)
-    supplier = models.ForeignKey('Supplier', on_delete=models.SET_NULL, null=True)
+    # supplier = models.ForeignKey('Supplier', on_delete=models.SET_NULL, null=True)

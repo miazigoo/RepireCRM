@@ -17,8 +17,9 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
-import { CustomersService } from '../../../core/services/customers.service';
+import { CustomersService } from '../../../services/customers.service';
 import { Customer } from '../../../core/models/models';
+import { MatDividerModule } from '@angular/material/divider'; 
 
 @Component({
   selector: 'app-customers-list',
@@ -28,7 +29,7 @@ import { Customer } from '../../../core/models/models';
     MatTableModule, MatPaginatorModule, MatSortModule, MatInputModule,
     MatSelectModule, MatButtonModule, MatIconModule, MatCardModule,
     MatProgressSpinnerModule, MatMenuModule, MatChipsModule,
-    MatDialogModule, MatSnackBarModule
+    MatDialogModule, MatSnackBarModule, MatDividerModule
   ],
   templateUrl: './customers-list.component.html',
   styleUrl: './customers-list.component.css'

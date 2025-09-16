@@ -34,7 +34,7 @@ class Order(models.Model):
         verbose_name="Клиент"
     )
     device = models.ForeignKey(
-        'devices.Device',
+        'device.Device',
         on_delete=models.PROTECT,
         verbose_name="Устройство"
     )

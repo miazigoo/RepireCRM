@@ -19,16 +19,17 @@ import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { AdminService, ShopCreateRequest } from '../../../services/admin.service';
 import { Shop } from '../../../core/models/models';
+import { MatDividerModule } from '@angular/material/divider';
 
 @Component({
   selector: 'app-shop-management',
   standalone: true,
   imports: [
-    NgIf, NgFor, DatePipe, RouterModule, ReactiveFormsModule,
+    NgIf, NgFor, RouterModule, ReactiveFormsModule,
     MatTableModule, MatPaginatorModule, MatSortModule, MatInputModule,
     MatSelectModule, MatButtonModule, MatIconModule, MatCardModule,
     MatProgressSpinnerModule, MatMenuModule, MatChipsModule,
-    MatDialogModule, MatSnackBarModule, MatSlideToggleModule
+    MatDialogModule, MatSnackBarModule, MatSlideToggleModule, MatDividerModule
   ],
   templateUrl: './shop-management.component.html',
   styleUrl: './shop-management.component.css'
@@ -161,7 +162,12 @@ export class ShopManagementComponent implements OnInit {
 
   toggleShopStatus(shop: Shop): void {
     const newStatus = !shop.is_active;
-    this.adminService.updateShop(shop.id, { is_active: newStatus }).subscribe({
+    // Создать правильный объект для обновления
+    const updateData: Partial<Shop> = { 
+      is_active: newStatus 
+    };
+    
+    this.adminService.updateShop(shop.id, updateData).subscribe({
       next: (updatedShop) => {
         shop.is_active = updatedShop.is_active;
         const statusText = newStatus ? 'активирован' : 'деактивирован';

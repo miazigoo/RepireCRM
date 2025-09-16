@@ -45,7 +45,7 @@ export class NotificationService {
 
     const wsUrl = environment.production
       ? `wss://${window.location.host}/ws/notifications/`
-      : `ws://localhost:8000/ws/notifications/`;
+      : `ws://localhost:8030/ws/notifications/`;
 
     this.socket = new WebSocket(wsUrl);
 

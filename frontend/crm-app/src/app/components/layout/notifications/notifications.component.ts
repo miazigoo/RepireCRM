@@ -1,6 +1,6 @@
 // frontend/crm-app/src/app/components/layout/notifications/notifications.component.ts
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { NgIf, NgFor, DatePipe } from '@angular/common';
+import { NgIf, NgFor, DatePipe, AsyncPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,9 +16,10 @@ import { NotificationService, Notification } from '../../../services/notificatio
   selector: 'app-notifications',
   standalone: true,
   imports: [
-    NgIf, NgFor, DatePipe,
+    NgIf, NgFor, AsyncPipe,
     MatButtonModule, MatIconModule, MatBadgeModule,
-    MatMenuModule, MatListModule, MatDividerModule, MatTooltipModule
+    MatMenuModule, MatListModule, MatDividerModule, MatTooltipModule,
+    MatDividerModule
   ],
   templateUrl: './notifications.component.html',
   styleUrl: './notifications.component.css'

@@ -20,6 +20,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { AdminService } from '../../../services/admin.service';
 import { User, Role, Shop } from '../../../core/models/models';
+import { MatDividerModule } from '@angular/material/divider';
 
 @Component({
   selector: 'app-user-management',
@@ -29,7 +30,7 @@ import { User, Role, Shop } from '../../../core/models/models';
     MatTableModule, MatPaginatorModule, MatSortModule, MatInputModule,
     MatSelectModule, MatButtonModule, MatIconModule, MatCardModule,
     MatProgressSpinnerModule, MatMenuModule, MatChipsModule,
-    MatDialogModule, MatSnackBarModule, MatSlideToggleModule
+    MatDialogModule, MatSnackBarModule, MatSlideToggleModule, MatDividerModule
   ],
   templateUrl: './user-management.component.html',
   styleUrl: './user-management.component.css'

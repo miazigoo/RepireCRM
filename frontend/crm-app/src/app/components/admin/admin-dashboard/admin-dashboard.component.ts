@@ -1,6 +1,6 @@
 // frontend/crm-app/src/app/components/admin/admin-dashboard/admin-dashboard.component.ts
 import { Component, OnInit } from '@angular/core';
-import { NgIf, NgFor } from '@angular/common';
+import { NgIf, NgFor, CurrencyPipe } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -23,7 +23,7 @@ interface SystemStats {
   selector: 'app-admin-dashboard',
   standalone: true,
   imports: [
-    NgIf, NgFor, RouterModule,
+    NgIf, NgFor, CurrencyPipe, RouterModule,
     MatCardModule, MatButtonModule, MatIconModule,
     MatProgressSpinnerModule, MatGridListModule
   ],

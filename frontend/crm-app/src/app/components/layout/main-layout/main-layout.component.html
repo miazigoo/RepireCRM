@@ -1,0 +1,138 @@
+<mat-sidenav-container class="sidenav-container">
+    <mat-sidenav #drawer
+                class="sidenav"
+                fixedInViewport
+                [attr.role]="(isHandset$ | async) ? 'dialog' : 'navigation'"
+                [mode]="(isHandset$ | async) ? 'over' : 'side'"
+                [opened]="(isHandset$ | async) === false">
+
+    <div class="sidenav-header">
+        <mat-icon class="app-icon">build</mat-icon>
+        <h3>Repair CRM</h3>
+    </div>
+
+
+    <div class="shop-selector" *ngIf="currentUser?.is_director">
+        <mat-select
+        [value]="currentShop?.id"
+        (selectionChange)="switchShop($event.value)"
+        placeholder="Выберите магазин">
+        <mat-option *ngFor="let shop of availableShops" [value]="shop.id">
+            {{ shop.name }}
+        </mat-option>
+        </mat-select>
+    </div>
+
+    <mat-nav-list>
+        <a mat-list-item routerLink="/dashboard" routerLinkActive="active">
+        <mat-icon matListItemIcon>dashboard</mat-icon>
+        <span matListItemTitle>Панель управления</span>
+        </a>
+
+        <a mat-list-item routerLink="/orders" routerLinkActive="active">
+        <mat-icon matListItemIcon>assignment</mat-icon>
+        <span matListItemTitle>Заказы</span>
+        <span matListItemMeta class="pending-orders-badge"
+                *ngIf="pendingOrdersCount > 0">
+            {{ pendingOrdersCount }}
+        </span>
+        </a>
+
+        <a mat-list-item routerLink="/customers" routerLinkActive="active">
+        <mat-icon matListItemIcon>people</mat-icon>
+        <span matListItemTitle>Клиенты</span>
+        </a>
+
+        <a mat-list-item routerLink="/inventory" routerLinkActive="active">
+        <mat-icon matListItemIcon>inventory</mat-icon>
+        <span matListItemTitle>Склад</span>
+        </a>
+
+        <a mat-list-item routerLink="/reports" routerLinkActive="active">
+        <mat-icon matListItemIcon>assessment</mat-icon>
+        <span matListItemTitle>Отчеты</span>
+        </a>
+
+        <mat-divider></mat-divider>
+
+        <a mat-list-item routerLink="/admin" routerLinkActive="active"
+            *ngIf="currentUser?.is_director">
+        <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
+        <span matListItemTitle>Администрирование</span>
+        </a>
+
+        <a mat-list-item routerLink="/settings" routerLinkActive="active">
+        <mat-icon matListItemIcon>settings</mat-icon>
+        <span matListItemTitle>Настройки</span>
+        </a>
+    </mat-nav-list>
+    </mat-sidenav>
+
+    <mat-sidenav-content>
+    <mat-toolbar class="repair-toolbar">
+        <button type="button"
+                aria-label="Toggle sidenav"
+                mat-icon-button
+                (click)="drawer.toggle()"
+                *ngIf="isHandset$ | async">
+        <mat-icon aria-label="Side nav toggle icon">menu</mat-icon>
+        </button>
+
+        <span class="current-shop-name" *ngIf="currentShop">
+        {{ currentShop.name }}
+        </span>
+
+        <span class="spacer"></span>
+
+
+        <button mat-icon-button [matMenuTriggerFor]="notificationsMenu">
+        <mat-icon [matBadge]="notificationsCount"
+                    matBadgeColor="warn"
+                    [matBadgeHidden]="notificationsCount === 0">
+            notifications
+        </mat-icon>
+        </button>
+
+
+        <button mat-icon-button [matMenuTriggerFor]="userMenu">
+        <mat-icon>account_circle</mat-icon>
+        </button>
+    </mat-toolbar>
+
+
+    <mat-menu #notificationsMenu="matMenu">
+        <div class="notifications-header">
+        <h4>Уведомления</h4>
+        </div>
+        <mat-divider></mat-divider>
+        <app-notifications></app-notifications>
+        <ng-template #noNotifications>
+        <div class="no-notifications">
+            <p>Нет новых уведомлений</p>
+        </div>
+        </ng-template>
+    </mat-menu>
+
+
+    <mat-menu #userMenu="matMenu">
+        <div class="user-info">
+        <p><strong>{{ currentUser?.first_name }} {{ currentUser?.last_name }}</strong></p>
+        <p class="user-role">{{ currentUser?.role?.name }}</p>
+        </div>
+        <mat-divider></mat-divider>
+        <button mat-menu-item routerLink="/profile">
+        <mat-icon>person</mat-icon>
+        <span>Профиль</span>
+        </button>
+        <button mat-menu-item (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        <span>Выйти</span>
+        </button>
+    </mat-menu>
+
+
+    <div class="content-container">
+        <router-outlet></router-outlet>
+    </div>
+    </mat-sidenav-content>
+</mat-sidenav-container>

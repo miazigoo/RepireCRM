@@ -1,45 +1,88 @@
-// frontend/crm-app/src/custom-theme.scss
+
 @use '@angular/material' as mat;
+
 
 @include mat.core();
 
-// Определяем палитру цветов для ремонтной тематики
-$repair-primary: mat.define-palette(mat.$blue-palette, 600);
-$repair-accent: mat.define-palette(mat.$orange-palette, 500);
-$repair-warn: mat.define-palette(mat.$red-palette, 500);
 
-// Создаем светлую тему
-$repair-theme: mat.define-light-theme((
+$repair-theme: mat.define-theme((
   color: (
-    primary: $repair-primary,
-    accent: $repair-accent,
-    warn: $repair-warn,
+    theme-type: light,
+    primary: mat.$azure-palette,
+    tertiary: mat.$blue-palette,
   ),
-  typography: mat.define-typography-config(),
-  density: 0,
 ));
 
-// Применяем тему
+
 @include mat.all-component-themes($repair-theme);
 
-// Кастомные стили
-.repair-toolbar {
-  background: linear-gradient(45deg, #1976d2, #42a5f5);
-  color: white;
-}
 
 .status-chip {
-  &.received { background-color: #e3f2fd; color: #1976d2; }
-  &.diagnosed { background-color: #fff3e0; color: #f57c00; }
-  &.in-repair { background-color: #fff8e1; color: #ffa000; }
-  &.ready { background-color: #e8f5e8; color: #388e3c; }
-  &.completed { background-color: #e8f5e8; color: #2e7d32; }
-  &.cancelled { background-color: #ffebee; color: #d32f2f; }
+  &.received {
+    background-color: #e3f2fd !important;
+    color: #1976d2 !important;
+  }
+  &.diagnosed {
+    background-color: #fff3e0 !important;
+    color: #f57c00 !important;
+  }
+  &.in-repair {
+    background-color: #fff8e1 !important;
+    color: #ffa000 !important;
+  }
+  &.ready {
+    background-color: #e8f5e8 !important;
+    color: #388e3c !important;
+  }
+  &.completed {
+    background-color: #e8f5e8 !important;
+    color: #2e7d32 !important;
+  }
+  &.cancelled {
+    background-color: #ffebee !important;
+    color: #d32f2f !important;
+  }
 }
 
 .priority-chip {
-  &.low { background-color: #f3e5f5; color: #7b1fa2; }
-  &.normal { background-color: #e8eaf6; color: #3f51b5; }
-  &.high { background-color: #fff3e0; color: #f57c00; }
-  &.urgent { background-color: #ffebee; color: #d32f2f; }
+  &.low {
+    background-color: #f3e5f5 !important;
+    color: #7b1fa2 !important;
+  }
+  &.normal {
+    background-color: #e8eaf6 !important;
+    color: #3f51b5 !important;
+  }
+  &.high {
+    background-color: #fff3e0 !important;
+    color: #f57c00 !important;
+  }
+  &.urgent {
+    background-color: #ffebee !important;
+    color: #d32f2f !important;
+  }
+}
+
+.repair-toolbar {
+  background: linear-gradient(45deg, #1976d2, #42a5f5) !important;
+  color: white !important;
+}
+
+
+.mat-mdc-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+
+.mat-mdc-raised-button {
+  border-radius: 4px;
+}
+
+
+.mat-mdc-table {
+  .mat-mdc-header-cell {
+    font-weight: 600;
+    color: rgba(0,0,0,0.87);
+  }
 }

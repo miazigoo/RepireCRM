@@ -13,7 +13,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { provideNativeDateAdapter } from '@angular/material/core';
-import { CustomersService } from '../../../core/services/customers.service';
+import { CustomersService } from '../../../services/customers.service';
 import { Customer } from '../../../core/models/models';
 
 @Component({

@@ -13,14 +13,14 @@ import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTableModule } from '@angular/material/table';
-import { OrdersService } from '../../../core/services/orders.service';
+import { OrdersService } from '../../../services/orders.service';
 import { Order } from '../../../core/models/models';
 
 @Component({
   selector: 'app-order-detail',
   standalone: true,
   imports: [
-    NgIf, NgFor, NgClass, DatePipe, CurrencyPipe, RouterModule,
+    NgIf, NgFor, DatePipe, CurrencyPipe, RouterModule,
     MatCardModule, MatButtonModule, MatIconModule, MatChipsModule,
     MatDividerModule, MatMenuModule, MatDialogModule, MatSnackBarModule,
     MatProgressSpinnerModule, MatTabsModule, MatTableModule
@@ -152,5 +152,9 @@ export class OrderDetailComponent implements OnInit {
       'cancelled': 'cancel'
     };
     return statusIcons[status] || 'help';
+  }
+
+  openDocument(url: string): void {
+    window.open(url, '_blank');
   }
 }

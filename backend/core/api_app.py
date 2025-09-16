@@ -27,6 +27,31 @@ api = NinjaAPI(
     auth=AuthBearer()
 )
 
+# Добавляем корневой endpoint для проверки работоспособности
+@api.get("/", auth=None)
+def api_root(request):
+    return {
+        "message": "Repair CRM API is working",
+        "version": "1.0.0",
+        "status": "ok",
+        "endpoints": [
+            "/api/docs",  # Swagger документация
+            "/api/auth/",
+            "/api/customers/",
+            "/api/orders/",
+        ]
+    }
+
+
+@api.get("/health", auth=None)
+def health_check(request):
+    return {
+        "status": "ok",
+        "message": "Backend is running",
+        "timestamp": datetime.now().isoformat(),
+        "debug": settings.DEBUG
+    }
+
 
 # Обработчики ошибок
 @api.exception_handler(PermissionError)

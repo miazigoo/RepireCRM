@@ -10,7 +10,7 @@ from loyalty.models import (
 from loyalty.services import LoyaltyService
 from customers.models import Customer
 from orders.models import Order
-from schemas.loyalty import (
+from Schemas.loyalty.loyalty import (
     LoyaltyProgramSchema, CustomerLoyaltySchema, PointsTransactionSchema,
     LoyaltyRewardSchema, CustomerRewardSchema, RedeemPointsSchema
 )

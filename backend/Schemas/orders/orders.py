@@ -2,8 +2,8 @@ from ninja import Schema
 from typing import Optional, List
 from datetime import datetime
 from decimal import Decimal
-from .common import PaginationSchema
-from .customers import CustomerSchema
+from Schemas.common import PaginationSchema
+from Schemas.customers.customers import CustomerSchema
 
 
 class DeviceBrandSchema(Schema):

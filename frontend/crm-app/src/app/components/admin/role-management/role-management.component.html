@@ -34,7 +34,7 @@
               <input matInput 
                      formControlName="code" 
                      placeholder="manager"
-                     [readonly]="editingRole"
+                     [readonly]="!!editingRole"
                      required>
               <mat-hint>Только строчные буквы и подчеркивания</mat-hint>
               <mat-error>{{ getFieldError('code') }}</mat-error>
@@ -85,7 +85,7 @@
                     <div class="permission-description" *ngIf="permission.description">
                       {{ permission.description }}
                     </div>
-                    <div class="permission-codename">{{ permission.codename }}</div>
+                    <div class="permission-codename">{{ permission.code }}</div>
                   </div>
                 </mat-checkbox>
               </div>

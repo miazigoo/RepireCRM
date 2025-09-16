@@ -9,7 +9,7 @@ if ! command -v docker &> /dev/null; then
 fi
 
 # Проверяем наличие Docker Compose
-if ! command -v docker-compose &> /dev/null; then
+if ! command -v docker compose &> /dev/null; then
     echo "❌ Docker Compose не установлен. Установите Docker Compose и повторите попытку."
     exit 1
 fi
@@ -36,7 +36,7 @@ pre-commit install
 
 # Запускаем контейнеры
 echo "🐳 Запускаем Docker контейнеры..."
-docker-compose -f docker-compose.dev.yml up --build -d
+docker compose -f docker-compose.dev.yml up --build -d
 
 echo "✅ Среда разработки настроена!"
 echo "🌐 Frontend: http://localhost:4200"
