@@ -1,24 +1,25 @@
-from ninja import Router
-from ninja.security import HttpBearer
-from django.contrib.auth import authenticate
-from django.http import JsonResponse
-from users.models import User
-from Schemas.common import UserSchema, MessageSchema, ErrorSchema
-from Schemas.auth.auth import LoginSchema, TokenSchema, ChangePasswordSchema
+from datetime import datetime, timedelta
+
 import jwt
 from django.conf import settings
-from datetime import datetime, timedelta
+from django.contrib.auth import authenticate
+from django.http import JsonResponse
+from django_ratelimit.decorators import ratelimit
+from ninja import Router
+from ninja.security import HttpBearer
+
+from Schemas.auth.auth import ChangePasswordSchema, LoginSchema, TokenSchema
+from Schemas.common import ErrorSchema, MessageSchema, UserSchema
+from users.models import User
 
 router = Router(tags=["Аутентификация"])
 
 
+@ratelimit(key="ip", rate="5/m", block=True)
 @router.post("/login", response={200: TokenSchema, 401: ErrorSchema}, auth=None)
 def login(request, credentials: LoginSchema):
     """Вход в систему"""
-    user = authenticate(
-        username=credentials.username,
-        password=credentials.password
-    )
+    user = authenticate(username=credentials.username, password=credentials.password)
 
     if user is None:
         return 401, {"error": "Неверные учетные данные"}
@@ -28,19 +29,19 @@ def login(request, credentials: LoginSchema):
 
     # Создаем JWT токен
     payload = {
-        'user_id': user.id,
-        'username': user.username,
-        'exp': datetime.utcnow() + timedelta(days=7),
-        'iat': datetime.utcnow(),
+        "user_id": user.id,
+        "username": user.username,
+        "exp": datetime.utcnow() + timedelta(days=7),
+        "iat": datetime.utcnow(),
     }
 
-    token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
+    token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
     return {
         "access_token": token,
         "token_type": "Bearer",
-        "expires_in": 7 * 24 * 60 * 60,  # 7 дней в секундах
-        "user": UserSchema.from_orm(user)
+        "expires_in": 7 * 24 * 60 * 60,
+        "user": UserSchema.from_orm(user) if hasattr(UserSchema, "from_orm") else user,
     }
 
 
@@ -53,6 +54,10 @@ def get_current_user(request):
 @router.post("/change-password", response={200: MessageSchema, 400: ErrorSchema})
 def change_password(request, data: ChangePasswordSchema):
     """Смена пароля"""
+    try:
+        data.validate()
+    except ValueError as e:
+        return 400, {"error": str(e)}
     user = request.auth
 
     if not user.check_password(data.old_password):
@@ -71,6 +76,7 @@ def switch_shop(request, shop_id: int):
 
     try:
         from shops.models import Shop
+
         shop = Shop.objects.get(id=shop_id, is_active=True)
 
         if not user.can_access_shop(shop):
@@ -78,10 +84,10 @@ def switch_shop(request, shop_id: int):
 
         user.current_shop = shop
         user.last_login_shop = shop
-        user.save(update_fields=['current_shop', 'last_login_shop'])
+        user.save(update_fields=["current_shop", "last_login_shop"])
 
         # Обновляем сессию
-        request.session['current_shop_id'] = shop.id
+        request.session["current_shop_id"] = shop.id
 
         return {"message": f"Переключено на магазин: {shop.name}"}
 

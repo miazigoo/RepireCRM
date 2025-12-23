@@ -1,0 +1,59 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install Python dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Install Node dependencies
+        run: |
+          cd frontend/crm-app
+          npm install
+
+      - name: Run Python tests
+        run: |
+          cd backend
+          python manage.py test
+
+      - name: Run Angular tests
+        run: |
+          cd frontend/crm-app
+          npm run test -- --watch=false --browsers=ChromeHeadless
+
+      - name: Build Angular app
+        run: |
+          cd frontend/crm-app
+          npm run build:prod
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy to server
+        run: |
+          echo "Deploying to production server"
+          # Здесь будет код развертывания через SSH или Docker

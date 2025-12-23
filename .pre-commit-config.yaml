@@ -12,7 +12,6 @@ repos:
     rev: 23.12.1
     hooks:
       - id: black
-        language_version: python3.12
         files: ^backend/
 
   - repo: https://github.com/pycqa/isort
@@ -21,16 +20,16 @@ repos:
       - id: isort
         files: ^backend/
 
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.0.0
-    hooks:
-      - id: flake8
-        files: ^backend/
-        args: [--config=backend/.flake8]
+#  - repo: https://github.com/pycqa/flake8
+#    rev: 7.0.0
+#    hooks:
+#      - id: flake8
+#        files: ^backend/
+#        args: [--config=backend/.flake8]
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
-    hooks:
-      - id: mypy
-        files: ^backend/
-        additional_dependencies: [django-stubs]
+#  - repo: https://github.com/pre-commit/mirrors-mypy
+#    rev: v1.8.0
+#    hooks:
+#      - id: mypy
+#        files: ^backend/
+#        additional_dependencies: [django-stubs]

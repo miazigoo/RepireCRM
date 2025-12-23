@@ -73,7 +73,6 @@ services:
         sh -c "
           echo 'Waiting for database...' &&
           sleep 5 &&
-          python manage.py makemigrations &&
           python manage.py migrate &&
           echo 'Ensuring superuser...' &&
           python manage.py shell -c 'from init_superuser import run; run()' &&

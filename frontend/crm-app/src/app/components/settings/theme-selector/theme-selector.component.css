@@ -1,0 +1,155 @@
+.theme-selector-container {
+  padding: 24px;
+}
+
+.subtitle {
+  color: var(--color-text-secondary);
+  margin-bottom: 32px;
+}
+
+.themes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.theme-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.theme-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-heavy);
+}
+
+.theme-card.selected {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-medium);
+}
+
+.theme-preview {
+  height: 200px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.preview-header {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+}
+
+.preview-title {
+  width: 80px;
+  height: 16px;
+  background: rgba(255,255,255,0.3);
+  border-radius: 2px;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.preview-button {
+  width: 16px;
+  height: 16px;
+  background: rgba(255,255,255,0.3);
+  border-radius: 2px;
+}
+
+.preview-content {
+  height: 160px;
+  display: flex;
+}
+
+.preview-sidebar {
+  width: 60px;
+  padding: 8px;
+}
+
+.preview-nav-item {
+  width: 44px;
+  height: 12px;
+  background: rgba(0,0,0,0.1);
+  border-radius: 2px;
+  margin-bottom: 6px;
+}
+
+.preview-main {
+  flex: 1;
+  padding: 8px;
+}
+
+.preview-card {
+  height: 100%;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.preview-card-header {
+  height: 24px;
+  opacity: 0.8;
+}
+
+.preview-card-content {
+  padding: 8px;
+}
+
+.preview-text-line {
+  height: 8px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.preview-text-line.primary {
+  width: 80%;
+  opacity: 0.87;
+}
+
+.preview-text-line.secondary {
+  width: 60%;
+  opacity: 0.54;
+}
+
+.theme-info h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.theme-info p {
+  margin: 0 0 16px 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.theme-colors {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.color-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(0,0,0,0.1);
+  cursor: help;
+}
+
+@media (max-width: 768px) {
+  .themes-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .theme-card {
+    max-width: none;
+  }
+}

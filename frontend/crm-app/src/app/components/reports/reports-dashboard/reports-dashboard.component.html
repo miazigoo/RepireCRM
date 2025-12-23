@@ -1,0 +1,177 @@
+
+<div class="reports-dashboard">
+
+  <div class="dashboard-header">
+    <div class="header-content">
+      <h1>Аналитика и отчеты</h1>
+      <p class="subtitle">Комплексный анализ деятельности сервисного центра</p>
+    </div>
+
+    <div class="header-actions">
+      <button mat-button (click)="exportReport('pdf')" [disabled]="loading">
+        <mat-icon>picture_as_pdf</mat-icon>
+        PDF
+      </button>
+
+      <button mat-button (click)="exportReport('excel')" [disabled]="loading">
+        <mat-icon>file_download</mat-icon>
+        Excel
+      </button>
+    </div>
+  </div>
+
+
+  <div class="metrics-grid" *ngIf="metrics && !loading">
+    <mat-card class="metric-card revenue-card">
+      <mat-card-content>
+        <div class="metric-header">
+          <div class="metric-icon">
+            <mat-icon>attach_money</mat-icon>
+          </div>
+          <div class="metric-trend" [ngClass]="getGrowthColor()">
+            <mat-icon>{{ getGrowthIcon() }}</mat-icon>
+            <span>{{ formatPercent(metrics.revenue.growth_percent) }}</span>
+          </div>
+        </div>
+
+        <div class="metric-content">
+          <h3>{{ formatCurrency(metrics.revenue.current) }}</h3>
+          <p>Доход за {{ metrics.period.days }} дней</p>
+          <small class="metric-comparison">
+            Предыдущий период: {{ formatCurrency(metrics.revenue.previous) }}
+          </small>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="metric-card orders-card">
+      <mat-card-content>
+        <div class="metric-header">
+          <div class="metric-icon">
+            <mat-icon>assignment</mat-icon>
+          </div>
+          <div class="metric-badge">
+            {{ metrics.orders.conversion_rate }}% конверсия
+          </div>
+        </div>
+
+        <div class="metric-content">
+          <h3>{{ metrics.orders.total }}</h3>
+          <p>Всего заказов</p>
+          <div class="metric-breakdown">
+            <span class="completed">{{ metrics.orders.completed }} выполнено</span>
+            <span class="in-progress">{{ metrics.orders.in_progress }} в работе</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="metric-card check-card">
+      <mat-card-content>
+        <div class="metric-header">
+          <div class="metric-icon">
+            <mat-icon>trending_up</mat-icon>
+          </div>
+        </div>
+
+        <div class="metric-content">
+          <h3>{{ formatCurrency(metrics.avg_check.current) }}</h3>
+          <p>Средний чек</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+
+  <div class="charts-section" *ngIf="metrics && !loading">
+    <mat-tab-group class="charts-tabs">
+
+      <mat-tab label="Динамика доходов">
+        <div class="chart-container">
+          <mat-card>
+            <mat-card-content>
+              <div class="chart-wrapper" *ngIf="revenueChartData">
+                <canvas baseChart
+                        [data]="revenueChartData"
+                        [options]="revenueChartOptions"
+                        type="line">
+                </canvas>
+              </div>
+
+              <div class="chart-loading" *ngIf="!revenueChartData">
+                <mat-icon>bar_chart</mat-icon>
+                <p>Загрузка данных...</p>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+
+
+      <mat-tab label="Популярные услуги">
+        <div class="chart-container">
+          <div class="services-layout">
+            <mat-card class="chart-card">
+              <mat-card-content>
+                <div class="chart-wrapper" *ngIf="servicesChartData">
+                  <canvas baseChart
+                          [data]="servicesChartData"
+                          [options]="servicesChartOptions"
+                          type="doughnut">
+                  </canvas>
+                </div>
+              </mat-card-content>
+            </mat-card>
+
+            <mat-card class="services-list">
+              <mat-card-header>
+                <mat-card-title>Топ услуги</mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                <div class="service-item" *ngFor="let service of metrics.top_services; let i = index">
+                  <div class="service-position">{{ i + 1 }}</div>
+                  <div class="service-info">
+                    <div class="service-name">{{ service.name }}</div>
+                    <div class="service-stats">
+                      <span class="service-count">{{ service.count }} заказов</span>
+                      <span class="service-revenue">{{ formatCurrency(service.revenue) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </div>
+        </div>
+      </mat-tab>
+
+
+      <mat-tab label="Производительность">
+        <div class="chart-container">
+          <mat-card>
+            <mat-card-content>
+              <div class="chart-wrapper" *ngIf="performanceChartData">
+                <canvas baseChart
+                        [data]="performanceChartData"
+                        [options]="performanceChartOptions"
+                        type="bar">
+                </canvas>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </div>
+
+
+  <div class="loading-container" *ngIf="loading">
+    <mat-card>
+      <mat-card-content>
+        <div class="loading-content">
+          <mat-icon class="loading-icon">analytics</mat-icon>
+          <p>Подготовка аналитических данных...</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

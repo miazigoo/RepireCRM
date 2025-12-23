@@ -1,0 +1,270 @@
+.reports-dashboard {
+  padding: 24px;
+  min-height: 100vh;
+  background: var(--color-background);
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+}
+
+.header-content h1 {
+  margin: 0 0 8px 0;
+  font-size: 32px;
+  font-weight: 300;
+  color: var(--color-text-primary);
+}
+
+.subtitle {
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.metric-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--color-primary);
+}
+
+.metric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.metric-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--color-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.metric-trend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.metric-trend.success {
+  color: #4caf50;
+}
+
+.metric-trend.warn {
+  color: #f44336;
+}
+
+.metric-content h3 {
+  margin: 0 0 4px 0;
+  font-size: 28px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.metric-content p {
+  margin: 0 0 8px 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.metric-comparison {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.metric-breakdown {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+}
+
+.metric-breakdown .completed {
+  color: #4caf50;
+}
+
+.metric-breakdown .in-progress {
+  color: #ff9800;
+}
+
+.metric-badge {
+  background: var(--color-accent);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.charts-section {
+  margin-bottom: 32px;
+}
+
+.charts-tabs {
+  min-height: 400px;
+}
+
+.chart-container {
+  padding: 24px 0;
+}
+
+.chart-wrapper {
+  height: 400px;
+  position: relative;
+}
+
+.services-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 24px;
+}
+
+.services-list {
+  max-height: 450px;
+  overflow-y: auto;
+}
+
+.service-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.service-position {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.service-info {
+  flex: 1;
+}
+
+.service-name {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.service-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.service-revenue {
+  font-weight: 500;
+  color: var(--color-primary);
+}
+
+.chart-loading {
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+}
+
+.chart-loading mat-icon {
+  font-size: 64px;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+}
+
+.loading-content {
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.loading-icon {
+  font-size: 64px;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+/* Адаптивность */
+@media (max-width: 1024px) {
+  .services-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .services-list {
+    max-height: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .reports-dashboard {
+    padding: 16px;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .header-actions {
+    justify-content: flex-end;
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .chart-wrapper {
+    height: 300px;
+  }
+}

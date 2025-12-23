@@ -1,0 +1,66 @@
+
+<div class="theme-selector-container">
+  <h2>Выберите тему оформления</h2>
+  <p class="subtitle">Персонализируйте внешний вид приложения</p>
+
+  <div class="themes-grid">
+    <mat-card
+      *ngFor="let theme of themes"
+      class="theme-card"
+      [class.selected]="isCurrentTheme(theme)"
+      (click)="selectTheme(theme)">
+
+      <div class="theme-preview" [style]="getPreviewStyle(theme)">
+        <div class="preview-header" [style.background]="theme.colors.primary">
+          <div class="preview-title"></div>
+          <div class="preview-actions">
+            <div class="preview-button"></div>
+            <div class="preview-button"></div>
+          </div>
+        </div>
+
+        <div class="preview-content" [style.background]="theme.colors.surface">
+          <div class="preview-sidebar" [style.background]="theme.colors.background">
+            <div class="preview-nav-item" *ngFor="let i of [1,2,3,4]"></div>
+          </div>
+
+          <div class="preview-main">
+            <div class="preview-card" [style.background]="theme.colors.surface">
+              <div class="preview-card-header" [style.background]="theme.colors.accent"></div>
+              <div class="preview-card-content">
+                <div class="preview-text-line primary" [style.background]="theme.colors.text.primary"></div>
+                <div class="preview-text-line secondary" [style.background]="theme.colors.text.secondary"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <mat-card-content>
+        <div class="theme-info">
+          <h3>{{ theme.displayName }}</h3>
+          <p>{{ theme.description }}</p>
+
+          <div class="theme-colors">
+            <div
+              class="color-dot"
+              *ngFor="let color of getThemeColors(theme)"
+              [style.background]="color.value"
+              [matTooltip]="color.name">
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+
+      <mat-card-actions>
+        <button
+          mat-button
+          [color]="isCurrentTheme(theme) ? 'primary' : ''"
+          (click)="selectTheme(theme)">
+          <mat-icon *ngIf="isCurrentTheme(theme)">check</mat-icon>
+          {{ isCurrentTheme(theme) ? 'Выбрана' : 'Выбрать' }}
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+</div>
