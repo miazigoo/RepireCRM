@@ -8,11 +8,22 @@ from ninja import Query, Router
 from ninja.pagination import paginate
 
 from .inventory_schemas import (
+    AddBarcodeInputSchema,
+    AdHocAdjustmentRequest,
+    AdHocOperationResponseSchema,
+    AdHocReceiveRequest,
+    FinalizeSalePaymentInputSchema,
+    FinalizeSaleResponseSchema,
     InventoryItemSchema,
+    ItemBarcodeSchema,
+    ItemStockByCodeSchema,
     PurchaseOrderSchema,
+    QuickCreateItemInputSchema,
+    QuickCreateItemResponseSchema,
     RetailSaleItemSchema,
     RetailSaleSchema,
     StockBalanceSchema,
+    StockDashboardSchema,
     StockMovementSchema,
     SupplierSchema,
 )
@@ -260,11 +271,7 @@ def add_item_to_retail_sale(request, sale_id: int, data: dict):
     if not request.auth.has_permission("inventory.add_sale"):
         raise PermissionError("Нет прав для изменения продаж")
 
-    sale = get_object_or_404(
-        PurchaseOrder.__class__.objects.none().__class__.__mro__[1], id=sale_id
-    )  # trick to avoid import conflict
-    # Правильный импорт:
-    from .models import InventoryItem, RetailSale
+    from .models import RetailSale  # прямой импорт модели
 
     sale = get_object_or_404(RetailSale, id=sale_id)
 
@@ -308,3 +315,169 @@ def finalize_retail_sale(request, sale_id: int):
         return res
     except ValueError as e:
         return {"error": str(e)}
+
+
+@router.get("/items/lookup", response=List[InventoryItemSchema])
+def lookup_items(request, q: Optional[str] = None, limit: int = 20):
+    """
+    Поиск товара для селекта: name/sku/barcode.
+    """
+    if not request.auth.has_permission("inventory.view_item"):
+        raise PermissionError("Нет прав для просмотра товаров")
+
+    qs = InventoryItem.objects.filter(is_active=True)
+    if q:
+        qs = qs.filter(
+            Q(name__icontains=q)
+            | Q(sku__icontains=q)
+            | Q(barcodes__barcode__icontains=q)
+        ).distinct()
+    return qs.order_by("name")[:limit]
+
+
+# Дашборд по складу: агрегаты
+@router.get("/stock/dashboard", response=StockDashboardSchema)
+def stock_dashboard(request):
+    if not request.auth.has_permission("inventory.view_stock"):
+        raise PermissionError("Нет прав для просмотра остатков")
+    service = InventoryService()
+    return service.get_stock_dashboard(request.auth)
+
+
+# Остатки по SKU/ШК
+@router.get("/stock/item-by-code", response=ItemStockByCodeSchema)
+def stock_item_by_code(
+    request, code: Optional[str] = None, barcode: Optional[str] = None
+):
+    if not request.auth.has_permission("inventory.view_stock"):
+        raise PermissionError("Нет прав для просмотра остатков")
+    service = InventoryService()
+    return service.get_item_stock_by_code(request.auth, code, barcode)
+
+
+# Быстрое создание товара из модалки
+@router.post(
+    "/items/quick-create", response={201: QuickCreateItemResponseSchema, 400: dict}
+)
+def quick_create_item(request, data: QuickCreateItemInputSchema):
+    if not request.auth.has_permission("inventory.add_item"):
+        raise PermissionError("Нет прав для создания товаров")
+    try:
+        service = InventoryService()
+        item = service.quick_create_item(data.dict(), created_by=request.auth)
+        return 201, {
+            "id": item.id,
+            "name": item.name,
+            "sku": item.sku,
+            "barcode": item.barcode or None,
+            "item_type": item.item_type,
+            "category_id": item.category_id,
+            "purchase_price": float(item.purchase_price),
+            "selling_price": float(item.selling_price),
+            "unit": item.unit,
+        }
+    except ValueError as e:
+        return 400, {"error": str(e)}
+
+
+# Финализация продажи с оплатой
+@router.post(
+    "/retail-sales/{sale_id}/finalize-with-payment", response=FinalizeSaleResponseSchema
+)
+def finalize_retail_sale_with_payment(
+    request, sale_id: int, payment: FinalizeSalePaymentInputSchema
+):
+    if not request.auth.has_permission("inventory.add_sale"):
+        raise PermissionError("Нет прав для редактирования продаж")
+    from .models import RetailSale
+
+    sale = get_object_or_404(RetailSale, id=sale_id)
+    service = InventoryService()
+    res, _pay = service.finalize_sale_with_payment(
+        sale=sale,
+        user=request.auth,
+        payment_method_id=payment.payment_method_id,
+        cash_register_id=payment.cash_register_id,
+        description=payment.description or "",
+    )
+    return {
+        "success": res["success"],
+        "sale_id": res["sale_id"],
+        "sale_number": res["sale_number"],
+        "total": res["total"],
+        "payment_id": res.get("payment_id"),
+        "payment_number": res.get("payment_number"),
+    }
+
+
+@router.post("/receipts/ad-hoc", response=AdHocOperationResponseSchema)
+def receive_items_ad_hoc(request, data: AdHocReceiveRequest):
+    if not request.auth.has_permission("inventory.add_movement"):
+        raise PermissionError("Нет прав для приемки")
+    if not hasattr(request, "current_shop") or not request.current_shop:
+        return {"success": False, "processed": 0, "ok": 0, "results": [], "error": "Не выбран текущий магазин"}  # type: ignore
+    service = InventoryService()
+    return service.receive_items_ad_hoc(
+        shop=request.current_shop,
+        user=request.auth,
+        items=[i.dict() for i in data.items],
+        common_notes=data.notes or "",
+    )
+
+
+@router.post("/adjustments/ad-hoc", response=AdHocOperationResponseSchema)
+def adjust_items_ad_hoc(request, data: AdHocAdjustmentRequest):
+    if not request.auth.has_permission("inventory.add_movement"):
+        raise PermissionError("Нет прав для корректировок")
+    if not hasattr(request, "current_shop") or not request.current_shop:
+        return {"success": False, "processed": 0, "ok": 0, "results": [], "error": "Не выбран текущий магазин"}  # type: ignore
+    service = InventoryService()
+    return service.adjust_items_ad_hoc(
+        shop=request.current_shop,
+        user=request.auth,
+        items=[i.dict() for i in data.items],
+        common_notes=data.notes or "",
+    )
+
+
+@router.get("/items/{item_id}/barcodes", response=List[ItemBarcodeSchema])
+def list_item_barcodes(request, item_id: int):
+    if not request.auth.has_permission("inventory.view_item"):
+        raise PermissionError("Нет прав")
+    from .models import InventoryItem, InventoryItemBarcode
+
+    item = get_object_or_404(InventoryItem, id=item_id)
+    barcodes = InventoryItemBarcode.objects.filter(item=item).order_by("-id")
+    return barcodes
+
+
+@router.post("/items/{item_id}/barcodes", response={201: ItemBarcodeSchema, 400: dict})
+def add_item_barcode(request, item_id: int, data: AddBarcodeInputSchema):
+    if not request.auth.has_permission("inventory.change_item"):
+        raise PermissionError("Нет прав")
+    from .models import InventoryItem, InventoryItemBarcode
+
+    item = get_object_or_404(InventoryItem, id=item_id)
+    bc = data.barcode.strip()
+    if not bc:
+        return 400, {"error": "barcode пуст"}
+    # проверим уникальность на уровне пары (item, barcode)
+    if InventoryItemBarcode.objects.filter(item=item, barcode=bc).exists():
+        return 400, {"error": "ШК уже привязан к товару"}
+
+    ib = InventoryItemBarcode.objects.create(
+        item=item, barcode=bc, supplier_id=data.supplier_id
+    )
+    return 201, ib
+
+
+@router.delete("/items/{item_id}/barcodes/{barcode_id}", response=dict)
+def delete_item_barcode(request, item_id: int, barcode_id: int):
+    if not request.auth.has_permission("inventory.change_item"):
+        raise PermissionError("Нет прав")
+    from .models import InventoryItem, InventoryItemBarcode
+
+    item = get_object_or_404(InventoryItem, id=item_id)
+    ib = get_object_or_404(InventoryItemBarcode, id=barcode_id, item=item)
+    ib.delete()
+    return {"success": True}

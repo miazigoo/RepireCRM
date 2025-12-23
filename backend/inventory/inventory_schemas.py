@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from ninja import Schema
 
@@ -198,7 +198,12 @@ class RetailSaleItemSchema(Schema):
 
     @staticmethod
     def resolve_barcode(obj):
-        return obj.item.barcode or None
+        # берем первый привязанный ШК (если нужен)
+        bc = getattr(obj.item, "barcodes", None)
+        if bc:
+            first = bc.first()
+            return first.barcode if first else None
+        return None
 
     @staticmethod
     def resolve_unit_price(obj):
@@ -234,3 +239,148 @@ class RetailSaleSchema(Schema):
     @staticmethod
     def resolve_total_amount(obj):
         return float(obj.total_amount or 0)
+
+
+# Ad-hoc приемка/корректировка: вход
+class AdHocReceiveItemInput(Schema):
+    item_id: Optional[int] = None
+    barcode: Optional[str] = None
+    quantity: int
+    cost_per_unit: Optional[float] = None
+    notes: Optional[str] = None
+
+
+class AdHocAdjustmentItemInput(Schema):
+    item_id: Optional[int] = None
+    barcode: Optional[str] = None
+    quantity_change: int
+    notes: Optional[str] = None
+
+
+class AdHocReceiveRequest(Schema):
+    items: List[AdHocReceiveItemInput]
+    notes: Optional[str] = None
+
+
+class AdHocAdjustmentRequest(Schema):
+    items: List[AdHocAdjustmentItemInput]
+    notes: Optional[str] = None
+
+
+# Ad-hoc: результат по позиции и общий ответ
+class AdHocOperationItemResultSchema(Schema):
+    ok: bool
+    item_id: Optional[int] = None
+    name: Optional[str] = None
+    quantity_added: Optional[int] = None
+    quantity_change: Optional[int] = None
+    new_quantity: Optional[int] = None
+    error: Optional[str] = None
+    entry: Optional[Dict[str, Any]] = None
+
+
+class AdHocOperationResponseSchema(Schema):
+    success: bool
+    processed: int
+    ok: int
+    results: List[AdHocOperationItemResultSchema]
+
+
+# Агрегации/дашборд по складу
+class StockByShopItemSchema(Schema):
+    shop_id: int
+    shop_name: str
+    total_quantity: int
+    low_stock_count: int
+
+
+class StockByCategoryItemSchema(Schema):
+    category_id: int
+    category_name: str
+    total_quantity: int
+    low_stock_count: int
+
+
+class StockTotalsSchema(Schema):
+    total_skus: int
+    total_quantity: int
+    low_stock_count: int
+
+
+class StockDashboardSchema(Schema):
+    totals: StockTotalsSchema
+    by_shop: List[StockByShopItemSchema]
+    by_category: List[StockByCategoryItemSchema]
+
+
+# Остатки по SKU/ШК
+class ItemStockBalanceSchema(Schema):
+    shop_id: int
+    shop_name: str
+    quantity: int
+    reserved_quantity: int
+    available_quantity: int
+
+
+class ItemStockByCodeSchema(Schema):
+    found: bool
+    error: Optional[str] = None
+    item_id: Optional[int] = None
+    name: Optional[str] = None
+    sku: Optional[str] = None
+    barcode: Optional[str] = None
+    balances: Optional[List[ItemStockBalanceSchema]] = None
+
+
+# Быстрое создание товара («модалка»)
+class QuickCreateItemInputSchema(Schema):
+    name: str
+    sku: str
+    item_type: str
+    category_id: int
+    purchase_price: float
+    selling_price: float
+    # список штрихкодов
+    barcodes: Optional[List[str]] = None
+    unit: Optional[str] = "шт"
+    primary_supplier_id: Optional[int] = None
+    description: Optional[str] = None
+
+
+class QuickCreateItemResponseSchema(Schema):
+    id: int
+    name: str
+    sku: str
+    barcode: Optional[str] = None
+    item_type: str
+    category_id: int
+    purchase_price: float
+    selling_price: float
+    unit: str
+
+
+# Оплата розничной продажи
+class FinalizeSalePaymentInputSchema(Schema):
+    payment_method_id: int
+    cash_register_id: Optional[int] = None
+    description: Optional[str] = None
+
+
+class FinalizeSaleResponseSchema(Schema):
+    success: bool
+    sale_id: int
+    sale_number: str
+    total: float
+    payment_id: Optional[int] = None
+    payment_number: Optional[str] = None
+
+
+class ItemBarcodeSchema(Schema):
+    id: int
+    barcode: str
+    supplier_id: Optional[int] = None
+
+
+class AddBarcodeInputSchema(Schema):
+    barcode: str
+    supplier_id: Optional[int] = None

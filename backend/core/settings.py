@@ -100,6 +100,15 @@ else:
 # Redis
 REDIS_URL = config("REDIS_URL", default="redis://localhost:6379/0")
 
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [REDIS_URL],
+        },
+    },
+}
+
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -227,5 +236,9 @@ CELERY_BEAT_SCHEDULE = {
     "expire-loyalty-points-daily": {
         "task": "loyalty.tasks.expire_points",
         "schedule": 60 * 60 * 24,
+    },
+    "analytics-monthly-snapshot": {
+        "task": "analytics.tasks.save_monthly_snapshots",
+        "schedule": 60 * 60 * 24,  # раз в сутки
     },
 }

@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.utils import timezone
 from sequences import get_next_value
 
 User = get_user_model()
@@ -509,3 +510,76 @@ class BarcodeScanEvent(models.Model):
             models.Index(fields=["barcode"]),
             models.Index(fields=["shop", "context"]),
         ]
+
+
+class InventoryItemBarcode(models.Model):
+    """Доп. штрихкоды товара (разные поставщики/партии)"""
+
+    item = models.ForeignKey(
+        InventoryItem, on_delete=models.CASCADE, related_name="barcodes"
+    )
+    barcode = models.CharField("Штрихкод", max_length=50)
+    supplier = models.ForeignKey(
+        Supplier, on_delete=models.SET_NULL, null=True, blank=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "ШК товара"
+        verbose_name_plural = "ШК товаров"
+        unique_together = ["item", "barcode"]
+        indexes = [models.Index(fields=["barcode"])]
+
+    def __str__(self):
+        return f"{self.item.sku} [{self.barcode}]"
+
+
+class InventoryItemPriceHistory(models.Model):
+    """История цен (закупочная/продажная)"""
+
+    class PriceType(models.TextChoices):
+        PURCHASE = "purchase", "Закупочная"
+        SELLING = "selling", "Продажная"
+
+    item = models.ForeignKey(
+        InventoryItem, on_delete=models.CASCADE, related_name="price_history"
+    )
+    price_type = models.CharField(max_length=10, choices=PriceType.choices)
+    value = models.DecimalField(max_digits=12, decimal_places=2)
+    changed_at = models.DateTimeField(auto_now_add=True)
+    changed_by = models.ForeignKey(
+        "users.User", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    notes = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        verbose_name = "История цены"
+        verbose_name_plural = "История цен"
+        indexes = [models.Index(fields=["item", "price_type", "changed_at"])]
+
+
+class InventoryItemCostHistory(models.Model):
+    """История себестоимости по приемкам"""
+
+    class SourceType(models.TextChoices):
+        AD_HOC = "ad_hoc", "Приемка без заказа"
+        PO = "purchase_order", "Заказ поставщику"
+
+    item = models.ForeignKey(
+        InventoryItem, on_delete=models.CASCADE, related_name="cost_history"
+    )
+    shop = models.ForeignKey("shops.Shop", on_delete=models.CASCADE)
+    source_type = models.CharField(max_length=20, choices=SourceType.choices)
+    source_id = models.IntegerField(
+        null=True, blank=True
+    )  # id PurchaseOrder или None для ad_hoc
+    cost_per_unit = models.DecimalField(max_digits=12, decimal_places=2)
+    quantity = models.IntegerField()
+    received_at = models.DateTimeField(default=timezone.now)
+    notes = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        verbose_name = "История себестоимости"
+        verbose_name_plural = "История себестоимости"
+        indexes = [models.Index(fields=["item", "received_at"])]

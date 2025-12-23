@@ -152,28 +152,25 @@ class Order(models.Model):
         """Остаток к доплате"""
         return max(0, self.total_cost - self.prepayment)
 
-    def save(self, *args, **kwargs):
-        if not self.order_number:
-            self.order_number = self._generate_order_number()
-        super().save(*args, **kwargs)
-
     def _generate_order_number(self):
         """Генерация номера заказа"""
         shop_settings = getattr(self.shop, "settings", None)
         prefix = shop_settings.order_number_prefix if shop_settings else "ORD"
-
         seq = get_next_value(f"order-{self.shop.code}")
         return f"{prefix}-{self.shop.code}-{seq:06d}"
 
     def save(self, *args, **kwargs):
+        # Бизнес-правило: нельзя закрыть без final_cost
         if self.status == self.StatusChoices.COMPLETED and not self.final_cost:
             from django.core.exceptions import ValidationError
 
             raise ValidationError(
                 "Нельзя закрыть заказ без итоговой стоимости (final_cost)"
             )
+
         if not self.order_number:
             self.order_number = self._generate_order_number()
+
         super().save(*args, **kwargs)
 
 

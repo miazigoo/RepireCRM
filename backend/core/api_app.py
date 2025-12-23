@@ -10,11 +10,14 @@ from ninja.security import HttpBearer
 # Подключаем роутеры
 from API.auth.router import router as auth_router
 from customers.router import router as customers_router
+from documents.router import router as documents_router
+from finance.router import router as finance_router
 from inventory.router import router as inventory_router
 from loyalty.router import router as loyalty_router
 from notifications.router import router as notifications_router
 from orders.router import router as orders_router
 from reports.router import router as reports_router
+from shops.router import router as shops_router
 from tasks.router import router as tasks_router
 from users.models import User
 
@@ -80,6 +83,7 @@ def value_error_handler(request, exc):
 
 api.add_router("/auth", auth_router)
 api.add_router("/customers", customers_router)
+api.add_router("/documents", documents_router)
 api.add_router("/orders", orders_router)
 api.add_router("/loyalty", loyalty_router)
 
@@ -87,3 +91,5 @@ api.add_router("/inventory", inventory_router)
 api.add_router("/reports", reports_router)
 api.add_router("/tasks", tasks_router)
 api.add_router("/notifications", notifications_router)
+api.add_router("/shops", shops_router)
+api.add_router("/finance", finance_router)
