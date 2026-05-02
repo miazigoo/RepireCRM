@@ -39,7 +39,11 @@ docker compose -f docker-compose.yml ps
   после проверки HTTPS.
 - Подключить бэкапы PostgreSQL и media volume.
 - Подключить Sentry через `SENTRY_DSN`.
-- Подключить ежедневный запуск проверки подписок:
+- Проверка подписок уже вынесена в сервис `subscription-checker` в
+  `docker-compose.yml`. По умолчанию он запускает
+  `python manage.py check_subscriptions` раз в сутки. Интервал можно изменить
+  через `SUBSCRIPTION_CHECK_INTERVAL_SECONDS`.
+- Для ручной проверки подписок:
 
 ```bash
 docker compose --env-file .env -f docker-compose.yml exec -T backend \

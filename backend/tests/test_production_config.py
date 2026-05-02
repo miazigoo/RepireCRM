@@ -44,8 +44,23 @@ class ProductionConfigTestCase(SimpleTestCase):
         self.assertIn("ALLOWED_HOSTS=", env_template)
         self.assertIn("127.0.0.1", env_template)
         self.assertIn("CSRF_TRUSTED_ORIGINS=", env_template)
+        self.assertIn("SUBSCRIPTION_CHECK_INTERVAL_SECONDS=86400", env_template)
 
     def test_production_docs_include_subscription_scheduler(self):
         production_doc = (ROOT / "docs" / "PRODUCTION.md").read_text()
 
+        self.assertIn("subscription-checker", production_doc)
         self.assertIn("python manage.py check_subscriptions", production_doc)
+
+    def test_production_compose_runs_subscription_scheduler(self):
+        compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text())
+        service = compose["services"]["subscription-checker"]
+
+        self.assertIn("python manage.py check_subscriptions", service["command"])
+        self.assertEqual(
+            service["environment"]["SUBSCRIPTION_CHECK_INTERVAL_SECONDS"],
+            "${SUBSCRIPTION_CHECK_INTERVAL_SECONDS:-86400}",
+        )
+        self.assertEqual(
+            service["depends_on"]["backend"]["condition"], "service_healthy"
+        )
