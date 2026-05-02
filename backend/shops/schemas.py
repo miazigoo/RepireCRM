@@ -43,3 +43,34 @@ class ShopSettingsSchema(Schema):
     pos_barcode_enabled: bool
     organization_id: Optional[int] = None
     receipt_footer_text: Optional[str] = None
+
+
+class SubscriptionPlanSchema(Schema):
+    code: str
+    name: str
+    billing_period: str
+    duration_days: int
+    price: float
+
+    @staticmethod
+    def resolve_price(obj):
+        return float(obj.price)
+
+
+class SubscriptionChangeSchema(Schema):
+    plan_code: str
+
+
+class SubscriptionStatusSchema(Schema):
+    organization_id: int
+    organization_name: str
+    plan: SubscriptionPlanSchema
+    status: str
+    status_display: str
+    started_at: str
+    expires_at: str
+    remaining_days: int
+    remaining_percent: int
+    color_bucket: int
+    color_hex: str
+    is_expired: bool

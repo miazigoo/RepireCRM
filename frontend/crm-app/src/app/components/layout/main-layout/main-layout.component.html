@@ -61,7 +61,8 @@
         <span matListItemTitle>Администрирование</span>
         </a>
 
-        <a mat-list-item routerLink="/settings" routerLinkActive="active">
+        <a mat-list-item routerLink="/admin/settings" routerLinkActive="active"
+           *ngIf="currentUser?.is_director">
         <mat-icon matListItemIcon>settings</mat-icon>
         <span matListItemTitle>Настройки</span>
         </a>

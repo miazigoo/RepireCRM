@@ -26,6 +26,29 @@ export interface Shop {
   currency: string;
 }
 
+export interface SubscriptionPlan {
+  code: string;
+  name: string;
+  billing_period: string;
+  duration_days: number;
+  price: number;
+}
+
+export interface SubscriptionStatus {
+  organization_id: number;
+  organization_name: string;
+  plan: SubscriptionPlan;
+  status: string;
+  status_display: string;
+  started_at: string;
+  expires_at: string;
+  remaining_days: number;
+  remaining_percent: number;
+  color_bucket: number;
+  color_hex: string;
+  is_expired: boolean;
+}
+
 export interface ShopCreateRequest {
   name: string;
   code: string;

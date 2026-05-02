@@ -1,6 +1,6 @@
 // frontend/crm-app/src/app/components/admin/admin-dashboard/admin-dashboard.component.ts
 import { Component, OnInit } from '@angular/core';
-import { NgIf, NgFor, CurrencyPipe } from '@angular/common';
+import { NgIf, NgFor, CurrencyPipe, DatePipe } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatGridListModule } from '@angular/material/grid-list';
 import { AdminService } from '../../../services/admin.service';
+import { SubscriptionPlan, SubscriptionStatus } from '../../../core/models/models';
 
 interface SystemStats {
   total_users: number;
@@ -23,7 +24,7 @@ interface SystemStats {
   selector: 'app-admin-dashboard',
   standalone: true,
   imports: [
-    NgIf, NgFor, CurrencyPipe, RouterModule,
+    NgIf, NgFor, CurrencyPipe, DatePipe, RouterModule,
     MatCardModule, MatButtonModule, MatIconModule,
     MatProgressSpinnerModule, MatGridListModule
   ],
@@ -32,7 +33,10 @@ interface SystemStats {
 })
 export class AdminDashboardComponent implements OnInit {
   stats: SystemStats | null = null;
+  subscription: SubscriptionStatus | null = null;
+  subscriptionPlans: SubscriptionPlan[] = [];
   loading = false;
+  subscriptionLoading = false;
 
   quickActions = [
     {
@@ -69,6 +73,7 @@ export class AdminDashboardComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadSystemStats();
+    this.loadSubscription();
   }
 
   private loadSystemStats(): void {
@@ -101,5 +106,46 @@ export class AdminDashboardComponent implements OnInit {
       case 'error': return 'Ошибка';
       default: return 'Неизвестно';
     }
+  }
+
+  changeSubscription(planCode: string): void {
+    this.subscriptionLoading = true;
+    this.adminService.changeSubscription(planCode).subscribe({
+      next: (subscription) => {
+        this.subscription = subscription;
+        this.subscriptionLoading = false;
+      },
+      error: () => this.subscriptionLoading = false
+    });
+  }
+
+  getSubscriptionBackground(): string {
+    return this.subscription?.color_hex || '#607d8b';
+  }
+
+  getSubscriptionGradient(): string {
+    const color = this.getSubscriptionBackground();
+    return `linear-gradient(90deg, ${color} ${this.subscription?.remaining_percent || 0}%, #e5e7eb 0)`;
+  }
+
+  private loadSubscription(): void {
+    this.subscriptionLoading = true;
+    this.adminService.getSubscriptionStatus().subscribe({
+      next: (subscription) => {
+        this.subscription = subscription;
+        this.loadSubscriptionPlans();
+      },
+      error: () => this.subscriptionLoading = false
+    });
+  }
+
+  private loadSubscriptionPlans(): void {
+    this.adminService.getSubscriptionPlans().subscribe({
+      next: (plans) => {
+        this.subscriptionPlans = plans.filter(plan => plan.code !== 'trial');
+        this.subscriptionLoading = false;
+      },
+      error: () => this.subscriptionLoading = false
+    });
   }
 }

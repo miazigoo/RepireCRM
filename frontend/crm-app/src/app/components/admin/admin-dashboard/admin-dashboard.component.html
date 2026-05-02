@@ -5,7 +5,7 @@
     <p class="subtitle">Управление системой и пользователями</p>
   </div>
 
-  
+
   <div class="stats-section" *ngIf="!loading && stats">
     <h2>Системная статистика</h2>
     <div class="stats-grid">
@@ -66,14 +66,14 @@
       </mat-card>
     </div>
 
-    
+
     <mat-card class="health-card">
       <mat-card-header>
         <mat-card-title>Состояние системы</mat-card-title>
       </mat-card-header>
       <mat-card-content>
         <div class="health-status">
-          <div class="health-indicator" 
+          <div class="health-indicator"
                [style.background-color]="getHealthStatusColor(stats.system_health)">
           </div>
           <span class="health-text">{{ getHealthStatusText(stats.system_health) }}</span>
@@ -82,11 +82,52 @@
     </mat-card>
   </div>
 
-  
+  <mat-card class="subscription-card" *ngIf="subscription">
+    <mat-card-content>
+      <div class="subscription-header">
+        <div>
+          <span class="subscription-eyebrow">SaaS подписка</span>
+          <h2>{{ subscription.organization_name }}</h2>
+          <p>{{ subscription.plan.name }} · {{ subscription.status_display }}</p>
+        </div>
+        <div class="subscription-days" [style.color]="subscription.color_hex">
+          {{ subscription.remaining_days }}
+          <span>дней</span>
+        </div>
+      </div>
+
+      <div class="subscription-progress" [style.background]="getSubscriptionGradient()"></div>
+
+      <div class="subscription-meta">
+        <span>{{ subscription.remaining_percent }}% срока осталось</span>
+        <span>до {{ subscription.expires_at | date:'dd.MM.yyyy' }}</span>
+        <span>bucket {{ subscription.color_bucket }}%</span>
+      </div>
+
+      <div class="subscription-scale">
+        <span *ngFor="let step of [100,90,80,70,60,50,40,30,20,10,0]"
+              [class.active]="subscription.color_bucket === step">
+          {{ step }}
+        </span>
+      </div>
+
+      <div class="subscription-actions">
+        <button mat-stroked-button
+                *ngFor="let plan of subscriptionPlans"
+                type="button"
+                [disabled]="subscriptionLoading"
+                (click)="changeSubscription(plan.code)">
+          {{ plan.name }} · {{ plan.price | currency:'RUB':'symbol':'1.0-0' }}
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+
   <div class="actions-section">
     <h2>Быстрые действия</h2>
     <div class="actions-grid">
-      <mat-card *ngFor="let action of quickActions" 
+      <mat-card *ngFor="let action of quickActions"
                 class="action-card"
                 [routerLink]="action.route">
         <mat-card-content>
@@ -105,7 +146,7 @@
     </div>
   </div>
 
-  
+
   <div class="loading-container" *ngIf="loading">
     <mat-spinner></mat-spinner>
     <p>Загрузка статистики...</p>

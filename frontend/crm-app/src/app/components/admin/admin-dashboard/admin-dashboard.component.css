@@ -97,6 +97,93 @@
   font-size: 16px;
 }
 
+.subscription-card {
+  margin-bottom: 40px;
+  border-left: 6px solid #1b8f3a;
+}
+
+.subscription-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.subscription-eyebrow {
+  color: #607d8b;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.subscription-header h2 {
+  margin: 4px 0;
+}
+
+.subscription-header p {
+  margin: 0;
+  color: #667085;
+}
+
+.subscription-days {
+  min-width: 96px;
+  text-align: right;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.subscription-days span {
+  display: block;
+  margin-top: 4px;
+  color: #667085;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.subscription-progress {
+  height: 12px;
+  margin: 20px 0 10px;
+  border-radius: 999px;
+}
+
+.subscription-meta,
+.subscription-scale,
+.subscription-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.subscription-meta {
+  justify-content: space-between;
+  color: #667085;
+  font-size: 13px;
+}
+
+.subscription-scale {
+  margin-top: 14px;
+}
+
+.subscription-scale span {
+  min-width: 34px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #475569;
+  text-align: center;
+  font-size: 12px;
+}
+
+.subscription-scale span.active {
+  background: #111827;
+  color: #fff;
+}
+
+.subscription-actions {
+  margin-top: 18px;
+}
+
 .actions-section h2 {
   margin: 0 0 24px 0;
   color: #333;
@@ -179,21 +266,29 @@
   .stats-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .actions-grid {
     grid-template-columns: 1fr;
   }
-  
+
+  .subscription-header {
+    flex-direction: column;
+  }
+
+  .subscription-days {
+    text-align: left;
+  }
+
   .action-card mat-card-content {
     flex-direction: column;
     text-align: center;
   }
-  
+
   .action-icon {
     margin-right: 0;
     margin-bottom: 12px;
   }
-  
+
   .action-arrow {
     margin-left: 0;
     margin-top: 12px;

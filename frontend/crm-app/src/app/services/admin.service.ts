@@ -2,7 +2,14 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
-import { User, Shop, Role, Permission } from '../core/models/models';
+import {
+  Permission,
+  Role,
+  Shop,
+  SubscriptionPlan,
+  SubscriptionStatus,
+  User
+} from '../core/models/models';
 
 export interface UserCreateRequest {
   username: string;
@@ -120,5 +127,19 @@ export class AdminService {
   // System Statistics
   getSystemStatistics(): Observable<any> {
     return this.apiService.get<any>('/admin/statistics');
+  }
+
+  getSubscriptionStatus(): Observable<SubscriptionStatus> {
+    return this.apiService.get<SubscriptionStatus>('/shops/subscription/status');
+  }
+
+  getSubscriptionPlans(): Observable<SubscriptionPlan[]> {
+    return this.apiService.get<SubscriptionPlan[]>('/shops/subscription/plans');
+  }
+
+  changeSubscription(planCode: string): Observable<SubscriptionStatus> {
+    return this.apiService.post<SubscriptionStatus>('/shops/subscription/change', {
+      plan_code: planCode
+    });
   }
 }
