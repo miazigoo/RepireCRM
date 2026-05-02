@@ -20,15 +20,19 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Копируем код приложения
 COPY backend/ .
+COPY docker/backend-entrypoint.sh /entrypoint.sh
 
 # Меняем владельца файлов
 RUN chown -R app:app /app
-USER app
+RUN chmod +x /entrypoint.sh
 
 # Создаем директории для статики и медиа
 RUN mkdir -p static media
+RUN chown -R app:app static media
+
+USER app
 
 EXPOSE 8000
 
 # Команда запуска
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["/entrypoint.sh"]

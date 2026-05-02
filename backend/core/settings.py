@@ -8,8 +8,14 @@ from sentry_sdk.integrations.django import DjangoIntegration
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = config("SECRET_KEY", default="your-secret-key-here")
+ENVIRONMENT = config("ENVIRONMENT", default="development")
 DEBUG = config("DEBUG", default=False, cast=bool)
+_SECRET_KEY = config("SECRET_KEY", default="")
+
+if ENVIRONMENT == "production" and not _SECRET_KEY:
+    raise RuntimeError("SECRET_KEY is required when ENVIRONMENT=production")
+
+SECRET_KEY = _SECRET_KEY or "insecure-development-only-key-for-local-tests"
 
 ALLOWED_HOSTS = config(
     "ALLOWED_HOSTS", default="localhost,backend,127.0.0.1,0.0.0.0,testserver"
@@ -131,12 +137,40 @@ PASSWORD_HASHERS = [
 ]
 
 # CORS settings
+_default_cors = "http://localhost:4200,http://127.0.0.1:4200"
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:4200",
-    "http://127.0.0.1:4200",
+    origin.strip()
+    for origin in config("CORS_ALLOWED_ORIGINS", default=_default_cors).split(",")
+    if origin.strip()
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in config("CSRF_TRUSTED_ORIGINS", default="").split(",")
+    if origin.strip()
+]
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = config("SECURE_SSL_REDIRECT", default=False, cast=bool)
+SECURE_HSTS_SECONDS = config("SECURE_HSTS_SECONDS", default=0, cast=int)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = config(
+    "SECURE_HSTS_INCLUDE_SUBDOMAINS", default=False, cast=bool
+)
+SECURE_HSTS_PRELOAD = config("SECURE_HSTS_PRELOAD", default=False, cast=bool)
+SESSION_COOKIE_SECURE = config(
+    "SESSION_COOKIE_SECURE",
+    default=not DEBUG and ENVIRONMENT == "production",
+    cast=bool,
+)
+CSRF_COOKIE_SECURE = config(
+    "CSRF_COOKIE_SECURE", default=not DEBUG and ENVIRONMENT == "production", cast=bool
+)
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
+X_FRAME_OPTIONS = "DENY"
+SECURE_REFERRER_POLICY = "same-origin"
 
 # Static files
 STATIC_URL = "/static/"
@@ -198,8 +232,8 @@ if SENTRY_DSN:
         dsn=SENTRY_DSN,
         integrations=[DjangoIntegration()],
         traces_sample_rate=config("SENTRY_TRACES_SAMPLE_RATE", default=0.0, cast=float),
-        send_default_pii=True,
-        environment=config("ENVIRONMENT", default="development"),
+        send_default_pii=config("SENTRY_SEND_DEFAULT_PII", default=False, cast=bool),
+        environment=ENVIRONMENT,
     )
 
 

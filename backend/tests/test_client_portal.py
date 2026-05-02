@@ -185,6 +185,19 @@ class ClientPortalApiTestCase(TestCase):
         self.assertIn("iPhone 13", first_orders[0]["device_title"])
         self.assertIn("Zenbook", second_orders[0]["device_title"])
 
+        cross_access_response = self.get_json(
+            f"/api/portal/orders/{second_orders[0]['id']}",
+            token=first_token,
+        )
+
+        self.assertEqual(cross_access_response.status_code, 404)
+        self.assertEqual(cross_access_response.json()["error"], "Заказ не найден")
+
+    def test_portal_orders_require_customer_token(self):
+        response = self.get_json("/api/portal/orders")
+
+        self.assertEqual(response.status_code, 401)
+
     def test_existing_staff_created_customer_can_activate_portal(self):
         Customer.objects.create(
             first_name="Анна",

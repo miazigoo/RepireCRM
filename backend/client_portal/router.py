@@ -1,6 +1,7 @@
 from typing import List
 
 from django.db.models import QuerySet
+from django_ratelimit.decorators import ratelimit
 from ninja import Router
 from ninja.security import HttpBearer
 
@@ -57,6 +58,7 @@ def _order_queryset(customer: Customer) -> QuerySet[Order]:
     "/auth/register",
     response={201: PortalTokenSchema, 400: PortalErrorSchema},
 )
+@ratelimit(key="ip", rate="10/m", block=True)
 def register(request, data: PortalRegisterSchema):
     try:
         customer = register_customer(data)
@@ -71,6 +73,7 @@ def register(request, data: PortalRegisterSchema):
 
 
 @router.post("/auth/login", response={200: PortalTokenSchema, 400: PortalErrorSchema})
+@ratelimit(key="ip", rate="10/m", block=True)
 def login(request, data: PortalLoginSchema):
     try:
         customer = authenticate_customer(data.phone, data.password)
