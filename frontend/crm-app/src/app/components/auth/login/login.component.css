@@ -33,6 +33,10 @@
   height: 48px;
 }
 
+.client-portal-link {
+  margin-top: 10px;
+}
+
 .error-message {
   color: #f44336;
   display: flex;
