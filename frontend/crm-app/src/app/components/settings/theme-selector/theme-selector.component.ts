@@ -5,7 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatGridListModule } from '@angular/material/grid-list';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { ThemeService, Theme } from '../../../core/services/theme.service';
+import { ThemeService, Theme } from '../../../services/theme.service';
 
 @Component({
   selector: 'app-theme-selector',
@@ -43,5 +43,22 @@ export class ThemeSelectorComponent implements OnInit {
 
   isCurrentTheme(theme: Theme): boolean {
     return this.currentTheme.id === theme.id;
+  }
+
+  getPreviewStyle(theme: Theme): Record<string, string> {
+    return {
+      background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent})`
+    };
+  }
+
+  getThemeColors(theme: Theme): Array<{ name: string; value: string }> {
+    return [
+      { name: 'Основной', value: theme.colors.primary },
+      { name: 'Вторичный', value: theme.colors.secondary },
+      { name: 'Акцент', value: theme.colors.accent },
+      { name: 'Ошибка', value: theme.colors.warn },
+      { name: 'Фон', value: theme.colors.background },
+      { name: 'Поверхность', value: theme.colors.surface }
+    ];
   }
 }

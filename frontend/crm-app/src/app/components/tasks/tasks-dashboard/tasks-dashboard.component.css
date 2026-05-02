@@ -1,0 +1,31 @@
+.tasks-dashboard {
+  display: grid;
+  gap: 20px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.status-pending,
+.priority-normal {
+  background: #e0f2fe;
+}
+
+.status-in-progress,
+.priority-high {
+  background: #fef3c7;
+}
+
+.status-completed,
+.priority-low {
+  background: #dcfce7;
+}
+
+.status-cancelled,
+.status-overdue,
+.priority-urgent {
+  background: #fee2e2;
+}

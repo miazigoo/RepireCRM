@@ -16,7 +16,7 @@ export class ApiService {
     let headers = new HttpHeaders({
       'Content-Type': 'application/json'
     });
-    
+
     if (token) {
       headers = headers.set('Authorization', `Bearer ${token}`);
     }
@@ -42,6 +42,23 @@ export class ApiService {
     return this.http.get<T>(`${this.baseUrl}${endpoint}`, {
       headers: this.getHeaders(),
       params: httpParams
+    });
+  }
+
+  getBlob(endpoint: string, params?: any): Observable<Blob> {
+    let httpParams = new HttpParams();
+    if (params) {
+      Object.keys(params).forEach(key => {
+        if (params[key] !== null && params[key] !== undefined) {
+          httpParams = httpParams.set(key, params[key]);
+        }
+      });
+    }
+
+    return this.http.get(`${this.baseUrl}${endpoint}`, {
+      headers: this.getHeaders(),
+      params: httpParams,
+      responseType: 'blob'
     });
   }
 

@@ -1,0 +1,34 @@
+.dashboard-container {
+  display: grid;
+  gap: 20px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.chart-container {
+  height: 320px;
+}
+
+.transaction-income {
+  color: #15803d;
+}
+
+.transaction-expense {
+  color: #b91c1c;
+}
+
+.status-completed {
+  background: #dcfce7;
+}
+
+.status-pending {
+  background: #fef3c7;
+}
+
+.status-cancelled {
+  background: #fee2e2;
+}

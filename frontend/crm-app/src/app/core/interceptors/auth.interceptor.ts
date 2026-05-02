@@ -15,7 +15,10 @@ export class AuthInterceptor implements HttpInterceptor {
   ) {}
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    const token = localStorage.getItem('access_token');
+    const isPortalRequest = req.url.includes('/portal');
+    const token = isPortalRequest
+      ? localStorage.getItem('portal_access_token')
+      : localStorage.getItem('access_token');
 
     const authReq = token
       ? req.clone({
@@ -26,7 +29,13 @@ export class AuthInterceptor implements HttpInterceptor {
     return next.handle(authReq).pipe(
       catchError((err: HttpErrorResponse) => {
         if (err.status === 401) {
-          this.authService.logout(); // внутри уже есть navigate(['/login'])
+          if (isPortalRequest) {
+            localStorage.removeItem('portal_access_token');
+            localStorage.removeItem('portal_customer');
+            this.router.navigate(['/portal']);
+          } else {
+            this.authService.logout();
+          }
         }
         return throwError(() => err);
       })

@@ -13,6 +13,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatBadgeModule } from '@angular/material/badge';
+import { MatDividerModule } from '@angular/material/divider';
 import { InventoryService } from '../../../services/inventory.service';
 
 interface InventoryItem {
@@ -54,7 +55,8 @@ interface StockAlert {
     MatMenuModule,
     MatProgressBarModule,
     MatTooltipModule,
-    MatBadgeModule
+    MatBadgeModule,
+    MatDividerModule
   ],
   templateUrl: './inventory-dashboard.component.html',
   styleUrl: './inventory-dashboard.component.css'

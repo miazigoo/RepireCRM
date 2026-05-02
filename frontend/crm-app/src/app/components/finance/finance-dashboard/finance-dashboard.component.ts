@@ -15,6 +15,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData } from 'chart.js';
 import { FinanceService } from '../../../services/finance.service';
+import { forkJoin } from 'rxjs';
 
 interface FinancialSummary {
   total_income: number;
@@ -145,21 +146,23 @@ export class FinanceDashboardComponent implements OnInit {
     this.loading = true;
 
     // Загружаем основные данные
-    Promise.all([
-      this.financeService.getFinancialSummary(this.filtersForm.value).toPromise(),
-      this.financeService.getRecentTransactions().toPromise(),
-      this.financeService.getProfitChart(this.filtersForm.value).toPromise(),
-      this.financeService.getExpensesBreakdown(this.filtersForm.value).toPromise()
-    ]).then(([summary, transactions, profitData, expensesData]) => {
-      this.summary = summary;
-      this.recentTransactions = transactions;
-      this.transactionDataSource.data = transactions;
-
-      this.setupCharts(profitData, expensesData);
-      this.loading = false;
-    }).catch(error => {
-      console.error('Error loading financial data:', error);
-      this.loading = false;
+    forkJoin({
+      summary: this.financeService.getFinancialSummary(this.filtersForm.value),
+      transactions: this.financeService.getRecentTransactions(),
+      profitData: this.financeService.getProfitChart(this.filtersForm.value),
+      expensesData: this.financeService.getExpensesBreakdown(this.filtersForm.value)
+    }).subscribe({
+      next: ({ summary, transactions, profitData, expensesData }) => {
+        this.summary = summary;
+        this.recentTransactions = transactions;
+        this.transactionDataSource.data = transactions;
+        this.setupCharts(profitData, expensesData);
+        this.loading = false;
+      },
+      error: error => {
+        console.error('Error loading financial data:', error);
+        this.loading = false;
+      }
     });
   }
 

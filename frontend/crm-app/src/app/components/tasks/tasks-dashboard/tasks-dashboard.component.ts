@@ -13,6 +13,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -62,6 +63,7 @@ interface TasksSummary {
     MatProgressBarModule,
     MatBadgeModule,
     MatTooltipModule,
+    MatDividerModule,
     MatDialogModule,
     MatSelectModule,
     MatFormFieldModule
@@ -245,7 +247,7 @@ export class TasksDashboardComponent implements OnInit {
   }
 
   changeTaskStatus(task: Task, newStatus: string): void {
-    this.tasksService.updateTask(task.id, { status: newStatus }).subscribe({
+    this.tasksService.updateTask(task.id, { status: newStatus as Task['status'] }).subscribe({
       next: () => {
         task.status = newStatus as any;
         if (newStatus === 'completed') {
