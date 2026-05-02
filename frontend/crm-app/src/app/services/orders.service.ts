@@ -4,6 +4,7 @@ import { ApiService } from './api.service';
 import {
   AdditionalService,
   Order,
+  OrderApproval,
   OrderAuditLog,
   OrderFilters,
   OrderStatusHistory,
@@ -53,6 +54,17 @@ export class OrdersService {
 
   addRepairStage(id: number, data: FormData): Observable<RepairStage> {
     return this.apiService.postForm<RepairStage>(`${this.endpoint}/${id}/repair-stages`, data);
+  }
+
+  getApprovals(id: number): Observable<OrderApproval[]> {
+    return this.apiService.get<OrderApproval[]>(`${this.endpoint}/${id}/approvals`);
+  }
+
+  requestApproval(
+    id: number,
+    data: { title: string; description?: string; amount: number }
+  ): Observable<OrderApproval> {
+    return this.apiService.post<OrderApproval>(`${this.endpoint}/${id}/approvals`, data);
   }
 
   getAdditionalServices(): Observable<AdditionalService[]> {

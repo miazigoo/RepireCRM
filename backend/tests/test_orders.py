@@ -10,7 +10,13 @@ from django.utils import timezone
 
 from customers.models import Customer
 from device.models import Device, DeviceBrand, DeviceModel, DeviceType
-from orders.models import Order, OrderAuditLog, OrderStatusHistory, RepairStage
+from orders.models import (
+    Order,
+    OrderApproval,
+    OrderAuditLog,
+    OrderStatusHistory,
+    RepairStage,
+)
 from shops.models import Shop
 from users.models import Permission, Role
 
@@ -191,5 +197,32 @@ class OrderTestCase(TestCase):
             OrderAuditLog.objects.filter(
                 order=order,
                 action=OrderAuditLog.ActionChoices.STAGE_ADDED,
+            ).exists()
+        )
+
+    def test_staff_can_request_customer_approval(self):
+        order = self.create_order()
+
+        response = self.client.post(
+            f"/api/orders/{order.id}/approvals",
+            data=json.dumps(
+                {
+                    "title": "Согласование замены Type-C",
+                    "description": "Нужно заменить разъем и проверить питание",
+                    "amount": 4500,
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 201, response.content)
+        approval = OrderApproval.objects.get(order=order)
+        self.assertEqual(approval.status, OrderApproval.StatusChoices.PENDING)
+        self.assertEqual(approval.amount, 4500)
+        self.assertTrue(
+            OrderAuditLog.objects.filter(
+                order=order,
+                action=OrderAuditLog.ActionChoices.APPROVAL_REQUESTED,
             ).exists()
         )

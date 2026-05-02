@@ -26,6 +26,11 @@ class PortalLoginSchema(Schema):
     password: str
 
 
+class PortalPublicTrackSchema(Schema):
+    order_number: str
+    phone: str
+
+
 class PortalTokenSchema(Schema):
     access_token: str
     token_type: str = "Bearer"
@@ -55,6 +60,22 @@ class PortalRepairStageSchema(Schema):
     created_at: datetime
 
 
+class PortalApprovalSchema(Schema):
+    id: int
+    title: str
+    description: Optional[str] = None
+    amount: float
+    status: str
+    status_display: str
+    customer_comment: Optional[str] = None
+    decided_at: Optional[datetime] = None
+    created_at: datetime
+
+
+class PortalApprovalDecisionSchema(Schema):
+    comment: Optional[str] = None
+
+
 class PortalOrderSchema(Schema):
     id: int
     order_number: str
@@ -72,6 +93,7 @@ class PortalOrderSchema(Schema):
     updated_at: datetime
     estimated_completion: Optional[datetime] = None
     repair_stages: list[PortalRepairStageSchema] = []
+    approvals: list[PortalApprovalSchema] = []
 
 
 class PortalErrorSchema(Schema):

@@ -3,6 +3,7 @@ from django.contrib import admin
 from .models import (
     AdditionalService,
     Order,
+    OrderApproval,
     OrderAuditLog,
     OrderService,
     OrderStatusHistory,
@@ -22,6 +23,12 @@ class RepairStageInline(admin.TabularInline):
     readonly_fields = ("created_at", "updated_at")
 
 
+class OrderApprovalInline(admin.TabularInline):
+    model = OrderApproval
+    extra = 0
+    readonly_fields = ("created_at", "updated_at", "decided_at")
+
+
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = (
@@ -39,7 +46,7 @@ class OrderAdmin(admin.ModelAdmin):
         "customer__first_name",
         "customer__last_name",
     )
-    inlines = (OrderServiceInline, RepairStageInline)
+    inlines = (OrderServiceInline, RepairStageInline, OrderApprovalInline)
 
 
 @admin.register(OrderStatusHistory)
@@ -69,6 +76,14 @@ class RepairStageAdmin(admin.ModelAdmin):
     )
     list_filter = ("customer_visible", "created_at")
     search_fields = ("order__order_number", "title", "description")
+
+
+@admin.register(OrderApproval)
+class OrderApprovalAdmin(admin.ModelAdmin):
+    list_display = ("order", "title", "amount", "status", "requested_by", "created_at")
+    list_filter = ("status", "created_at")
+    search_fields = ("order__order_number", "title", "description")
+    readonly_fields = ("created_at", "updated_at", "decided_at")
 
 
 admin.site.register(AdditionalService)

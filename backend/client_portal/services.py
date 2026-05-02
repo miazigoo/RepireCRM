@@ -14,7 +14,7 @@ from phonenumber_field.phonenumber import PhoneNumber
 
 from customers.models import Customer, CustomerShopHistory
 from device.models import Device, DeviceBrand, DeviceModel, DeviceType
-from orders.models import Order
+from orders.models import Order, OrderApproval, OrderAuditLog
 from shops.models import Shop
 from users.models import User
 
@@ -219,7 +219,63 @@ def serialize_portal_order(order: Order) -> dict[str, Any]:
             }
             for stage in order.repair_stages.filter(customer_visible=True)
         ],
+        "approvals": [
+            serialize_portal_approval(item) for item in order.approvals.all()
+        ],
     }
+
+
+def serialize_portal_approval(approval: OrderApproval) -> dict[str, Any]:
+    return {
+        "id": approval.id,
+        "title": approval.title,
+        "description": approval.description or None,
+        "amount": float(approval.amount),
+        "status": approval.status,
+        "status_display": approval.get_status_display(),
+        "customer_comment": approval.customer_comment or None,
+        "decided_at": approval.decided_at,
+        "created_at": approval.created_at,
+    }
+
+
+def decide_order_approval(
+    approval: OrderApproval,
+    status: str,
+    comment: str = "",
+) -> OrderApproval:
+    if approval.status != OrderApproval.StatusChoices.PENDING:
+        raise PortalError("По этому согласованию уже принято решение")
+    if status not in (
+        OrderApproval.StatusChoices.APPROVED,
+        OrderApproval.StatusChoices.REJECTED,
+    ):
+        raise PortalError("Некорректное решение по согласованию")
+
+    approval.status = status
+    approval.customer_comment = comment.strip()
+    approval.decided_at = timezone.now()
+    approval.save(
+        update_fields=["status", "customer_comment", "decided_at", "updated_at"]
+    )
+
+    OrderAuditLog.objects.create(
+        order=approval.order,
+        action=OrderAuditLog.ActionChoices.APPROVAL_DECIDED,
+        message=f"Клиент: {approval.get_status_display().lower()}",
+        changes={
+            "approval_id": approval.id,
+            "status": status,
+            "customer_comment": approval.customer_comment,
+        },
+    )
+
+    if status == OrderApproval.StatusChoices.APPROVED:
+        order = approval.order
+        order.cost_estimate = approval.amount
+        order.save(update_fields=["cost_estimate", "updated_at"])
+
+    return approval
 
 
 def ensure_customer_payload(data: PortalOrderCreateSchema) -> None:

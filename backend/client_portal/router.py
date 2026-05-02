@@ -9,11 +9,14 @@ from customers.models import Customer
 from orders.models import Order
 
 from .schemas import (
+    PortalApprovalDecisionSchema,
+    PortalApprovalSchema,
     PortalCustomerSchema,
     PortalErrorSchema,
     PortalLoginSchema,
     PortalOrderCreateSchema,
     PortalOrderSchema,
+    PortalPublicTrackSchema,
     PortalRegisterSchema,
     PortalTokenSchema,
 )
@@ -21,11 +24,14 @@ from .services import (
     CUSTOMER_TOKEN_DAYS,
     authenticate_customer,
     create_customer_order,
+    decide_order_approval,
     ensure_customer_payload,
     get_customer_from_token,
     issue_customer_token,
+    normalize_phone,
     portal_error_response,
     register_customer,
+    serialize_portal_approval,
     serialize_portal_order,
 )
 
@@ -56,6 +62,7 @@ def _order_queryset(customer: Customer) -> QuerySet[Order]:
         )
         .prefetch_related(
             "repair_stages",
+            "approvals",
         )
     )
 
@@ -91,6 +98,31 @@ def login(request, data: PortalLoginSchema):
         "expires_in": CUSTOMER_TOKEN_DAYS * 24 * 60 * 60,
         "customer": _customer_payload(customer),
     }
+
+
+@router.post(
+    "/track",
+    response={200: PortalOrderSchema, 404: PortalErrorSchema, 400: PortalErrorSchema},
+)
+@ratelimit(key="ip", rate="20/m", block=True)
+def track_order(request, data: PortalPublicTrackSchema):
+    try:
+        phone = normalize_phone(data.phone)
+    except Exception as exc:
+        return portal_error_response(exc)
+
+    order = (
+        Order.objects.filter(
+            order_number=data.order_number.strip(),
+            customer__phone=phone,
+        )
+        .select_related("device__model__brand", "device__model__device_type")
+        .prefetch_related("repair_stages", "approvals")
+        .first()
+    )
+    if order is None:
+        return 404, {"error": "Заказ не найден"}
+    return serialize_portal_order(order)
 
 
 @router.get(
@@ -137,3 +169,61 @@ def get_order(request, order_id: int):
     if order is None:
         return 404, {"error": "Заказ не найден"}
     return serialize_portal_order(order)
+
+
+@router.post(
+    "/approvals/{approval_id}/approve",
+    response={
+        200: PortalApprovalSchema,
+        400: PortalErrorSchema,
+        404: PortalErrorSchema,
+    },
+    auth=CustomerAuthBearer(),
+)
+def approve_order_approval(
+    request,
+    approval_id: int,
+    data: PortalApprovalDecisionSchema,
+):
+    approval = _find_customer_approval(request.auth, approval_id)
+    if approval is None:
+        return 404, {"error": "Согласование не найдено"}
+    try:
+        approval = decide_order_approval(approval, "approved", data.comment or "")
+    except Exception as exc:
+        return portal_error_response(exc)
+    return serialize_portal_approval(approval)
+
+
+@router.post(
+    "/approvals/{approval_id}/reject",
+    response={
+        200: PortalApprovalSchema,
+        400: PortalErrorSchema,
+        404: PortalErrorSchema,
+    },
+    auth=CustomerAuthBearer(),
+)
+def reject_order_approval(
+    request,
+    approval_id: int,
+    data: PortalApprovalDecisionSchema,
+):
+    approval = _find_customer_approval(request.auth, approval_id)
+    if approval is None:
+        return 404, {"error": "Согласование не найдено"}
+    try:
+        approval = decide_order_approval(approval, "rejected", data.comment or "")
+    except Exception as exc:
+        return portal_error_response(exc)
+    return serialize_portal_approval(approval)
+
+
+def _find_customer_approval(customer: Customer, approval_id: int):
+    from orders.models import OrderApproval
+
+    return (
+        OrderApproval.objects.select_related("order")
+        .filter(id=approval_id, order__customer=customer)
+        .first()
+    )

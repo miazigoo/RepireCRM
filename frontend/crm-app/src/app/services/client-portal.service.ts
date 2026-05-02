@@ -35,6 +35,7 @@ export interface PortalOrder {
   updated_at: string;
   estimated_completion?: string;
   repair_stages: PortalRepairStage[];
+  approvals: PortalApproval[];
 }
 
 export interface PortalRepairStage {
@@ -42,6 +43,18 @@ export interface PortalRepairStage {
   title: string;
   description?: string;
   photo_url?: string;
+  created_at: string;
+}
+
+export interface PortalApproval {
+  id: number;
+  title: string;
+  description?: string;
+  amount: number;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  status_display: string;
+  customer_comment?: string;
+  decided_at?: string;
   created_at: string;
 }
 
@@ -114,6 +127,22 @@ export class ClientPortalService {
     return this.http.post<PortalOrder>(`${this.baseUrl}/orders`, data, {
       headers: this.portalHeaders()
     });
+  }
+
+  approveApproval(id: number, comment: string = ''): Observable<PortalApproval> {
+    return this.http.post<PortalApproval>(`${this.baseUrl}/approvals/${id}/approve`, { comment }, {
+      headers: this.portalHeaders()
+    });
+  }
+
+  rejectApproval(id: number, comment: string = ''): Observable<PortalApproval> {
+    return this.http.post<PortalApproval>(`${this.baseUrl}/approvals/${id}/reject`, { comment }, {
+      headers: this.portalHeaders()
+    });
+  }
+
+  trackOrder(data: { order_number: string; phone: string }): Observable<PortalOrder> {
+    return this.http.post<PortalOrder>(`${this.baseUrl}/track`, data);
   }
 
   isAuthenticated(): boolean {

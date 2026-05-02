@@ -226,6 +226,8 @@ class OrderAuditLog(models.Model):
         STATUS_CHANGED = "status_changed", "Изменен статус"
         STAGE_ADDED = "stage_added", "Добавлен этап"
         STAGE_UPDATED = "stage_updated", "Обновлен этап"
+        APPROVAL_REQUESTED = "approval_requested", "Запрошено согласование"
+        APPROVAL_DECIDED = "approval_decided", "Решение по согласованию"
 
     order = models.ForeignKey(
         Order,
@@ -308,6 +310,63 @@ class RepairStage(models.Model):
             )
             self.position = max_position + 1
         super().save(*args, **kwargs)
+
+
+class OrderApproval(models.Model):
+    """Согласование диагностики, стоимости или работ с клиентом."""
+
+    class StatusChoices(models.TextChoices):
+        PENDING = "pending", "Ожидает решения"
+        APPROVED = "approved", "Согласовано"
+        REJECTED = "rejected", "Отклонено"
+        CANCELLED = "cancelled", "Отменено"
+
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name="approvals",
+        verbose_name="Заказ",
+    )
+    title = models.CharField("Что согласовываем", max_length=160)
+    description = models.TextField("Описание", blank=True)
+    amount = models.DecimalField(
+        "Сумма",
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    status = models.CharField(
+        "Статус",
+        max_length=20,
+        choices=StatusChoices.choices,
+        default=StatusChoices.PENDING,
+    )
+    customer_comment = models.TextField("Комментарий клиента", blank=True)
+    requested_by = models.ForeignKey(
+        "users.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="requested_order_approvals",
+        verbose_name="Кто запросил",
+    )
+    decided_at = models.DateTimeField("Дата решения", null=True, blank=True)
+    created_at = models.DateTimeField("Дата запроса", auto_now_add=True)
+    updated_at = models.DateTimeField("Дата обновления", auto_now=True)
+
+    class Meta:
+        db_table = "order_approvals"
+        verbose_name = "Согласование заказа"
+        verbose_name_plural = "Согласования заказов"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["order", "status"]),
+            models.Index(fields=["created_at"]),
+        ]
+
+    @property
+    def status_display(self):
+        return self.get_status_display()
 
 
 class AdditionalService(models.Model):

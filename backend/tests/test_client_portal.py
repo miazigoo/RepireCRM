@@ -1,12 +1,13 @@
 import json
 
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 
 from customers.models import Customer
-from orders.models import Order, RepairStage
+from orders.models import Order, OrderApproval, RepairStage
 from shops.models import Shop
 
 
+@override_settings(RATELIMIT_ENABLE=False)
 class ClientPortalApiTestCase(TestCase):
     def setUp(self):
         self.client = Client()
@@ -144,6 +145,103 @@ class ClientPortalApiTestCase(TestCase):
         stages = response.json()["repair_stages"]
         self.assertEqual(len(stages), 1)
         self.assertEqual(stages[0]["title"], "Сняли нижнюю панель")
+
+    def test_customer_can_approve_pending_repair_estimate(self):
+        token = self.register_customer().json()["access_token"]
+        order_payload = self.post_json(
+            "/api/portal/orders",
+            {
+                "device_type": "Телефон",
+                "brand": "Samsung",
+                "model_name": "S24",
+                "problem_description": "Не заряжается",
+                "cost_estimate": 1000,
+            },
+            token=token,
+        ).json()
+        order = Order.objects.get(id=order_payload["id"])
+        approval = OrderApproval.objects.create(
+            order=order,
+            title="Замена разъема Type-C",
+            amount=4500,
+        )
+
+        response = self.post_json(
+            f"/api/portal/approvals/{approval.id}/approve",
+            {"comment": "Согласен, делайте"},
+            token=token,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        approval.refresh_from_db()
+        order.refresh_from_db()
+        self.assertEqual(approval.status, OrderApproval.StatusChoices.APPROVED)
+        self.assertEqual(approval.customer_comment, "Согласен, делайте")
+        self.assertEqual(order.cost_estimate, 4500)
+
+    def test_customer_cannot_decide_foreign_approval(self):
+        first_token = self.register_customer("+79991234567").json()["access_token"]
+        second_token = self.register_customer("+79997654321").json()["access_token"]
+        self.post_json(
+            "/api/portal/orders",
+            {
+                "device_type": "Телефон",
+                "brand": "Apple",
+                "model_name": "iPhone 13",
+                "problem_description": "Не включается",
+                "cost_estimate": 1000,
+            },
+            token=first_token,
+        )
+        first_order = Order.objects.get()
+        approval = OrderApproval.objects.create(
+            order=first_order,
+            title="Диагностика платы",
+            amount=3000,
+        )
+
+        response = self.post_json(
+            f"/api/portal/approvals/{approval.id}/reject",
+            {"comment": "Нет"},
+            token=second_token,
+        )
+
+        self.assertEqual(response.status_code, 404)
+        approval.refresh_from_db()
+        self.assertEqual(approval.status, OrderApproval.StatusChoices.PENDING)
+
+    def test_public_tracking_requires_order_number_and_customer_phone(self):
+        token = self.register_customer().json()["access_token"]
+        order_payload = self.post_json(
+            "/api/portal/orders",
+            {
+                "device_type": "Ноутбук",
+                "brand": "Lenovo",
+                "model_name": "ThinkPad",
+                "problem_description": "Не работает клавиатура",
+                "cost_estimate": 2500,
+            },
+            token=token,
+        ).json()
+
+        response = self.post_json(
+            "/api/portal/track",
+            {
+                "order_number": order_payload["order_number"],
+                "phone": "+7 999 123-45-67",
+            },
+        )
+        wrong_phone_response = self.post_json(
+            "/api/portal/track",
+            {
+                "order_number": order_payload["order_number"],
+                "phone": "+7 999 999-99-99",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["order_number"], order_payload["order_number"])
+        self.assertEqual(wrong_phone_response.status_code, 404)
 
     def test_portal_order_validation_rejects_bad_imei_and_negative_price(self):
         token = self.register_customer().json()["access_token"]

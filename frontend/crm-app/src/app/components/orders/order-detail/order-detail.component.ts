@@ -19,7 +19,13 @@ import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { finalize } from 'rxjs';
 import { OrdersService } from '../../../services/orders.service';
-import { Order, OrderAuditLog, OrderStatusHistory, RepairStage } from '../../../core/models/models';
+import {
+  Order,
+  OrderApproval,
+  OrderAuditLog,
+  OrderStatusHistory,
+  RepairStage
+} from '../../../core/models/models';
 
 @Component({
   selector: 'app-order-detail',
@@ -38,13 +44,16 @@ export class OrderDetailComponent implements OnInit {
   order: Order | null = null;
   loading = false;
   stageSaving = false;
+  approvalSaving = false;
   orderId: number;
 
   statusHistory: OrderStatusHistory[] = [];
   repairStages: RepairStage[] = [];
+  approvals: OrderApproval[] = [];
   auditLogs: OrderAuditLog[] = [];
   orderDocuments: any[] = [];
   stageForm: FormGroup;
+  approvalForm: FormGroup;
   selectedStagePhoto: File | null = null;
 
   constructor(
@@ -61,12 +70,18 @@ export class OrderDetailComponent implements OnInit {
       description: [''],
       customer_visible: [true]
     });
+    this.approvalForm = this.fb.group({
+      title: ['Согласование стоимости ремонта', [Validators.required, Validators.maxLength(160)]],
+      description: [''],
+      amount: [0, [Validators.required, Validators.min(0)]]
+    });
   }
 
   ngOnInit(): void {
     this.loadOrder();
     this.loadStatusHistory();
     this.loadRepairStages();
+    this.loadApprovals();
     this.loadAuditLog();
     this.loadDocuments();
   }
@@ -103,6 +118,13 @@ export class OrderDetailComponent implements OnInit {
     this.ordersService.getAuditLog(this.orderId).subscribe({
       next: (items) => this.auditLogs = items,
       error: () => this.snackBar.open('Ошибка загрузки журнала действий', 'Закрыть', { duration: 3000 })
+    });
+  }
+
+  private loadApprovals(): void {
+    this.ordersService.getApprovals(this.orderId).subscribe({
+      next: (items) => this.approvals = items,
+      error: () => this.snackBar.open('Ошибка загрузки согласований', 'Закрыть', { duration: 3000 })
     });
   }
 
@@ -170,6 +192,32 @@ export class OrderDetailComponent implements OnInit {
         },
         error: (error) => {
           const message = error.error?.error || 'Не удалось добавить этап ремонта';
+          this.snackBar.open(message, 'Закрыть', { duration: 3500 });
+        }
+      });
+  }
+
+  requestApproval(): void {
+    if (this.approvalForm.invalid || this.approvalSaving) {
+      return;
+    }
+
+    this.approvalSaving = true;
+    this.ordersService.requestApproval(this.orderId, this.approvalForm.getRawValue())
+      .pipe(finalize(() => this.approvalSaving = false))
+      .subscribe({
+        next: () => {
+          this.snackBar.open('Согласование отправлено клиенту', 'Закрыть', { duration: 2500 });
+          this.approvalForm.reset({
+            title: 'Согласование стоимости ремонта',
+            description: '',
+            amount: 0
+          });
+          this.loadApprovals();
+          this.loadAuditLog();
+        },
+        error: (error) => {
+          const message = error.error?.error || 'Не удалось отправить согласование';
           this.snackBar.open(message, 'Закрыть', { duration: 3500 });
         }
       });

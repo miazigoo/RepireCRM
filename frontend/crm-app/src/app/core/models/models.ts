@@ -161,6 +161,20 @@ export interface RepairStage {
   updated_at: string;
 }
 
+export interface OrderApproval {
+  id: number;
+  title: string;
+  description?: string;
+  amount: number;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  status_display: string;
+  customer_comment?: string;
+  requested_by_name?: string;
+  decided_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export type OrderStatus =
   | 'received'
   | 'diagnosed'

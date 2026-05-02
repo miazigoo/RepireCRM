@@ -153,6 +153,36 @@ class RepairStageUpdateSchema(Schema):
     customer_visible: Optional[bool] = None
 
 
+class OrderApprovalSchema(Schema):
+    id: int
+    title: str
+    description: Optional[str] = None
+    amount: float
+    status: str
+    status_display: str
+    customer_comment: Optional[str] = None
+    requested_by_name: Optional[str] = None
+    decided_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    @staticmethod
+    def resolve_amount(obj):
+        return float(obj.amount)
+
+    @staticmethod
+    def resolve_requested_by_name(obj):
+        if not obj.requested_by:
+            return None
+        return obj.requested_by.full_name
+
+
+class OrderApprovalCreateSchema(Schema):
+    title: str
+    description: Optional[str] = None
+    amount: float
+
+
 class OrderSchema(Schema):
     id: int
     order_number: str

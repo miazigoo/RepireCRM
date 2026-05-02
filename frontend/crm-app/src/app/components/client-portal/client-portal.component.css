@@ -125,6 +125,37 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
+.track-panel {
+  display: grid;
+  gap: 12px;
+  max-width: 560px;
+  margin-top: 28px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.track-panel h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.track-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tracked-order {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #17202a;
+}
+
 .auth-panel,
 .request-panel,
 .orders-panel {
@@ -267,6 +298,41 @@
   margin-top: 12px;
 }
 
+.client-approvals {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.client-approval {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #f1d18a;
+  border-radius: 8px;
+  background: #fffbeb;
+}
+
+.client-approval strong {
+  display: block;
+}
+
+.client-approval p {
+  margin: 4px 0;
+}
+
+.client-approval span {
+  color: #7c4a00;
+  font-size: 13px;
+}
+
+.approval-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .client-stage {
   display: grid;
   grid-template-columns: 64px 1fr;
@@ -354,7 +420,9 @@ mat-chip {
   }
 
   .register-form,
-  .request-grid {
+  .request-grid,
+  .track-grid,
+  .client-approval {
     grid-template-columns: 1fr;
   }
 

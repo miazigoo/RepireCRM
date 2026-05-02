@@ -324,6 +324,61 @@
             </mat-tab>
 
 
+            <mat-tab label="Согласования">
+              <div class="tab-content">
+                <form class="approval-form" [formGroup]="approvalForm" (ngSubmit)="requestApproval()">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Тема</mat-label>
+                    <input matInput formControlName="title" maxlength="160">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Сумма, ₽</mat-label>
+                    <input matInput type="number" min="0" formControlName="amount">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline" class="approval-description-field">
+                    <mat-label>Что должен согласовать клиент</mat-label>
+                    <textarea matInput rows="3" formControlName="description"></textarea>
+                  </mat-form-field>
+
+                  <button mat-flat-button color="primary" type="submit" [disabled]="approvalForm.invalid || approvalSaving">
+                    <mat-spinner *ngIf="approvalSaving" diameter="18"></mat-spinner>
+                    <mat-icon *ngIf="!approvalSaving">task_alt</mat-icon>
+                    Отправить клиенту
+                  </button>
+                </form>
+
+                <div class="empty-inline" *ngIf="approvals.length === 0">
+                  <mat-icon>rule</mat-icon>
+                  <span>Согласований пока нет</span>
+                </div>
+
+                <div class="approval-list">
+                  <div class="approval-item" *ngFor="let approval of approvals">
+                    <div>
+                      <h5>{{ approval.title }}</h5>
+                      <p *ngIf="approval.description">{{ approval.description }}</p>
+                      <p *ngIf="approval.customer_comment" class="customer-comment">
+                        Комментарий клиента: {{ approval.customer_comment }}
+                      </p>
+                      <div class="stage-meta">
+                        <span>{{ approval.requested_by_name || 'Сотрудник' }}</span>
+                        <span>{{ approval.created_at | date:'dd.MM.yyyy HH:mm' }}</span>
+                      </div>
+                    </div>
+                    <div class="approval-side">
+                      <strong>{{ approval.amount | currency:'RUB':'symbol':'1.0-0' }}</strong>
+                      <mat-chip [class]="'approval-' + approval.status">
+                        {{ approval.status_display }}
+                      </mat-chip>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </mat-tab>
+
+
             <mat-tab label="Журнал действий" *ngIf="auditLogs.length > 0">
               <div class="tab-content">
                 <div class="audit-list">

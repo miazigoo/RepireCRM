@@ -42,6 +42,7 @@ export class ClientPortalComponent implements OnInit {
   orders: PortalOrder[] = [];
   loading = false;
   ordersLoading = false;
+  decisionLoading = false;
   error = '';
   success = '';
   authMode: 'login' | 'register' = 'login';
@@ -50,6 +51,8 @@ export class ClientPortalComponent implements OnInit {
   loginForm!: FormGroup;
   registerForm!: FormGroup;
   orderForm!: FormGroup;
+  trackForm!: FormGroup;
+  trackedOrder: PortalOrder | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -80,6 +83,11 @@ export class ClientPortalComponent implements OnInit {
       device_condition: [''],
       problem_description: ['', [Validators.required, Validators.minLength(10)]],
       cost_estimate: [0, [Validators.required, Validators.min(0)]]
+    });
+
+    this.trackForm = this.fb.group({
+      order_number: ['', Validators.required],
+      phone: ['', [Validators.required, Validators.minLength(10)]]
     });
   }
 
@@ -162,6 +170,29 @@ export class ClientPortalComponent implements OnInit {
       });
   }
 
+  trackOrder(): void {
+    if (this.trackForm.invalid) {
+      return;
+    }
+    this.loading = true;
+    this.trackedOrder = null;
+    this.clearMessages();
+    this.portalService.trackOrder(this.trackForm.getRawValue())
+      .pipe(finalize(() => this.loading = false))
+      .subscribe({
+        next: order => this.trackedOrder = order,
+        error: error => this.error = this.extractError(error)
+      });
+  }
+
+  approveApproval(approvalId: number): void {
+    this.decideApproval(approvalId, true);
+  }
+
+  rejectApproval(approvalId: number): void {
+    this.decideApproval(approvalId, false);
+  }
+
   logout(): void {
     this.portalService.logout();
     this.orders = [];
@@ -174,6 +205,10 @@ export class ClientPortalComponent implements OnInit {
 
   statusClass(order: PortalOrder): string {
     return `status-${order.status}`;
+  }
+
+  hasPendingApprovals(order: PortalOrder): boolean {
+    return order.approvals.some(approval => approval.status === 'pending');
   }
 
   private loadOrders(): void {
@@ -189,6 +224,26 @@ export class ClientPortalComponent implements OnInit {
   private clearMessages(): void {
     this.error = '';
     this.success = '';
+  }
+
+  private decideApproval(approvalId: number, approve: boolean): void {
+    if (this.decisionLoading) {
+      return;
+    }
+    this.decisionLoading = true;
+    this.clearMessages();
+    const request = approve
+      ? this.portalService.approveApproval(approvalId)
+      : this.portalService.rejectApproval(approvalId);
+
+    request.pipe(finalize(() => this.decisionLoading = false))
+      .subscribe({
+        next: () => {
+          this.success = approve ? 'Согласование принято' : 'Согласование отклонено';
+          this.loadOrders();
+        },
+        error: error => this.error = this.extractError(error)
+      });
   }
 
   private extractError(error: { error?: { error?: string } }): string {

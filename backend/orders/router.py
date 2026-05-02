@@ -16,6 +16,7 @@ from users.models import User
 from .models import (
     AdditionalService,
     Order,
+    OrderApproval,
     OrderAuditLog,
     OrderService,
     OrderStatusHistory,
@@ -24,6 +25,8 @@ from .models import (
 )
 from .orders_schemas import (
     AdditionalServiceSchema,
+    OrderApprovalCreateSchema,
+    OrderApprovalSchema,
     OrderAuditLogSchema,
     OrderCreateSchema,
     OrderFilterSchema,
@@ -498,6 +501,53 @@ def update_repair_stage(
         )
 
     return stage
+
+
+@router.get("/{order_id}/approvals", response=List[OrderApprovalSchema])
+def list_order_approvals(request, order_id: int):
+    """Согласования цены и работ по заказу."""
+    if not request.auth.has_permission("orders.view_order"):
+        raise PermissionError("Нет прав для просмотра заказов")
+
+    order = _get_accessible_order(request, order_id)
+    return order.approvals.select_related("requested_by").all()
+
+
+@router.post(
+    "/{order_id}/approvals",
+    response={201: OrderApprovalSchema, 400: ErrorSchema},
+)
+def request_order_approval(
+    request,
+    order_id: int,
+    data: OrderApprovalCreateSchema,
+):
+    """Запросить у клиента согласование диагностики, работ или суммы."""
+    if not request.auth.has_permission("orders.change_order"):
+        raise PermissionError("Нет прав для изменения заказов")
+
+    order = _get_accessible_order(request, order_id)
+    title = data.title.strip()
+    if not title:
+        return 400, {"error": "Название согласования обязательно"}
+    if data.amount < 0:
+        return 400, {"error": "Сумма согласования не может быть отрицательной"}
+
+    approval = OrderApproval.objects.create(
+        order=order,
+        title=title,
+        description=(data.description or "").strip(),
+        amount=data.amount,
+        requested_by=request.auth,
+    )
+    _log_order_audit(
+        order=order,
+        action=OrderAuditLog.ActionChoices.APPROVAL_REQUESTED,
+        actor=request.auth,
+        message=f"Запрошено согласование: {approval.title}",
+        changes={"approval_id": approval.id, "amount": float(approval.amount)},
+    )
+    return 201, approval
 
 
 @router.get("/additional-services", response=List[AdditionalServiceSchema])
