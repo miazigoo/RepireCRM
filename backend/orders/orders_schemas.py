@@ -1,5 +1,4 @@
 from datetime import datetime
-from decimal import Decimal
 from typing import List, Optional
 
 from ninja import Schema
@@ -97,6 +96,61 @@ class OrderUpdateSchema(Schema):
     assigned_to_id: Optional[int] = None
     estimated_completion: Optional[datetime] = None
     notes: Optional[str] = None
+    status_comment: Optional[str] = None
+
+
+class OrderStatusHistorySchema(Schema):
+    id: int
+    old_status: Optional[str] = None
+    new_status: str
+    comment: Optional[str] = None
+    changed_by_name: Optional[str] = None
+    changed_at: datetime
+
+    @staticmethod
+    def resolve_changed_by_name(obj):
+        if not obj.changed_by:
+            return None
+        return obj.changed_by.full_name
+
+
+class OrderAuditLogSchema(Schema):
+    id: int
+    action: str
+    message: str
+    changes: dict
+    actor_name: Optional[str] = None
+    created_at: datetime
+
+    @staticmethod
+    def resolve_actor_name(obj):
+        if not obj.actor:
+            return None
+        return obj.actor.full_name
+
+
+class RepairStageSchema(Schema):
+    id: int
+    title: str
+    description: Optional[str] = None
+    photo_url: Optional[str] = None
+    customer_visible: bool
+    position: int
+    created_by_name: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    @staticmethod
+    def resolve_created_by_name(obj):
+        if not obj.created_by:
+            return None
+        return obj.created_by.full_name
+
+
+class RepairStageUpdateSchema(Schema):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    customer_visible: Optional[bool] = None
 
 
 class OrderSchema(Schema):

@@ -29,6 +29,22 @@ export class ApiService {
     return headers;
   }
 
+  private getAuthHeaders(): HttpHeaders {
+    const token = localStorage.getItem('access_token');
+    let headers = new HttpHeaders();
+
+    if (token) {
+      headers = headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    const currentShopId = localStorage.getItem('current_shop_id');
+    if (currentShopId) {
+      headers = headers.set('X-Current-Shop', currentShopId);
+    }
+
+    return headers;
+  }
+
   get<T>(endpoint: string, params?: any): Observable<T> {
     let httpParams = new HttpParams();
     if (params) {
@@ -65,6 +81,12 @@ export class ApiService {
   post<T>(endpoint: string, data: any): Observable<T> {
     return this.http.post<T>(`${this.baseUrl}${endpoint}`, data, {
       headers: this.getHeaders()
+    });
+  }
+
+  postForm<T>(endpoint: string, data: FormData): Observable<T> {
+    return this.http.post<T>(`${this.baseUrl}${endpoint}`, data, {
+      headers: this.getAuthHeaders()
     });
   }
 

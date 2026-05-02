@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import Max
 from sequences import get_next_value
 
 
@@ -171,6 +172,141 @@ class Order(models.Model):
         if not self.order_number:
             self.order_number = self._generate_order_number()
 
+        super().save(*args, **kwargs)
+
+
+class OrderStatusHistory(models.Model):
+    """История переходов статусов заказа."""
+
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name="status_history",
+        verbose_name="Заказ",
+    )
+    old_status = models.CharField(
+        "Старый статус",
+        max_length=20,
+        choices=Order.StatusChoices.choices,
+        blank=True,
+    )
+    new_status = models.CharField(
+        "Новый статус",
+        max_length=20,
+        choices=Order.StatusChoices.choices,
+    )
+    comment = models.TextField("Комментарий", blank=True)
+    changed_by = models.ForeignKey(
+        "users.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="order_status_changes",
+        verbose_name="Кто изменил",
+    )
+    changed_at = models.DateTimeField("Дата изменения", auto_now_add=True)
+
+    class Meta:
+        db_table = "order_status_history"
+        verbose_name = "История статуса заказа"
+        verbose_name_plural = "История статусов заказов"
+        ordering = ["-changed_at"]
+        indexes = [
+            models.Index(fields=["order", "-changed_at"]),
+            models.Index(fields=["new_status"]),
+        ]
+
+
+class OrderAuditLog(models.Model):
+    """Аудит важных действий с заказом."""
+
+    class ActionChoices(models.TextChoices):
+        CREATED = "created", "Создан"
+        UPDATED = "updated", "Обновлен"
+        STATUS_CHANGED = "status_changed", "Изменен статус"
+        STAGE_ADDED = "stage_added", "Добавлен этап"
+        STAGE_UPDATED = "stage_updated", "Обновлен этап"
+
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name="audit_logs",
+        verbose_name="Заказ",
+    )
+    action = models.CharField("Действие", max_length=40, choices=ActionChoices.choices)
+    actor = models.ForeignKey(
+        "users.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="order_audit_logs",
+        verbose_name="Пользователь",
+    )
+    message = models.CharField("Описание", max_length=255)
+    changes = models.JSONField("Изменения", default=dict, blank=True)
+    created_at = models.DateTimeField("Дата", auto_now_add=True)
+
+    class Meta:
+        db_table = "order_audit_logs"
+        verbose_name = "Запись аудита заказа"
+        verbose_name_plural = "Аудит заказов"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["order", "-created_at"]),
+            models.Index(fields=["action"]),
+        ]
+
+
+class RepairStage(models.Model):
+    """Произвольный этап ремонта с фотофиксацией."""
+
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name="repair_stages",
+        verbose_name="Заказ",
+    )
+    title = models.CharField("Название этапа", max_length=120)
+    description = models.TextField("Описание", blank=True)
+    photo = models.ImageField("Фото", upload_to="repair_stages/%Y/%m/", blank=True)
+    customer_visible = models.BooleanField("Видно клиенту", default=True)
+    position = models.PositiveIntegerField("Порядок", default=0)
+    created_by = models.ForeignKey(
+        "users.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="repair_stages",
+        verbose_name="Кто добавил",
+    )
+    created_at = models.DateTimeField("Дата создания", auto_now_add=True)
+    updated_at = models.DateTimeField("Дата обновления", auto_now=True)
+
+    class Meta:
+        db_table = "repair_stages"
+        verbose_name = "Этап ремонта"
+        verbose_name_plural = "Этапы ремонта"
+        ordering = ["position", "created_at"]
+        indexes = [
+            models.Index(fields=["order", "position"]),
+            models.Index(fields=["order", "customer_visible"]),
+        ]
+
+    @property
+    def photo_url(self):
+        if not self.photo:
+            return None
+        return self.photo.url
+
+    def save(self, *args, **kwargs):
+        if not self.position:
+            max_position = (
+                RepairStage.objects.filter(order=self.order).aggregate(Max("position"))[
+                    "position__max"
+                ]
+                or 0
+            )
+            self.position = max_position + 1
         super().save(*args, **kwargs)
 
 

@@ -47,6 +47,14 @@ class PortalOrderCreateSchema(Schema):
     cost_estimate: float = 0
 
 
+class PortalRepairStageSchema(Schema):
+    id: int
+    title: str
+    description: Optional[str] = None
+    photo_url: Optional[str] = None
+    created_at: datetime
+
+
 class PortalOrderSchema(Schema):
     id: int
     order_number: str
@@ -63,6 +71,7 @@ class PortalOrderSchema(Schema):
     created_at: datetime
     updated_at: datetime
     estimated_completion: Optional[datetime] = None
+    repair_stages: list[PortalRepairStageSchema] = []
 
 
 class PortalErrorSchema(Schema):

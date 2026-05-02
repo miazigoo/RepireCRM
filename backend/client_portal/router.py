@@ -48,9 +48,15 @@ def _customer_payload(customer: Customer) -> dict:
 
 
 def _order_queryset(customer: Customer) -> QuerySet[Order]:
-    return Order.objects.filter(customer=customer).select_related(
-        "device__model__brand",
-        "device__model__device_type",
+    return (
+        Order.objects.filter(customer=customer)
+        .select_related(
+            "device__model__brand",
+            "device__model__device_type",
+        )
+        .prefetch_related(
+            "repair_stages",
+        )
     )
 
 

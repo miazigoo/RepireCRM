@@ -238,24 +238,100 @@
             </mat-tab>
 
 
+            <mat-tab label="Этапы ремонта">
+              <div class="tab-content">
+                <form class="stage-form" [formGroup]="stageForm" (ngSubmit)="addRepairStage()">
+                  <div class="stage-form-grid">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Что сделали</mat-label>
+                      <input matInput formControlName="title" maxlength="120">
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" class="stage-description-field">
+                      <mat-label>Комментарий мастера</mat-label>
+                      <textarea matInput rows="3" formControlName="description"></textarea>
+                    </mat-form-field>
+
+                    <label class="photo-picker">
+                      <input type="file" accept="image/*" (change)="onStagePhotoSelected($event)">
+                      <mat-icon>add_a_photo</mat-icon>
+                      <span>{{ selectedStagePhoto ? selectedStagePhoto.name : 'Фото этапа' }}</span>
+                    </label>
+
+                    <mat-checkbox formControlName="customer_visible">
+                      Показывать клиенту
+                    </mat-checkbox>
+                  </div>
+
+                  <button mat-flat-button color="primary" type="submit" [disabled]="stageForm.invalid || stageSaving">
+                    <mat-spinner *ngIf="stageSaving" diameter="18"></mat-spinner>
+                    <mat-icon *ngIf="!stageSaving">add</mat-icon>
+                    Добавить этап
+                  </button>
+                </form>
+
+                <div class="empty-inline" *ngIf="repairStages.length === 0">
+                  <mat-icon>playlist_add</mat-icon>
+                  <span>Этапов ремонта пока нет</span>
+                </div>
+
+                <div class="repair-stages">
+                  <div class="repair-stage" *ngFor="let stage of repairStages">
+                    <div class="stage-photo" *ngIf="stage.photo_url">
+                      <img [src]="stage.photo_url" [alt]="stage.title">
+                    </div>
+                    <div class="stage-body">
+                      <div class="stage-header">
+                        <h5>{{ stage.position }}. {{ stage.title }}</h5>
+                        <mat-chip [class]="stage.customer_visible ? 'visible-chip' : 'private-chip'">
+                          {{ stage.customer_visible ? 'Видно клиенту' : 'Только сотрудникам' }}
+                        </mat-chip>
+                      </div>
+                      <p *ngIf="stage.description">{{ stage.description }}</p>
+                      <div class="stage-meta">
+                        <span>{{ stage.created_by_name || 'Сотрудник' }}</span>
+                        <span>{{ stage.created_at | date:'dd.MM.yyyy HH:mm' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </mat-tab>
+
+
             <mat-tab label="История статусов">
               <div class="tab-content">
                 <div class="status-timeline">
                   <div class="timeline-item" *ngFor="let item of statusHistory">
                     <div class="timeline-marker">
-                      <mat-icon [class]="'status-icon ' + item.status">
-                        {{ getStatusIcon(item.status) }}
+                      <mat-icon [class]="'status-icon ' + item.new_status">
+                        {{ getStatusIcon(item.new_status) }}
                       </mat-icon>
                     </div>
                     <div class="timeline-content">
                       <div class="timeline-header">
-                        <span class="status-name">{{ getStatusLabel(item.status) }}</span>
-                        <span class="timeline-date">{{ item.date | date:'dd.MM.yyyy HH:mm' }}</span>
+                        <span class="status-name">{{ getStatusLabel(item.new_status) }}</span>
+                        <span class="timeline-date">{{ item.changed_at | date:'dd.MM.yyyy HH:mm' }}</span>
                       </div>
                       <div class="timeline-details">
-                        <span class="user-name">{{ item.user }}</span>
+                        <span class="user-name">{{ item.changed_by_name || 'Система' }}</span>
                         <span class="comment" *ngIf="item.comment">{{ item.comment }}</span>
                       </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </mat-tab>
+
+
+            <mat-tab label="Журнал действий" *ngIf="auditLogs.length > 0">
+              <div class="tab-content">
+                <div class="audit-list">
+                  <div class="audit-item" *ngFor="let log of auditLogs">
+                    <mat-icon>history</mat-icon>
+                    <div>
+                      <h5>{{ log.message }}</h5>
+                      <p>{{ log.actor_name || 'Система' }} · {{ log.created_at | date:'dd.MM.yyyy HH:mm' }}</p>
                     </div>
                   </div>
                 </div>

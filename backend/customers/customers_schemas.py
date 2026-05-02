@@ -53,6 +53,10 @@ class CustomerSchema(Schema):
     marketing_consent: bool
 
     @staticmethod
+    def resolve_phone(obj):
+        return str(obj.phone)
+
+    @staticmethod
     def resolve_total_spent(obj):
         return float(obj.total_spent)
 

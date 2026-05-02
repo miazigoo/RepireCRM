@@ -209,6 +209,16 @@ def serialize_portal_order(order: Order) -> dict[str, Any]:
         "created_at": order.created_at,
         "updated_at": order.updated_at,
         "estimated_completion": order.estimated_completion,
+        "repair_stages": [
+            {
+                "id": stage.id,
+                "title": stage.title,
+                "description": stage.description or None,
+                "photo_url": stage.photo_url,
+                "created_at": stage.created_at,
+            }
+            for stage in order.repair_stages.filter(customer_visible=True)
+        ],
     }
 
 

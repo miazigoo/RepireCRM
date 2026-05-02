@@ -28,9 +28,31 @@ class AuthBearer(HttpBearer):
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
             user_id = payload.get("user_id")
             user = User.objects.get(id=user_id)
+            self._attach_current_shop(request, user)
             return user
         except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, User.DoesNotExist):
             return None
+
+    def _attach_current_shop(self, request, user):
+        from shops.models import Shop
+
+        shop_id = request.META.get("HTTP_X_CURRENT_SHOP")
+        shop = None
+        if shop_id:
+            shop = Shop.objects.filter(id=shop_id, is_active=True).first()
+            if shop and not user.can_access_shop(shop):
+                shop = None
+
+        if shop is None and user.current_shop_id:
+            shop = (
+                user.current_shop if user.can_access_shop(user.current_shop) else None
+            )
+
+        if shop is None:
+            shop = user.get_available_shops().first()
+
+        if shop is not None:
+            request.current_shop = shop
 
 
 # Создаем основной API объект
@@ -71,9 +93,10 @@ def health_check(request):
 # Обработчики ошибок
 @api.exception_handler(PermissionError)
 def permission_error_handler(request, exc):
-    return JsonResponse(
-        {"error": "Недостаточно прав для выполнения операции"}, status=403
-    )
+    if getattr(exc, "errno", None):
+        return JsonResponse({"error": "Ошибка доступа к файлу"}, status=500)
+    message = str(exc) or "Недостаточно прав для выполнения операции"
+    return JsonResponse({"error": message}, status=403)
 
 
 @api.exception_handler(ValueError)

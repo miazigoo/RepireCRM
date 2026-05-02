@@ -2,23 +2,36 @@ from typing import List
 
 from django.db import models, transaction
 from django.db.models import Prefetch, Q
+from django.http import Http404
 from django.shortcuts import get_object_or_404
-from ninja import Query, Router
+from ninja import File, Form, Query, Router
+from ninja.files import UploadedFile
 from ninja.pagination import PageNumberPagination, paginate
 
 from customers.models import Customer
 from device.models import Device, DeviceModel
-from Schemas.common import ErrorSchema, MessageSchema
+from Schemas.common import ErrorSchema
 from users.models import User
 
-from .models import AdditionalService, Order, OrderService, RepairService
+from .models import (
+    AdditionalService,
+    Order,
+    OrderAuditLog,
+    OrderService,
+    OrderStatusHistory,
+    RepairService,
+    RepairStage,
+)
 from .orders_schemas import (
     AdditionalServiceSchema,
+    OrderAuditLogSchema,
     OrderCreateSchema,
     OrderFilterSchema,
-    OrderListSchema,
     OrderSchema,
+    OrderStatusHistorySchema,
     OrderUpdateSchema,
+    RepairStageSchema,
+    RepairStageUpdateSchema,
 )
 from .schemas_repair_services import RepairServiceSchema
 
@@ -27,6 +40,55 @@ router = Router(tags=["Заказы"])
 
 class OrderPagination(PageNumberPagination):
     page_size = 20
+
+
+def _get_accessible_order(request, order_id: int) -> Order:
+    order = get_object_or_404(
+        Order.objects.select_related("shop", "customer", "device__model__brand"),
+        id=order_id,
+    )
+    if not request.auth.can_access_shop(order.shop):
+        raise PermissionError("Нет доступа к данному заказу")
+    return order
+
+
+def _log_order_audit(
+    order: Order,
+    action: str,
+    message: str,
+    actor=None,
+    changes: dict | None = None,
+) -> None:
+    OrderAuditLog.objects.create(
+        order=order,
+        action=action,
+        actor=actor,
+        message=message,
+        changes=changes or {},
+    )
+
+
+def _record_status_history(
+    order: Order,
+    old_status: str,
+    new_status: str,
+    user=None,
+    comment: str = "",
+) -> None:
+    OrderStatusHistory.objects.create(
+        order=order,
+        old_status=old_status,
+        new_status=new_status,
+        changed_by=user,
+        comment=comment,
+    )
+    _log_order_audit(
+        order=order,
+        action=OrderAuditLog.ActionChoices.STATUS_CHANGED,
+        actor=user,
+        message=f"Статус изменен на {order.get_status_display()}",
+        changes={"old_status": old_status, "new_status": new_status},
+    )
 
 
 @router.get("/", response=List[OrderSchema])
@@ -160,6 +222,19 @@ def create_order(request, data: OrderCreateSchema):
                 estimated_completion=data.estimated_completion,
                 created_by=request.auth,
             )
+            _record_status_history(
+                order=order,
+                old_status="",
+                new_status=order.status,
+                user=request.auth,
+                comment="Заказ создан",
+            )
+            _log_order_audit(
+                order=order,
+                action=OrderAuditLog.ActionChoices.CREATED,
+                actor=request.auth,
+                message="Заказ создан сотрудником",
+            )
 
             # Добавляем дополнительные услуги
             if data.additional_services:
@@ -208,6 +283,8 @@ def create_order(request, data: OrderCreateSchema):
 
             return 201, order
 
+    except Http404:
+        return 400, {"error": "Некорректные данные заказа"}
     except Exception as e:
         return 400, {"error": str(e)}
 
@@ -221,27 +298,28 @@ def update_order(request, order_id: int, data: OrderUpdateSchema):
         raise PermissionError("Нет прав для изменения заказов")
 
     try:
-        order = get_object_or_404(Order, id=order_id)
-
-        # Проверяем доступ к магазину заказа
-        if not request.auth.can_access_shop(order.shop):
-            raise PermissionError("Нет доступа к данному заказу")
+        order = _get_accessible_order(request, order_id)
+        old_status = order.status
+        incoming = data.dict(exclude_unset=True)
+        status_comment = incoming.pop("status_comment", "") or ""
 
         # Специальная проверка для изменения статуса
-        if data.status and data.status != order.status:
+        if data.status and data.status != old_status:
             if not request.auth.has_permission("orders.change_status"):
                 raise PermissionError("Нет прав для изменения статуса заказа")
             if data.status == "completed":
-                incoming = data.dict(exclude_unset=True)
                 new_final_cost = incoming.get("final_cost")
                 if new_final_cost is None and order.final_cost is None:
                     return 400, {
-                        "error": "Нельзя закрыть заказ без итоговой стоимости (final_cost)"
+                        "error": (
+                            "Нельзя закрыть заказ без итоговой стоимости "
+                            "(final_cost)"
+                        )
                     }
 
         # Обновляем только переданные поля
         update_fields = []
-        for field, value in data.dict(exclude_unset=True).items():
+        for field, value in incoming.items():
             if field == "assigned_to_id":
                 if value:
                     assigned_user = get_object_or_404(User, id=value)
@@ -261,6 +339,22 @@ def update_order(request, order_id: int, data: OrderUpdateSchema):
             update_fields.append("completed_at")
 
         order.save(update_fields=update_fields + ["updated_at"])
+        if data.status and data.status != old_status:
+            _record_status_history(
+                order=order,
+                old_status=old_status,
+                new_status=order.status,
+                user=request.auth,
+                comment=status_comment,
+            )
+        elif update_fields:
+            _log_order_audit(
+                order=order,
+                action=OrderAuditLog.ActionChoices.UPDATED,
+                actor=request.auth,
+                message="Заказ обновлен",
+                changes={"fields": update_fields},
+            )
 
         # Обновляем статистику клиента если изменилась стоимость
         if "final_cost" in update_fields:
@@ -287,10 +381,123 @@ def update_order(request, order_id: int, data: OrderUpdateSchema):
 
         return order
 
-    except Order.DoesNotExist:
+    except Http404:
         return 404, {"error": "Заказ не найден"}
     except Exception as e:
         return 400, {"error": str(e)}
+
+
+@router.get(
+    "/{order_id}/status-history",
+    response=List[OrderStatusHistorySchema],
+)
+def list_status_history(request, order_id: int):
+    """История статусов заказа."""
+    if not request.auth.has_permission("orders.view_order"):
+        raise PermissionError("Нет прав для просмотра заказов")
+
+    order = _get_accessible_order(request, order_id)
+    return order.status_history.select_related("changed_by").all()
+
+
+@router.get("/{order_id}/audit-log", response=List[OrderAuditLogSchema])
+def list_audit_log(request, order_id: int):
+    """Журнал важных действий по заказу."""
+    if not request.auth.has_permission("orders.view_order"):
+        raise PermissionError("Нет прав для просмотра заказов")
+
+    order = _get_accessible_order(request, order_id)
+    return order.audit_logs.select_related("actor").all()
+
+
+@router.get("/{order_id}/repair-stages", response=List[RepairStageSchema])
+def list_repair_stages(request, order_id: int):
+    """Этапы ремонта с фотофиксацией."""
+    if not request.auth.has_permission("orders.view_order"):
+        raise PermissionError("Нет прав для просмотра заказов")
+
+    order = _get_accessible_order(request, order_id)
+    return order.repair_stages.select_related("created_by").all()
+
+
+@router.post(
+    "/{order_id}/repair-stages",
+    response={201: RepairStageSchema, 400: ErrorSchema},
+)
+def create_repair_stage(
+    request,
+    order_id: int,
+    title: str = Form(...),
+    description: str = Form(""),
+    customer_visible: bool = Form(True),
+    photo: UploadedFile | None = File(None),
+):
+    """Добавить произвольный этап ремонта, например с фото до/после работы."""
+    if not request.auth.has_permission("orders.change_order"):
+        raise PermissionError("Нет прав для изменения заказов")
+
+    order = _get_accessible_order(request, order_id)
+    clean_title = title.strip()
+    if not clean_title:
+        return 400, {"error": "Название этапа обязательно"}
+
+    stage = RepairStage.objects.create(
+        order=order,
+        title=clean_title,
+        description=description.strip(),
+        customer_visible=customer_visible,
+        photo=photo,
+        created_by=request.auth,
+    )
+    _log_order_audit(
+        order=order,
+        action=OrderAuditLog.ActionChoices.STAGE_ADDED,
+        actor=request.auth,
+        message=f"Добавлен этап ремонта: {stage.title}",
+        changes={"stage_id": stage.id, "customer_visible": customer_visible},
+    )
+    return 201, stage
+
+
+@router.put(
+    "/{order_id}/repair-stages/{stage_id}",
+    response={200: RepairStageSchema, 400: ErrorSchema, 404: ErrorSchema},
+)
+def update_repair_stage(
+    request,
+    order_id: int,
+    stage_id: int,
+    data: RepairStageUpdateSchema,
+):
+    """Обновить описание этапа или его видимость клиенту."""
+    if not request.auth.has_permission("orders.change_order"):
+        raise PermissionError("Нет прав для изменения заказов")
+
+    order = _get_accessible_order(request, order_id)
+    stage = order.repair_stages.filter(id=stage_id).first()
+    if not stage:
+        return 404, {"error": "Этап ремонта не найден"}
+
+    update_fields = []
+    for field, value in data.dict(exclude_unset=True).items():
+        if isinstance(value, str):
+            value = value.strip()
+        if field == "title" and not value:
+            return 400, {"error": "Название этапа обязательно"}
+        setattr(stage, field, value)
+        update_fields.append(field)
+
+    if update_fields:
+        stage.save(update_fields=update_fields + ["updated_at"])
+        _log_order_audit(
+            order=order,
+            action=OrderAuditLog.ActionChoices.STAGE_UPDATED,
+            actor=request.auth,
+            message=f"Обновлен этап ремонта: {stage.title}",
+            changes={"stage_id": stage.id, "fields": update_fields},
+        )
+
+    return stage
 
 
 @router.get("/additional-services", response=List[AdditionalServiceSchema])

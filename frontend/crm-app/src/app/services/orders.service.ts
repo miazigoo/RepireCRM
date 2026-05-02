@@ -1,7 +1,14 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
-import { Order, OrderFilters, AdditionalService } from '../core/models/models';
+import {
+  AdditionalService,
+  Order,
+  OrderAuditLog,
+  OrderFilters,
+  OrderStatusHistory,
+  RepairStage
+} from '../core/models/models';
 
 @Injectable({
   providedIn: 'root'
@@ -30,6 +37,22 @@ export class OrdersService {
 
   updateOrder(id: number, order: Partial<Order>): Observable<Order> {
     return this.apiService.put<Order>(`${this.endpoint}/${id}`, order);
+  }
+
+  getStatusHistory(id: number): Observable<OrderStatusHistory[]> {
+    return this.apiService.get<OrderStatusHistory[]>(`${this.endpoint}/${id}/status-history`);
+  }
+
+  getAuditLog(id: number): Observable<OrderAuditLog[]> {
+    return this.apiService.get<OrderAuditLog[]>(`${this.endpoint}/${id}/audit-log`);
+  }
+
+  getRepairStages(id: number): Observable<RepairStage[]> {
+    return this.apiService.get<RepairStage[]>(`${this.endpoint}/${id}/repair-stages`);
+  }
+
+  addRepairStage(id: number, data: FormData): Observable<RepairStage> {
+    return this.apiService.postForm<RepairStage>(`${this.endpoint}/${id}/repair-stages`, data);
   }
 
   getAdditionalServices(): Observable<AdditionalService[]> {

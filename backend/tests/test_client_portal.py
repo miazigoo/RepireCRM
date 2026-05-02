@@ -3,7 +3,7 @@ import json
 from django.test import Client, TestCase
 
 from customers.models import Customer
-from orders.models import Order
+from orders.models import Order, RepairStage
 from shops.models import Shop
 
 
@@ -111,6 +111,39 @@ class ClientPortalApiTestCase(TestCase):
         self.assertIn("Apple iPhone 14", payload["device_title"])
         self.assertTrue(payload["order_number"].startswith("ORD-MAIN-"))
         self.assertEqual(Order.objects.count(), 1)
+
+    def test_customer_sees_only_public_repair_stages(self):
+        token = self.register_customer().json()["access_token"]
+        order_payload = self.post_json(
+            "/api/portal/orders",
+            {
+                "device_type": "Телефон",
+                "brand": "Apple",
+                "model_name": "iPhone 14",
+                "problem_description": "Не заряжается",
+                "cost_estimate": 3500,
+            },
+            token=token,
+        ).json()
+        order = Order.objects.get(id=order_payload["id"])
+        RepairStage.objects.create(
+            order=order,
+            title="Сняли нижнюю панель",
+            description="Проверили следы влаги",
+            customer_visible=True,
+        )
+        RepairStage.objects.create(
+            order=order,
+            title="Внутренний контроль пайки",
+            customer_visible=False,
+        )
+
+        response = self.get_json(f"/api/portal/orders/{order.id}", token=token)
+
+        self.assertEqual(response.status_code, 200)
+        stages = response.json()["repair_stages"]
+        self.assertEqual(len(stages), 1)
+        self.assertEqual(stages[0]["title"], "Сняли нижнюю панель")
 
     def test_portal_order_validation_rejects_bad_imei_and_negative_price(self):
         token = self.register_customer().json()["access_token"]

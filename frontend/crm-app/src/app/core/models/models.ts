@@ -7,7 +7,7 @@ export interface User {
   email: string;
   phone?: string;
   is_director: boolean;
-  is_active: boolean; 
+  is_active: boolean;
   current_shop?: Shop;
   avatar?: string;
   role?: Role;
@@ -32,7 +32,7 @@ export interface ShopCreateRequest {
   address?: string;
   phone?: string;
   email?: string;
-  is_active?: boolean; 
+  is_active?: boolean;
   timezone: string;
   currency: string;
 }
@@ -129,6 +129,36 @@ export interface Order {
   completed_at?: string;
   additional_services: OrderService[];
   notes?: string;
+}
+
+export interface OrderStatusHistory {
+  id: number;
+  old_status?: OrderStatus;
+  new_status: OrderStatus;
+  comment?: string;
+  changed_by_name?: string;
+  changed_at: string;
+}
+
+export interface OrderAuditLog {
+  id: number;
+  action: string;
+  message: string;
+  changes: Record<string, unknown>;
+  actor_name?: string;
+  created_at: string;
+}
+
+export interface RepairStage {
+  id: number;
+  title: string;
+  description?: string;
+  photo_url?: string;
+  customer_visible: boolean;
+  position: number;
+  created_by_name?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export type OrderStatus =

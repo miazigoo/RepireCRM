@@ -34,6 +34,15 @@ export interface PortalOrder {
   created_at: string;
   updated_at: string;
   estimated_completion?: string;
+  repair_stages: PortalRepairStage[];
+}
+
+export interface PortalRepairStage {
+  id: number;
+  title: string;
+  description?: string;
+  photo_url?: string;
+  created_at: string;
 }
 
 export interface PortalOrderCreate {

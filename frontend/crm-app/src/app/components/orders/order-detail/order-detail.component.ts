@@ -1,6 +1,7 @@
 // frontend/crm-app/src/app/features/orders/order-detail/order-detail.component.ts
 import { Component, OnInit } from '@angular/core';
 import { NgIf, NgFor, NgClass, DatePipe, CurrencyPipe } from '@angular/common';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -13,17 +14,22 @@ import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTableModule } from '@angular/material/table';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { finalize } from 'rxjs';
 import { OrdersService } from '../../../services/orders.service';
-import { Order } from '../../../core/models/models';
+import { Order, OrderAuditLog, OrderStatusHistory, RepairStage } from '../../../core/models/models';
 
 @Component({
   selector: 'app-order-detail',
   standalone: true,
   imports: [
-    NgIf, NgFor, DatePipe, CurrencyPipe, RouterModule,
+    NgIf, NgFor, DatePipe, CurrencyPipe, RouterModule, ReactiveFormsModule,
     MatCardModule, MatButtonModule, MatIconModule, MatChipsModule,
     MatDividerModule, MatMenuModule, MatDialogModule, MatSnackBarModule,
-    MatProgressSpinnerModule, MatTabsModule, MatTableModule
+    MatProgressSpinnerModule, MatTabsModule, MatTableModule, MatFormFieldModule,
+    MatInputModule, MatCheckboxModule
   ],
   templateUrl: './order-detail.component.html',
   styleUrl: './order-detail.component.css'
@@ -31,24 +37,37 @@ import { Order } from '../../../core/models/models';
 export class OrderDetailComponent implements OnInit {
   order: Order | null = null;
   loading = false;
+  stageSaving = false;
   orderId: number;
 
-  statusHistory: any[] = [];
+  statusHistory: OrderStatusHistory[] = [];
+  repairStages: RepairStage[] = [];
+  auditLogs: OrderAuditLog[] = [];
   orderDocuments: any[] = [];
+  stageForm: FormGroup;
+  selectedStagePhoto: File | null = null;
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private ordersService: OrdersService,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private fb: FormBuilder
   ) {
     this.orderId = +this.route.snapshot.params['id'];
+    this.stageForm = this.fb.group({
+      title: ['', [Validators.required, Validators.maxLength(120)]],
+      description: [''],
+      customer_visible: [true]
+    });
   }
 
   ngOnInit(): void {
     this.loadOrder();
     this.loadStatusHistory();
+    this.loadRepairStages();
+    this.loadAuditLog();
     this.loadDocuments();
   }
 
@@ -67,21 +86,24 @@ export class OrderDetailComponent implements OnInit {
   }
 
   private loadStatusHistory(): void {
-    // Load status change history
-    this.statusHistory = [
-      {
-        status: 'received',
-        date: new Date('2024-01-15T10:00:00'),
-        user: 'Иванов И.И.',
-        comment: 'Заказ принят'
-      },
-      {
-        status: 'diagnosed',
-        date: new Date('2024-01-15T14:30:00'),
-        user: 'Петров П.П.',
-        comment: 'Требуется замена экрана'
-      }
-    ];
+    this.ordersService.getStatusHistory(this.orderId).subscribe({
+      next: (items) => this.statusHistory = items,
+      error: () => this.snackBar.open('Ошибка загрузки истории статусов', 'Закрыть', { duration: 3000 })
+    });
+  }
+
+  private loadRepairStages(): void {
+    this.ordersService.getRepairStages(this.orderId).subscribe({
+      next: (items) => this.repairStages = items,
+      error: () => this.snackBar.open('Ошибка загрузки этапов ремонта', 'Закрыть', { duration: 3000 })
+    });
+  }
+
+  private loadAuditLog(): void {
+    this.ordersService.getAuditLog(this.orderId).subscribe({
+      next: (items) => this.auditLogs = items,
+      error: () => this.snackBar.open('Ошибка загрузки журнала действий', 'Закрыть', { duration: 3000 })
+    });
   }
 
   private loadDocuments(): void {
@@ -114,6 +136,43 @@ export class OrderDetailComponent implements OnInit {
   sendNotification(): void {
     // Send notification to customer
     console.log('Send notification');
+  }
+
+  onStagePhotoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.selectedStagePhoto = input.files?.[0] || null;
+  }
+
+  addRepairStage(): void {
+    if (this.stageForm.invalid || this.stageSaving) {
+      return;
+    }
+
+    const formValue = this.stageForm.getRawValue();
+    const data = new FormData();
+    data.append('title', formValue.title);
+    data.append('description', formValue.description || '');
+    data.append('customer_visible', String(formValue.customer_visible));
+    if (this.selectedStagePhoto) {
+      data.append('photo', this.selectedStagePhoto);
+    }
+
+    this.stageSaving = true;
+    this.ordersService.addRepairStage(this.orderId, data)
+      .pipe(finalize(() => this.stageSaving = false))
+      .subscribe({
+        next: () => {
+          this.snackBar.open('Этап ремонта добавлен', 'Закрыть', { duration: 2500 });
+          this.stageForm.reset({ title: '', description: '', customer_visible: true });
+          this.selectedStagePhoto = null;
+          this.loadRepairStages();
+          this.loadAuditLog();
+        },
+        error: (error) => {
+          const message = error.error?.error || 'Не удалось добавить этап ремонта';
+          this.snackBar.open(message, 'Закрыть', { duration: 3500 });
+        }
+      });
   }
 
   getStatusLabel(status: string): string {

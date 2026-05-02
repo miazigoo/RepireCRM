@@ -199,6 +199,118 @@
   font-size: 16px;
 }
 
+.stage-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  margin-bottom: 20px;
+  background: #f6f8fb;
+  border: 1px solid #e0e5ee;
+  border-radius: 8px;
+}
+
+.stage-form-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 2fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.stage-description-field {
+  grid-column: span 2;
+}
+
+.photo-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px dashed #8aa1bd;
+  border-radius: 8px;
+  color: #35506d;
+  cursor: pointer;
+}
+
+.photo-picker input {
+  display: none;
+}
+
+.repair-stages {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.repair-stage {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #e5e8ef;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.stage-photo {
+  width: 120px;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #eef2f7;
+}
+
+.stage-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.stage-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.stage-header h5 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.stage-body p {
+  margin: 8px 0;
+  color: #3d4652;
+  line-height: 1.45;
+}
+
+.stage-meta {
+  display: flex;
+  gap: 12px;
+  color: #6f7a88;
+  font-size: 12px;
+}
+
+.visible-chip {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+.private-chip {
+  background: #fff3e0;
+  color: #8a4b00;
+}
+
+.empty-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6f7a88;
+  padding: 16px 0;
+}
+
 .status-timeline {
   display: flex;
   flex-direction: column;
@@ -264,6 +376,36 @@
   color: #888;
 }
 
+.audit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.audit-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e5e8ef;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.audit-item mat-icon {
+  color: #607d8b;
+}
+
+.audit-item h5 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
+.audit-item p {
+  margin: 0;
+  color: #6f7a88;
+  font-size: 12px;
+}
+
 .documents-list {
   display: flex;
   flex-direction: column;
@@ -317,6 +459,26 @@
 .date-item div {
   display: flex;
   flex-direction: column;
+}
+
+@media (max-width: 900px) {
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .header {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .stage-form-grid,
+  .repair-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .stage-description-field {
+    grid-column: auto;
+  }
 }
 
 .date-label {
