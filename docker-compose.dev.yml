@@ -24,7 +24,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6380:6379"
+      - "${REDIS_PORT:-6380}:6379"
     networks:
       - repair-network
     healthcheck:
@@ -41,7 +41,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.backend
     ports:
-      - "8030:8000"
+      - "${BACKEND_PORT:-8030}:8000"
     volumes:
       - ./backend:/app
       - media_volume:/app/media
@@ -85,7 +85,7 @@ services:
       context: ./frontend/crm-app
       dockerfile: ../../docker/Dockerfile.frontend-dev
     ports:
-      - "4200:4200"
+      - "${FRONTEND_PORT:-4200}:4200"
     volumes:
       - ./frontend/crm-app:/app
       - /app/node_modules
