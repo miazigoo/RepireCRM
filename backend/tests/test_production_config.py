@@ -44,3 +44,8 @@ class ProductionConfigTestCase(SimpleTestCase):
         self.assertIn("ALLOWED_HOSTS=", env_template)
         self.assertIn("127.0.0.1", env_template)
         self.assertIn("CSRF_TRUSTED_ORIGINS=", env_template)
+
+    def test_production_docs_include_subscription_scheduler(self):
+        production_doc = (ROOT / "docs" / "PRODUCTION.md").read_text()
+
+        self.assertIn("python manage.py check_subscriptions", production_doc)

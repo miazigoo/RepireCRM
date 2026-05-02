@@ -28,6 +28,8 @@ class Command(BaseCommand):
             ("reports.view_financial", "Финансовые отчеты", "reports"),
             ("reports.view_analytics", "Аналитические отчеты", "reports"),
             # Настройки
+            ("settings.view_shop", "Просмотр филиалов", "settings"),
+            ("settings.change_shop", "Изменение филиалов", "settings"),
             ("settings.view_shop_settings", "Просмотр настроек магазина", "settings"),
             (
                 "settings.change_shop_settings",
@@ -86,14 +88,15 @@ class Command(BaseCommand):
                     if p.category in ["orders", "customers"] and "view" in p.codename
                 ],
             ),
+            ("admin", "Администратор", "admin", permissions),
         ]
 
         for name, display_name, code, role_permissions in roles_data:
             role, created = Role.objects.get_or_create(
                 code=code, defaults={"name": display_name}
             )
+            role.permissions.add(*role_permissions)
             if created:
-                role.permissions.set(role_permissions)
                 self.stdout.write(f"✅ Создана роль: {display_name}")
 
         self.stdout.write(

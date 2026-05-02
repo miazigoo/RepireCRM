@@ -1,9 +1,11 @@
 import json
 from datetime import timedelta
+from io import StringIO
 
 import jwt
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
 
@@ -159,6 +161,25 @@ class SubscriptionApiTestCase(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["error"], "Тариф подписки не найден")
 
+    def test_subscription_change_rejects_trial_reset(self):
+        self.client.get(
+            "/api/shops/subscription/status",
+            **self.auth_headers(),
+        )
+
+        response = self.client.post(
+            "/api/shops/subscription/change",
+            data=json.dumps({"plan_code": "trial"}),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json()["error"],
+            "Пробный период нельзя включить повторно",
+        )
+
     def test_subscription_status_requires_settings_permission(self):
         user = self.create_user_without_settings_permissions()
 
@@ -265,3 +286,34 @@ class SubscriptionApiTestCase(TestCase):
 
         self.assertFalse(sent)
         self.assertEqual(Notification.objects.count(), 0)
+
+    def test_subscription_notice_without_recipients_is_retried_later(self):
+        self.user.shops.clear()
+        subscription = change_subscription_plan(self.organization, "monthly")
+        now = timezone.now()
+        subscription.started_at = now - timedelta(days=27)
+        subscription.expires_at = now + timedelta(days=3)
+        subscription.save(update_fields=["started_at", "expires_at"])
+
+        sent = notify_subscription_if_needed(subscription)
+
+        self.assertFalse(sent)
+        self.assertEqual(Notification.objects.count(), 0)
+        subscription.refresh_from_db()
+        self.assertIsNone(subscription.last_notice_bucket)
+
+    def test_check_subscriptions_command_expires_and_notifies(self):
+        subscription = change_subscription_plan(self.organization, "monthly")
+        now = timezone.now()
+        subscription.started_at = now - timedelta(days=30)
+        subscription.expires_at = now
+        subscription.save(update_fields=["started_at", "expires_at"])
+        output = StringIO()
+
+        call_command("check_subscriptions", stdout=output)
+
+        subscription.refresh_from_db()
+        self.assertEqual(subscription.status, OrganizationSubscription.Status.EXPIRED)
+        self.assertEqual(subscription.last_notice_bucket, 0)
+        self.assertEqual(Notification.objects.count(), 1)
+        self.assertIn("Проверено подписок: 1", output.getvalue())

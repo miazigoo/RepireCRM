@@ -88,6 +88,9 @@ def change_subscription_plan(
     plan = SubscriptionPlan.objects.filter(code=plan_code, is_active=True).first()
     if plan is None:
         raise ValueError("Тариф подписки не найден")
+    existing_subscription = getattr(organization, "subscription", None)
+    if plan.code == "trial" and existing_subscription:
+        raise ValueError("Пробный период нельзя включить повторно")
     now = timezone.now()
     subscription, _ = OrganizationSubscription.objects.update_or_create(
         organization=organization,
@@ -156,6 +159,9 @@ def notify_subscription_if_needed(subscription: OrganizationSubscription) -> boo
         is_active=True,
     ).filter(Q(is_superuser=True) | Q(is_director=True) | Q(role__code="admin"))
     users = users.distinct()
+    if not users.exists():
+        return False
+
     for user in users:
         Notification.objects.create(
             notification_type=notification_type,
@@ -178,4 +184,4 @@ def notify_subscription_if_needed(subscription: OrganizationSubscription) -> boo
 
     subscription.last_notice_bucket = bucket
     subscription.save(update_fields=["last_notice_bucket", "updated_at"])
-    return bool(users)
+    return True
