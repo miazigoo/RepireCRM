@@ -85,7 +85,9 @@ def change_subscription_plan(
     plan_code: str,
 ) -> OrganizationSubscription:
     ensure_default_subscription_plans()
-    plan = SubscriptionPlan.objects.get(code=plan_code, is_active=True)
+    plan = SubscriptionPlan.objects.filter(code=plan_code, is_active=True).first()
+    if plan is None:
+        raise ValueError("Тариф подписки не найден")
     now = timezone.now()
     subscription, _ = OrganizationSubscription.objects.update_or_create(
         organization=organization,
