@@ -58,6 +58,16 @@ class Customer(models.Model):
     )
     marketing_consent = models.BooleanField("Согласие на коммуникации", default=False)
 
+    # Клиентский кабинет
+    portal_password = models.CharField("Пароль кабинета", max_length=128, blank=True)
+    portal_is_active = models.BooleanField("Кабинет активен", default=False)
+    portal_registered_at = models.DateTimeField(
+        "Дата регистрации в кабинете", null=True, blank=True
+    )
+    portal_last_login_at = models.DateTimeField(
+        "Последний вход в кабинет", null=True, blank=True
+    )
+
     class Meta:
         db_table = "customers"
         verbose_name = "Клиент"
@@ -77,6 +87,10 @@ class Customer(models.Model):
         if self.middle_name:
             parts.append(self.middle_name)
         return " ".join(parts)
+
+    @property
+    def has_portal_password(self):
+        return bool(self.portal_password)
 
     def update_statistics(self):
         """Обновление статистики клиента"""

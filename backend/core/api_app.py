@@ -1,14 +1,14 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import jwt
 from django.conf import settings
-from django.contrib.auth import authenticate
 from django.http import JsonResponse
 from ninja import NinjaAPI
 from ninja.security import HttpBearer
 
 # Подключаем роутеры
 from API.auth.router import router as auth_router
+from client_portal.router import router as client_portal_router
 from customers.router import router as customers_router
 from documents.router import router as documents_router
 from finance.router import router as finance_router
@@ -82,6 +82,7 @@ def value_error_handler(request, exc):
 
 
 api.add_router("/auth", auth_router)
+api.add_router("/portal", client_portal_router)
 api.add_router("/customers", customers_router)
 api.add_router("/documents", documents_router)
 api.add_router("/orders", orders_router)

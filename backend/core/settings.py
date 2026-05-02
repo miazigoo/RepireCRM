@@ -12,7 +12,7 @@ SECRET_KEY = config("SECRET_KEY", default="your-secret-key-here")
 DEBUG = config("DEBUG", default=False, cast=bool)
 
 ALLOWED_HOSTS = config(
-    "ALLOWED_HOSTS", default="localhost,backend,127.0.0.1,0.0.0.0"
+    "ALLOWED_HOSTS", default="localhost,backend,127.0.0.1,0.0.0.0,testserver"
 ).split(",")
 
 # Мультифилиальность
@@ -127,7 +127,7 @@ PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.Argon2PasswordHasher",
     "django.contrib.auth.hashers.PBKDF2PasswordHasher",
     "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
-    "django.contrib.auth.hashers.BCryptSHA256Hasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
 ]
 
 # CORS settings
@@ -157,7 +157,10 @@ LOGGING = {
             "style": "{",
         },
         "json": {
-            "format": '{"level": "%(levelname)s", "time": "%(asctime)s", "module": "%(module)s", "message": "%(message)s"}',
+            "format": (
+                '{"level": "%(levelname)s", "time": "%(asctime)s", '
+                '"module": "%(module)s", "message": "%(message)s"}'
+            ),
         },
     },
     "handlers": {
@@ -223,6 +226,9 @@ COMMUNICATIONS_ENABLE_SMS = config(
 TWILIO_ACCOUNT_SID = config("TWILIO_ACCOUNT_SID", default=None)
 TWILIO_AUTH_TOKEN = config("TWILIO_AUTH_TOKEN", default=None)
 TWILIO_FROM_NUMBER = config("TWILIO_FROM_NUMBER", default=None)
+
+# Клиентский кабинет
+PORTAL_DEFAULT_SHOP_CODE = config("PORTAL_DEFAULT_SHOP_CODE", default="")
 
 
 CELERY_BROKER_URL = config("CELERY_BROKER_URL", default=REDIS_URL)
