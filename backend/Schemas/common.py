@@ -1,7 +1,6 @@
+from typing import Optional
+
 from ninja import Schema
-from typing import Optional, List
-from datetime import datetime
-from decimal import Decimal
 
 
 class MessageSchema(Schema):

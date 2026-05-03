@@ -19,7 +19,7 @@ import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { CustomersService } from '../../../services/customers.service';
 import { Customer } from '../../../core/models/models';
-import { MatDividerModule } from '@angular/material/divider'; 
+import { MatDividerModule } from '@angular/material/divider';
 
 @Component({
   selector: 'app-customers-list',

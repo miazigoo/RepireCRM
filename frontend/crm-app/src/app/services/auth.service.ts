@@ -35,7 +35,7 @@ export class AuthService {
         tap(response => {
           localStorage.setItem('access_token', response.access_token);
           this.currentUserSubject.next(response.user);
-          
+
           if (response.user.current_shop) {
             this.currentShopSubject.next(response.user.current_shop);
             localStorage.setItem('current_shop_id', response.user.current_shop.id.toString());

@@ -50,7 +50,7 @@ class InventoryService:
     ) -> Dict:
         """
         Приемка без заказа поставщику.
-        items: [{"item_id": 1, "barcode": "...", "quantity": 50, "cost_per_unit": 100.0, "notes": "..."}, ...]
+        items: [{"item_id": 1, "barcode": "...", "quantity": 50, ...}]
         """
         results = []
         ok = 0
@@ -139,7 +139,7 @@ class InventoryService:
     ) -> Dict:
         """
         Корректировка/инвентаризация произвольным списком.
-        items: [{"item_id": 1, "barcode": "...", "quantity_change": -5, "notes": "..."}, ...]
+        items: [{"item_id": 1, "barcode": "...", "quantity_change": -5, ...}]
         """
         results = []
         ok = 0
@@ -424,7 +424,8 @@ class InventoryService:
             after = balance.quantity + qty_change
             if not line.item.allow_negative_stock and after < 0:
                 raise ValueError(
-                    f"Недостаточно остатка для {line.item.name} (доступно {balance.available_quantity})"
+                    f"Недостаточно остатка для {line.item.name} "
+                    f"(доступно {balance.available_quantity})"
                 )
 
             # Движение
@@ -610,7 +611,7 @@ class InventoryService:
         if InventoryItem.objects.filter(sku=sku).exists():
             raise ValueError("Товар с таким SKU уже существует")
 
-        # игнорируем одиночное поле barcode как источник «правды» — используем barcodes список
+        # игнорируем одиночное barcode как источник «правды»
         # но если пришел barcode отдельно — добавим его в список
         barcodes: List[str] = list({*(data.get("barcodes") or [])})
         single_bc = (data.get("barcode") or "").strip()
@@ -618,8 +619,9 @@ class InventoryService:
             barcodes.append(single_bc)
         # нормализуем и удалим пустые
         barcodes = [b.strip() for b in barcodes if b and b.strip()]
-        # проверим дубликаты для этого же товара позже (уникальность пары item+barcode обеспечит БД)
-        # при желании можно проверить глобальные конфликты (другие товары) — пока не требовалось
+        # проверим дубликаты для этого товара позже
+        # при желании можно проверить глобальные конфликты (другие товары) — пока
+        # не требовалось
 
         item = InventoryItem.objects.create(
             name=data["name"].strip(),
@@ -637,7 +639,8 @@ class InventoryService:
 
         # создаем мульти-ШК
         for bc in barcodes:
-            # разрешаем одинаковый ШК для разных товаров? Требование не обязывает глобальную уникальность.
+            # разрешаем одинаковый ШК для разных товаров? Требование не обязывает
+            # глобальную уникальность.
             InventoryItemBarcode.objects.get_or_create(item=item, barcode=bc)
 
         return item

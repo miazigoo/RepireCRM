@@ -3,6 +3,7 @@ from pathlib import Path
 
 import dj_database_url
 import sentry_sdk
+from corsheaders.defaults import default_headers
 from decouple import config
 from sentry_sdk.integrations.django import DjangoIntegration
 
@@ -145,6 +146,9 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "x-current-shop",
+]
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()

@@ -15,13 +15,7 @@ from .loyalty_schemas import (
     PointsTransactionSchema,
     RedeemPointsSchema,
 )
-from .models import (
-    CustomerLoyalty,
-    CustomerReward,
-    LoyaltyProgram,
-    LoyaltyReward,
-    PointsTransaction,
-)
+from .models import CustomerLoyalty, LoyaltyProgram, LoyaltyReward
 from .services import LoyaltyService
 
 router = Router(tags=["Программа лояльности"])
@@ -95,7 +89,7 @@ def redeem_points(request, data: RedeemPointsSchema):
 
     except ValueError as e:
         return 400, {"error": str(e)}
-    except Exception as e:
+    except Exception:
         return 400, {"error": "Ошибка при списании баллов"}
 
 

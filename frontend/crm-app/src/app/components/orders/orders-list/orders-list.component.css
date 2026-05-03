@@ -92,11 +92,11 @@
     .filters-form {
     grid-template-columns: 1fr;
     }
-    
+
     .search-field {
     min-width: auto;
     }
-    
+
     .header {
     flex-direction: column;
     gap: 16px;

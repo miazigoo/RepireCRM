@@ -44,11 +44,13 @@ services:
       - "${BACKEND_PORT:-8030}:8000"
     volumes:
       - ./backend:/app
+      - .:/workspace:ro
       - media_volume:/app/media
     environment:
       - DEBUG=True
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/repair_crm
       - REDIS_URL=redis://redis:6379/0
+      - PROJECT_ROOT=/workspace
       - ALLOWED_HOSTS=localhost,127.0.0.1,backend,0.0.0.0,frontend
         # суперпользователь
       - DJANGO_SUPERUSER_USERNAME=admin

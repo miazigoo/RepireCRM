@@ -53,7 +53,7 @@ export class UserManagementComponent implements OnInit {
   dataSource = new MatTableDataSource<User>();
   filtersForm: FormGroup;
   loading = false;
-  
+
   roles: Role[] = [];
   shops: Shop[] = [];
 

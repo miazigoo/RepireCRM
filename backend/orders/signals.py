@@ -37,7 +37,8 @@ def post_order_saved(sender, instance: Order, created, **kwargs):
     # SLA вычисления при завершении
     if instance.status == Order.StatusChoices.COMPLETED:
         if instance.completed_at is None:
-            # Подстрахуемся: если дата не выставлена (хотя выставляется в API), поставим сейчас
+            # Подстрахуемся: если дата не выставлена (хотя выставляется в API),
+            # поставим сейчас
             instance.completed_at = timezone.now()
 
         if instance.estimated_completion:

@@ -65,7 +65,7 @@ export class SystemSettingsComponent implements OnInit {
   notificationsForm!: FormGroup;
   securityForm!: FormGroup;
   backupForm!: FormGroup;
-  
+
   loading = false;
   settings: SystemSettings | null = null;
 
@@ -120,7 +120,7 @@ export class SystemSettingsComponent implements OnInit {
     this.loading = true;
     // В реальном приложении загружаем настройки с сервера
     // this.adminService.getSystemSettings().subscribe({...});
-    
+
     // Пока используем мок-данные
     setTimeout(() => {
       this.settings = {

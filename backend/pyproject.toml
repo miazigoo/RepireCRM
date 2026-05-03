@@ -22,6 +22,11 @@ multi_line_output = 3
 line_length = 88
 skip_glob = ["*/migrations/*"]
 
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "core.settings"
+python_files = ["test_*.py", "*_test.py", "tests.py"]
+testpaths = ["tests"]
+
 [tool.mypy]
 python_version = "3.12"
 check_untyped_defs = true

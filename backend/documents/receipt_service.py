@@ -87,11 +87,8 @@ def generate_invoice_pdf(sale: RetailSale) -> bytes:
     c.setFont("Helvetica", 10)
     c.drawString(20 * mm, y, f"Магазин: {sale.shop.name} ({sale.shop.code})")
     y -= 5 * mm
-    c.drawString(
-        20 * mm,
-        y,
-        f"Дата: {timezone.localtime(sale.completed_at or sale.created_at).strftime('%d.%m.%Y %H:%M')}",
-    )
+    completed_at = timezone.localtime(sale.completed_at or sale.created_at)
+    c.drawString(20 * mm, y, f"Дата: {completed_at.strftime('%d.%m.%Y %H:%M')}")
     y -= 5 * mm
     c.drawString(
         20 * mm, y, f"Кассир: {sale.cashier.get_full_name() or sale.cashier.username}"
@@ -127,7 +124,10 @@ def generate_invoice_pdf(sale: RetailSale) -> bytes:
     )
     y -= 12 * mm
 
-    qr_data = f"SALE:{sale.sale_number}|SHOP:{sale.shop.code}|AMOUNT:{float(sale.total_amount):.2f}"
+    qr_data = (
+        f"SALE:{sale.sale_number}|SHOP:{sale.shop.code}|"
+        f"AMOUNT:{float(sale.total_amount):.2f}"
+    )
     _draw_qr(
         c,
         x=int(width - 20 * mm - 30 * mm),

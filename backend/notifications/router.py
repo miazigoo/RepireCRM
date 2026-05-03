@@ -5,7 +5,6 @@ from ninja import Router
 
 from .models import Notification
 from .notifications_schemas import NotificationSchema
-from .services import notification_service
 
 router = Router(tags=["Уведомления"])
 

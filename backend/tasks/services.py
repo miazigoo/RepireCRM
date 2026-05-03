@@ -40,7 +40,10 @@ class TaskService:
             notification_service.create_notification(
                 notification_type_code="task_status_change",
                 title=f"Изменен статус задачи: {task.title}",
-                message=f'Статус изменен с "{task.get_status_display()}" на "{old_status}"',
+                message=(
+                    f'Статус изменен с "{task.get_status_display()}" '
+                    f'на "{old_status}"'
+                ),
                 recipient=task.created_by,
                 priority="low",
                 related_object_type="task",
@@ -111,7 +114,10 @@ class TaskService:
                 notification_service.create_notification(
                     notification_type_code="task_overdue",
                     title=f"Задача просрочена: {task.title}",
-                    message=f'Задача "{task.title}" просрочена на {(timezone.now() - task.due_date).days} дней',
+                    message=(
+                        f'Задача "{task.title}" просрочена на '
+                        f"{(timezone.now() - task.due_date).days} дней"
+                    ),
                     recipient=assignee,
                     priority="high",
                     related_object_type="task",
@@ -154,7 +160,7 @@ class TaskService:
             if existing:
                 continue
 
-            task = Task.objects.create(
+            Task.objects.create(
                 title=title,
                 description=(
                     f"Остаток: {b.quantity}, доступно: {b.available_quantity}. "

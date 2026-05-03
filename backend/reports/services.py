@@ -1,15 +1,10 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 from decimal import Decimal
 
 from django.db import models
 from django.db.models import Avg, Count, Q, Sum
-from django.utils import timezone
 
-from customers.models import Customer
-from inventory.models import StockMovement
 from orders.models import Order, OrderService
-
-from .models import GeneratedReport, ReportTemplate
 
 
 class ReportService:
@@ -32,10 +27,6 @@ class ReportService:
         completed_orders = orders_qs.filter(status="completed")
 
         total_revenue = completed_orders.aggregate(total=Sum("final_cost"))[
-            "total"
-        ] or Decimal("0")
-
-        total_cost = completed_orders.aggregate(total=Sum("cost_estimate"))[
             "total"
         ] or Decimal("0")
 
@@ -135,7 +126,10 @@ class ReportService:
             "technicians": [
                 {
                     "technician_id": item["assigned_to__id"],
-                    "name": f"{item['assigned_to__first_name']} {item['assigned_to__last_name']}",
+                    "name": (
+                        f"{item['assigned_to__first_name']} "
+                        f"{item['assigned_to__last_name']}"
+                    ),
                     "total_orders": item["total_orders"],
                     "completed_orders": item["completed_orders"],
                     "completion_rate": (
@@ -217,7 +211,10 @@ class ReportService:
             },
             "by_technician": [
                 {
-                    "name": f"{r['assigned_to__first_name']} {r['assigned_to__last_name']}".strip(),
+                    "name": (
+                        f"{r['assigned_to__first_name']} "
+                        f"{r['assigned_to__last_name']}"
+                    ).strip(),
                     "total": r["total"],
                     "on_time": r["on_time"],
                     "late": r["late"],

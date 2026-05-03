@@ -6,8 +6,8 @@
   </div>
 
   <mat-tab-group class="settings-tabs">
-    
-    
+
+
     <mat-tab label="Общие">
       <div class="tab-content">
         <mat-card>
@@ -19,7 +19,7 @@
           </mat-card-header>
           <mat-card-content>
             <form [formGroup]="generalForm" (ngSubmit)="saveGeneralSettings()">
-              
+
               <div class="form-row">
                 <mat-form-field>
                   <mat-label>Название приложения</mat-label>
@@ -69,7 +69,7 @@
       </div>
     </mat-tab>
 
-    
+
     <mat-tab label="Уведомления">
       <div class="tab-content">
         <mat-card>
@@ -81,16 +81,16 @@
           </mat-card-header>
           <mat-card-content>
             <form [formGroup]="notificationsForm" (ngSubmit)="saveNotificationSettings()">
-              
+
               <div class="settings-section">
                 <h3>Способы уведомлений</h3>
-                
+
                 <div class="toggle-row">
                   <mat-slide-toggle formControlName="email_enabled" color="primary">
                     Email уведомления
                   </mat-slide-toggle>
-                  <button mat-button 
-                          (click)="testEmailSettings()" 
+                  <button mat-button
+                          (click)="testEmailSettings()"
                           [disabled]="!notificationsForm.get('email_enabled')?.value || loading">
                     <mat-icon>send</mat-icon>
                     Тест
@@ -101,8 +101,8 @@
                   <mat-slide-toggle formControlName="sms_enabled" color="primary">
                     SMS уведомления
                   </mat-slide-toggle>
-                  <button mat-button 
-                          (click)="testSMSSettings()" 
+                  <button mat-button
+                          (click)="testSMSSettings()"
                           [disabled]="!notificationsForm.get('sms_enabled')?.value || loading">
                     <mat-icon>send</mat-icon>
                     Тест
@@ -120,7 +120,7 @@
 
               <div class="settings-section">
                 <h3>Автоматические уведомления</h3>
-                
+
                 <div class="toggle-row">
                   <mat-slide-toggle formControlName="order_status_notifications" color="primary">
                     Уведомления об изменении статуса заказа
@@ -146,7 +146,7 @@
       </div>
     </mat-tab>
 
-    
+
     <mat-tab label="Безопасность">
       <div class="tab-content">
         <mat-card>
@@ -158,10 +158,10 @@
           </mat-card-header>
           <mat-card-content>
             <form [formGroup]="securityForm" (ngSubmit)="saveSecuritySettings()">
-              
+
               <div class="settings-section">
                 <h3>Требования к паролям</h3>
-                
+
                 <div class="form-row">
                   <mat-form-field>
                     <mat-label>Минимальная длина пароля</mat-label>
@@ -199,7 +199,7 @@
 
               <div class="settings-section">
                 <h3>Сессии и аутентификация</h3>
-                
+
                 <div class="form-row">
                   <mat-form-field>
                     <mat-label>Время жизни сессии (минуты)</mat-label>
@@ -227,7 +227,7 @@
       </div>
     </mat-tab>
 
-    
+
     <mat-tab label="Резервное копирование">
       <div class="tab-content">
         <mat-card>
@@ -239,10 +239,10 @@
           </mat-card-header>
           <mat-card-content>
             <form [formGroup]="backupForm" (ngSubmit)="saveBackupSettings()">
-              
+
               <div class="settings-section">
                 <h3>Автоматическое резервное копирование</h3>
-                
+
                 <div class="toggle-row">
                   <mat-slide-toggle formControlName="auto_backup_enabled" color="primary">
                     Включить автоматическое резервное копирование
@@ -274,7 +274,7 @@
 
               <div class="settings-section">
                 <h3>Ручное резервное копирование</h3>
-                
+
                 <div class="manual-backup-section">
                   <p>Создать резервную копию прямо сейчас:</p>
                   <button mat-raised-button color="accent" (click)="createBackupNow()" [disabled]="loading">

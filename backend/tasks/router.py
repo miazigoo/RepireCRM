@@ -1,13 +1,13 @@
-from typing import List, Optional
+from typing import List
 
 from django.db import transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from ninja import Query, Router
+from ninja import Router
 from ninja.pagination import paginate
 
-from .models import Task, TaskCategory, TaskComment, TaskTemplate
+from .models import Task, TaskComment, TaskTemplate
 from .schemas import TaskCreateSchema, TaskSchema, TaskUpdateSchema
 from .services import TaskService
 

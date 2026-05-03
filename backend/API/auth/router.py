@@ -3,14 +3,11 @@ from datetime import datetime, timedelta
 import jwt
 from django.conf import settings
 from django.contrib.auth import authenticate
-from django.http import JsonResponse
 from django_ratelimit.decorators import ratelimit
 from ninja import Router
-from ninja.security import HttpBearer
 
 from Schemas.auth.auth import ChangePasswordSchema, LoginSchema, TokenSchema
 from Schemas.common import ErrorSchema, MessageSchema, UserSchema
-from users.models import User
 
 router = Router(tags=["Аутентификация"])
 

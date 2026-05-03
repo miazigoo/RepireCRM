@@ -2,9 +2,9 @@ from decimal import Decimal
 from typing import List, Optional
 
 from django.db import transaction
-from django.db.models import F, Q, Sum
+from django.db.models import F, Q
 from django.shortcuts import get_object_or_404
-from ninja import Query, Router
+from ninja import Router
 from ninja.pagination import paginate
 
 from .inventory_schemas import (
@@ -20,11 +20,8 @@ from .inventory_schemas import (
     PurchaseOrderSchema,
     QuickCreateItemInputSchema,
     QuickCreateItemResponseSchema,
-    RetailSaleItemSchema,
-    RetailSaleSchema,
     StockBalanceSchema,
     StockDashboardSchema,
-    StockMovementSchema,
     SupplierSchema,
 )
 from .models import (
@@ -32,7 +29,6 @@ from .models import (
     PurchaseOrder,
     PurchaseOrderItem,
     StockBalance,
-    StockMovement,
     Supplier,
 )
 from .services import InventoryService
@@ -415,7 +411,13 @@ def receive_items_ad_hoc(request, data: AdHocReceiveRequest):
     if not request.auth.has_permission("inventory.add_movement"):
         raise PermissionError("Нет прав для приемки")
     if not hasattr(request, "current_shop") or not request.current_shop:
-        return {"success": False, "processed": 0, "ok": 0, "results": [], "error": "Не выбран текущий магазин"}  # type: ignore
+        return {  # type: ignore
+            "success": False,
+            "processed": 0,
+            "ok": 0,
+            "results": [],
+            "error": "Не выбран текущий магазин",
+        }
     service = InventoryService()
     return service.receive_items_ad_hoc(
         shop=request.current_shop,
@@ -430,7 +432,13 @@ def adjust_items_ad_hoc(request, data: AdHocAdjustmentRequest):
     if not request.auth.has_permission("inventory.add_movement"):
         raise PermissionError("Нет прав для корректировок")
     if not hasattr(request, "current_shop") or not request.current_shop:
-        return {"success": False, "processed": 0, "ok": 0, "results": [], "error": "Не выбран текущий магазин"}  # type: ignore
+        return {  # type: ignore
+            "success": False,
+            "processed": 0,
+            "ok": 0,
+            "results": [],
+            "error": "Не выбран текущий магазин",
+        }
     service = InventoryService()
     return service.adjust_items_ad_hoc(
         shop=request.current_shop,

@@ -1,20 +1,28 @@
 # backend/loyalty/services.py
 from decimal import Decimal
+
+from django.db import models, transaction
 from django.utils import timezone
-from django.db import transaction
-from .models import (
-    LoyaltyProgram, CustomerLoyalty, PointsTransaction,
-    LoyaltyReward, CustomerReward
-)
-from orders.models import Order
+
 from customers.models import Customer
+from orders.models import Order
+
+from .models import (
+    CustomerLoyalty,
+    CustomerReward,
+    LoyaltyProgram,
+    LoyaltyReward,
+    PointsTransaction,
+)
 
 
 class LoyaltyService:
     """Сервис для работы с программой лояльности"""
 
     @staticmethod
-    def get_or_create_customer_loyalty(customer: Customer, program: LoyaltyProgram = None):
+    def get_or_create_customer_loyalty(
+        customer: Customer, program: LoyaltyProgram = None
+    ):
         """Получить или создать участие клиента в программе лояльности"""
         if not program:
             program = LoyaltyProgram.objects.filter(is_active=True).first()
@@ -24,9 +32,7 @@ class LoyaltyService:
         customer_loyalty, created = CustomerLoyalty.objects.get_or_create(
             customer=customer,
             program=program,
-            defaults={
-                'tier_level': CustomerLoyalty.TierLevel.BRONZE
-            }
+            defaults={"tier_level": CustomerLoyalty.TierLevel.BRONZE},
         )
         return customer_loyalty
 
@@ -57,13 +63,12 @@ class LoyaltyService:
     @transaction.atomic
     def award_points_for_order(order: Order):
         """Начислить баллы за заказ"""
-        if order.status != 'completed':
+        if order.status != "completed":
             return None
 
         # Проверяем, не начислялись ли уже баллы за этот заказ
         existing_transaction = PointsTransaction.objects.filter(
-            order=order,
-            transaction_type=PointsTransaction.TransactionType.EARNED
+            order=order, transaction_type=PointsTransaction.TransactionType.EARNED
         ).first()
 
         if existing_transaction:
@@ -84,13 +89,13 @@ class LoyaltyService:
             points=points,
             order=order,
             description=f"Начисление за заказ {order.order_number}",
-            expires_at=LoyaltyService._calculate_expiry_date(customer_loyalty.program)
+            expires_at=LoyaltyService._calculate_expiry_date(customer_loyalty.program),
         )
 
         # Обновляем баланс клиента
         customer_loyalty.total_points += points
         customer_loyalty.available_points += points
-        customer_loyalty.total_spent += (order.final_cost or order.cost_estimate)
+        customer_loyalty.total_spent += order.final_cost or order.cost_estimate
         customer_loyalty.orders_count += 1
 
         # Обновляем уровень клиента
@@ -109,18 +114,28 @@ class LoyaltyService:
 
     @staticmethod
     @transaction.atomic
-    def redeem_points(customer_loyalty: CustomerLoyalty, points: int, order: Order, description: str = ""):
+    def redeem_points(
+        customer_loyalty: CustomerLoyalty,
+        points: int,
+        order: Order,
+        description: str = "",
+    ):
         """Списать баллы клиента"""
         if points > customer_loyalty.available_points:
             raise ValueError("Недостаточно баллов для списания")
 
         if points < customer_loyalty.program.min_redeem_points:
-            raise ValueError(f"Минимум для списания: {customer_loyalty.program.min_redeem_points} баллов")
+            raise ValueError(
+                f"Минимум для списания: "
+                f"{customer_loyalty.program.min_redeem_points} баллов"
+            )
 
         # Проверяем максимальный процент оплаты баллами
         order_amount = order.final_cost or order.cost_estimate
         points_value = Decimal(points) * customer_loyalty.program.point_value
-        max_redeem_amount = order_amount * customer_loyalty.program.max_redeem_percent / 100
+        max_redeem_amount = (
+            order_amount * customer_loyalty.program.max_redeem_percent / 100
+        )
 
         if points_value > max_redeem_amount:
             max_points = int(max_redeem_amount / customer_loyalty.program.point_value)
@@ -132,7 +147,7 @@ class LoyaltyService:
             transaction_type=PointsTransaction.TransactionType.REDEEMED,
             points=-points,
             order=order,
-            description=description or f"Списание для заказа {order.order_number}"
+            description=description or f"Списание для заказа {order.order_number}",
         )
 
         # Обновляем баланс
@@ -155,7 +170,7 @@ class LoyaltyService:
         bonus_points = {
             CustomerLoyalty.TierLevel.SILVER: 500,
             CustomerLoyalty.TierLevel.GOLD: 1000,
-            CustomerLoyalty.TierLevel.PLATINUM: 2000
+            CustomerLoyalty.TierLevel.PLATINUM: 2000,
         }
 
         points = bonus_points.get(new_tier, 0)
@@ -164,7 +179,10 @@ class LoyaltyService:
                 customer_loyalty=customer_loyalty,
                 transaction_type=PointsTransaction.TransactionType.BONUS,
                 points=points,
-                description=f"Бонус за достижение уровня {customer_loyalty.get_tier_level_display()}"
+                description=(
+                    f"Бонус за достижение уровня "
+                    f"{customer_loyalty.get_tier_level_display()}"
+                ),
             )
 
             customer_loyalty.total_points += points
@@ -177,7 +195,7 @@ class LoyaltyService:
             program=customer_loyalty.program,
             is_active=True,
             required_points__lte=customer_loyalty.total_points,
-            required_orders_count__lte=customer_loyalty.orders_count
+            required_orders_count__lte=customer_loyalty.orders_count,
         )
 
         # Фильтруем по уровню если указан
@@ -186,36 +204,37 @@ class LoyaltyService:
                 CustomerLoyalty.TierLevel.BRONZE: 1,
                 CustomerLoyalty.TierLevel.SILVER: 2,
                 CustomerLoyalty.TierLevel.GOLD: 3,
-                CustomerLoyalty.TierLevel.PLATINUM: 4
+                CustomerLoyalty.TierLevel.PLATINUM: 4,
             }
             current_tier_level = tier_hierarchy.get(customer_loyalty.tier_level, 1)
 
             available_rewards = available_rewards.filter(
-                models.Q(required_tier='') |
-                models.Q(required_tier__in=[
-                    tier for tier, level in tier_hierarchy.items()
-                    if level <= current_tier_level
-                ])
+                models.Q(required_tier="")
+                | models.Q(
+                    required_tier__in=[
+                        tier
+                        for tier, level in tier_hierarchy.items()
+                        if level <= current_tier_level
+                    ]
+                )
             )
 
         # Проверяем временные ограничения
         now = timezone.now()
         available_rewards = available_rewards.filter(
             models.Q(valid_from__isnull=True) | models.Q(valid_from__lte=now),
-            models.Q(valid_to__isnull=True) | models.Q(valid_to__gte=now)
+            models.Q(valid_to__isnull=True) | models.Q(valid_to__gte=now),
         )
 
         # Выдаем награды, которые клиент еще не получал
         for reward in available_rewards:
             existing_reward = CustomerReward.objects.filter(
-                customer_loyalty=customer_loyalty,
-                reward=reward
+                customer_loyalty=customer_loyalty, reward=reward
             ).first()
 
             if not existing_reward:
                 CustomerReward.objects.create(
-                    customer_loyalty=customer_loyalty,
-                    reward=reward
+                    customer_loyalty=customer_loyalty, reward=reward
                 )
 
     @staticmethod
@@ -224,7 +243,7 @@ class LoyaltyService:
         expired_transactions = PointsTransaction.objects.filter(
             transaction_type=PointsTransaction.TransactionType.EARNED,
             expires_at__lt=timezone.now(),
-            points__gt=0
+            points__gt=0,
         )
 
         for transaction_obj in expired_transactions:
@@ -234,7 +253,10 @@ class LoyaltyService:
                     customer_loyalty=transaction_obj.customer_loyalty,
                     transaction_type=PointsTransaction.TransactionType.EXPIRED,
                     points=-transaction_obj.points,
-                    description=f"Истечение срока действия баллов от {transaction_obj.created_at.date()}"
+                    description=(
+                        f"Истечение срока действия баллов от "
+                        f"{transaction_obj.created_at.date()}"
+                    ),
                 )
 
                 # Обновляем баланс

@@ -1,9 +1,10 @@
+import os
 from pathlib import Path
 
 import yaml
 from django.test import SimpleTestCase
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(os.environ.get("PROJECT_ROOT", Path(__file__).resolve().parents[2]))
 
 
 class ProductionConfigTestCase(SimpleTestCase):

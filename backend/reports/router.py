@@ -1,14 +1,12 @@
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import List, Optional
+from typing import Optional
 
-from django.db.models import Avg, Count, Q, Sum
+from django.db.models import Avg, Count, Sum
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from ninja import Query, Router
-from ninja.pagination import paginate
+from ninja import Router
 
-from customers.models import Customer
 from orders.models import Order
 
 from .models import GeneratedReport, ReportTemplate
@@ -137,7 +135,10 @@ def get_dashboard_metrics(request):
         ],
         "technician_performance": [
             {
-                "name": f"{item['assigned_to__first_name']} {item['assigned_to__last_name']}",
+                "name": (
+                    f"{item['assigned_to__first_name']} "
+                    f"{item['assigned_to__last_name']}"
+                ),
                 "completed_orders": item["completed_orders"],
                 "revenue": float(item["total_revenue"] or 0),
             }

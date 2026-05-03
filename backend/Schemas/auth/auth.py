@@ -1,5 +1,5 @@
 from ninja import Schema
-from typing import Optional
+
 from Schemas.common import UserSchema
 
 

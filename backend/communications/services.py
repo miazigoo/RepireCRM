@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -12,7 +11,10 @@ class CommunicationService:
         if not settings.COMMUNICATIONS_ENABLE_EMAIL:
             return False
         subject = f"Заказ {order_number} готов к выдаче"
-        message = f"Ваш заказ {order_number} готов к выдаче в магазине {shop_name}. Спасибо, что выбрали нас!"
+        message = (
+            f"Ваш заказ {order_number} готов к выдаче в магазине {shop_name}. "
+            "Спасибо, что выбрали нас!"
+        )
         try:
             send_mail(
                 subject,

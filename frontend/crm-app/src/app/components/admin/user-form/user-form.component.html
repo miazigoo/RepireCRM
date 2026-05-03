@@ -11,16 +11,16 @@
   <mat-card class="form-card">
     <mat-card-content>
       <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
-        
-        
+
+
         <div class="form-section">
           <h3>Учетная запись</h3>
-          
+
           <div class="form-row">
             <mat-form-field>
               <mat-label>Логин *</mat-label>
-              <input matInput 
-                     formControlName="username" 
+              <input matInput
+                     formControlName="username"
                      [readonly]="isEditMode"
                      required>
               <mat-error>{{ getFieldError('username') }}</mat-error>
@@ -28,8 +28,8 @@
 
             <mat-form-field>
               <mat-label>Email *</mat-label>
-              <input matInput 
-                     type="email" 
+              <input matInput
+                     type="email"
                      formControlName="email"
                      required>
               <mat-error>{{ getFieldError('email') }}</mat-error>
@@ -39,8 +39,8 @@
           <div class="form-row" *ngIf="!isEditMode">
             <mat-form-field>
               <mat-label>Пароль *</mat-label>
-              <input matInput 
-                     type="password" 
+              <input matInput
+                     type="password"
                      formControlName="password"
                      required>
               <mat-error>{{ getFieldError('password') }}</mat-error>
@@ -48,8 +48,8 @@
 
             <mat-form-field>
               <mat-label>Подтверждение пароля *</mat-label>
-              <input matInput 
-                     type="password" 
+              <input matInput
+                     type="password"
                      formControlName="confirm_password"
                      required>
               <mat-error>{{ getFieldError('confirm_password') }}</mat-error>
@@ -57,10 +57,10 @@
           </div>
         </div>
 
-        
+
         <div class="form-section">
           <h3>Личная информация</h3>
-          
+
           <div class="form-row">
             <mat-form-field>
               <mat-label>Фамилия *</mat-label>
@@ -84,7 +84,7 @@
 
             <mat-form-field>
               <mat-label>Телефон</mat-label>
-              <input matInput 
+              <input matInput
                      formControlName="phone"
                      placeholder="+7 (999) 123-45-67">
               <mat-error>{{ getFieldError('phone') }}</mat-error>
@@ -92,10 +92,10 @@
           </div>
         </div>
 
-        
+
         <div class="form-section">
           <h3>Роль и права доступа</h3>
-          
+
           <div class="form-row">
             <mat-form-field>
               <mat-label>Роль</mat-label>
@@ -116,10 +116,10 @@
 
           <div class="shops-section">
             <h4>Доступ к магазинам</h4>
-            
+
             <mat-form-field class="full-width">
               <mat-label>Выберите магазины</mat-label>
-              <mat-select formControlName="shop_ids" 
+              <mat-select formControlName="shop_ids"
                           multiple
                           (selectionChange)="onShopSelectionChange($event.value)">
                 <mat-option *ngFor="let shop of shops" [value]="shop.id">
@@ -131,7 +131,7 @@
             <div class="selected-shops" *ngIf="selectedShops.length > 0">
               <h5>Выбранные магазины:</h5>
               <mat-chip-set>
-                <mat-chip *ngFor="let shop of selectedShops" 
+                <mat-chip *ngFor="let shop of selectedShops"
                           (removed)="removeShop(shop)">
                   {{ shop.name }}
                   <mat-icon matChipRemove>cancel</mat-icon>
@@ -141,10 +141,10 @@
           </div>
         </div>
 
-        
+
         <div class="form-section" *ngIf="isEditMode">
           <h3>Статус</h3>
-          
+
           <div class="checkbox-field">
             <mat-checkbox formControlName="is_active">
               Активный пользователь
@@ -155,13 +155,13 @@
           </div>
         </div>
 
-        
+
         <div class="form-actions">
           <button mat-button type="button" (click)="cancel()">
             Отмена
           </button>
-          <button mat-raised-button 
-                  color="primary" 
+          <button mat-raised-button
+                  color="primary"
                   type="submit"
                   [disabled]="loading">
             <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>

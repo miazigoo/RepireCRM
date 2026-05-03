@@ -1,6 +1,6 @@
-
-from django.db import models
 from django.contrib.auth import get_user_model
+from django.db import models
+
 from shops.models import Shop
 
 User = get_user_model()
@@ -8,6 +8,7 @@ User = get_user_model()
 
 class NotificationType(models.Model):
     """Типы уведомлений"""
+
     name = models.CharField("Название", max_length=50, unique=True)
     code = models.CharField("Код", max_length=50, unique=True)
     description = models.TextField("Описание", blank=True)
@@ -16,9 +17,9 @@ class NotificationType(models.Model):
     is_active = models.BooleanField("Активен", default=True)
 
     class Meta:
-        db_table = 'notification_types'
-        verbose_name = 'Тип уведомления'
-        verbose_name_plural = 'Типы уведомлений'
+        db_table = "notification_types"
+        verbose_name = "Тип уведомления"
+        verbose_name_plural = "Типы уведомлений"
 
     def __str__(self):
         return self.name
@@ -28,32 +29,23 @@ class Notification(models.Model):
     """Уведомления"""
 
     class Priority(models.TextChoices):
-        LOW = 'low', 'Низкий'
-        NORMAL = 'normal', 'Обычный'
-        HIGH = 'high', 'Высокий'
-        URGENT = 'urgent', 'Срочный'
+        LOW = "low", "Низкий"
+        NORMAL = "normal", "Обычный"
+        HIGH = "high", "Высокий"
+        URGENT = "urgent", "Срочный"
 
     notification_type = models.ForeignKey(
-        NotificationType,
-        on_delete=models.CASCADE,
-        verbose_name="Тип уведомления"
+        NotificationType, on_delete=models.CASCADE, verbose_name="Тип уведомления"
     )
     title = models.CharField("Заголовок", max_length=200)
     message = models.TextField("Сообщение")
     priority = models.CharField(
-        "Приоритет",
-        max_length=20,
-        choices=Priority.choices,
-        default=Priority.NORMAL
+        "Приоритет", max_length=20, choices=Priority.choices, default=Priority.NORMAL
     )
 
     # Получатели
     recipient = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        verbose_name="Получатель"
+        User, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Получатель"
     )
     shop = models.ForeignKey(
         Shop,
@@ -61,13 +53,13 @@ class Notification(models.Model):
         null=True,
         blank=True,
         verbose_name="Магазин",
-        help_text="Если указан, уведомление получат все пользователи магазина"
+        help_text="Если указан, уведомление получат все пользователи магазина",
     )
     role_code = models.CharField(
         "Код роли",
         max_length=50,
         blank=True,
-        help_text="Если указан, уведомление получат пользователи с этой ролью"
+        help_text="Если указан, уведомление получат пользователи с этой ролью",
     )
 
     # Связанные объекты
@@ -90,19 +82,19 @@ class Notification(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='created_notifications',
-        verbose_name="Создал"
+        related_name="created_notifications",
+        verbose_name="Создал",
     )
 
     class Meta:
-        db_table = 'notifications'
-        verbose_name = 'Уведомление'
-        verbose_name_plural = 'Уведомления'
-        ordering = ['-created_at']
+        db_table = "notifications"
+        verbose_name = "Уведомление"
+        verbose_name_plural = "Уведомления"
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['recipient', 'is_read']),
-            models.Index(fields=['shop', 'is_read']),
-            models.Index(fields=['created_at']),
+            models.Index(fields=["recipient", "is_read"]),
+            models.Index(fields=["shop", "is_read"]),
+            models.Index(fields=["created_at"]),
         ]
 
     def __str__(self):
@@ -111,10 +103,9 @@ class Notification(models.Model):
 
 class NotificationSettings(models.Model):
     """Настройки уведомлений пользователя"""
+
     user = models.OneToOneField(
-        User,
-        on_delete=models.CASCADE,
-        related_name='notification_settings'
+        User, on_delete=models.CASCADE, related_name="notification_settings"
     )
 
     # Способы доставки
@@ -123,11 +114,15 @@ class NotificationSettings(models.Model):
     sound_enabled = models.BooleanField("Звуковые уведомления", default=True)
 
     # Типы уведомлений
-    order_status_changes = models.BooleanField("Изменения статуса заказов", default=True)
+    order_status_changes = models.BooleanField(
+        "Изменения статуса заказов", default=True
+    )
     new_orders = models.BooleanField("Новые заказы", default=True)
     customer_messages = models.BooleanField("Сообщения от клиентов", default=True)
     system_alerts = models.BooleanField("Системные оповещения", default=True)
-    loyalty_updates = models.BooleanField("Обновления программы лояльности", default=True)
+    loyalty_updates = models.BooleanField(
+        "Обновления программы лояльности", default=True
+    )
 
     # Время работы
     quiet_hours_start = models.TimeField("Начало тихих часов", null=True, blank=True)
@@ -137,9 +132,9 @@ class NotificationSettings(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'notification_settings'
-        verbose_name = 'Настройки уведомлений'
-        verbose_name_plural = 'Настройки уведомлений'
+        db_table = "notification_settings"
+        verbose_name = "Настройки уведомлений"
+        verbose_name_plural = "Настройки уведомлений"
 
     def __str__(self):
         return f"Настройки уведомлений - {self.user.username}"

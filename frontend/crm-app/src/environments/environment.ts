@@ -1,7 +1,7 @@
 // frontend/crm-app/src/environments/environment.ts
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:8030/api',
+  apiUrl: '/api',
   version: '1.0.0',
   features: {
     adminPanel: true,

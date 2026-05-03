@@ -33,7 +33,7 @@ export class UserFormComponent implements OnInit {
   isEditMode = false;
   userId: number | null = null;
   loading = false;
-  
+
   roles: Role[] = [];
   shops: Shop[] = [];
   selectedShops: Shop[] = [];
@@ -81,7 +81,7 @@ export class UserFormComponent implements OnInit {
   private passwordMatchValidator(form: FormGroup) {
     const password = form.get('password');
     const confirmPassword = form.get('confirm_password');
-    
+
     if (password && confirmPassword && password.value !== confirmPassword.value) {
       confirmPassword.setErrors({ passwordMismatch: true });
       return { passwordMismatch: true };
@@ -162,9 +162,9 @@ export class UserFormComponent implements OnInit {
   onSubmit(): void {
     if (this.userForm.valid) {
       this.loading = true;
-      
+
       const formData = this.userForm.value;
-      
+
       if (this.isEditMode) {
         const updateData: UserUpdateRequest = {
           first_name: formData.first_name,
@@ -218,7 +218,7 @@ export class UserFormComponent implements OnInit {
 
   private handleError(error: any): void {
     let errorMessage = 'Ошибка сохранения пользователя';
-    
+
     if (error.error?.error) {
       errorMessage = error.error.error;
     } else if (error.error?.username) {
@@ -226,7 +226,7 @@ export class UserFormComponent implements OnInit {
     } else if (error.error?.email) {
       errorMessage = 'Пользователь с таким email уже существует';
     }
-    
+
     this.snackBar.open(errorMessage, 'Закрыть', { duration: 5000 });
     this.loading = false;
   }

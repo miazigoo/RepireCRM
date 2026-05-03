@@ -138,7 +138,7 @@ export class ShopManagementComponent implements OnInit {
       this.loading = true;
       const formData: ShopCreateRequest = this.shopForm.value;
 
-      const request = this.editingShop 
+      const request = this.editingShop
         ? this.adminService.updateShop(this.editingShop.id, formData)
         : this.adminService.createShop(formData);
 
@@ -163,10 +163,10 @@ export class ShopManagementComponent implements OnInit {
   toggleShopStatus(shop: Shop): void {
     const newStatus = !shop.is_active;
     // Создать правильный объект для обновления
-    const updateData: Partial<Shop> = { 
-      is_active: newStatus 
+    const updateData: Partial<Shop> = {
+      is_active: newStatus
     };
-    
+
     this.adminService.updateShop(shop.id, updateData).subscribe({
       next: (updatedShop) => {
         shop.is_active = updatedShop.is_active;

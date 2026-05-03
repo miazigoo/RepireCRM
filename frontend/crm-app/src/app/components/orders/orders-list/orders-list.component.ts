@@ -44,13 +44,13 @@ export class OrdersListComponent implements OnInit {
   @ViewChild(MatSort) sort!: MatSort;
 
   displayedColumns: string[] = [
-    'order_number', 
-    'customer', 
-    'device', 
-    'status', 
-    'priority', 
-    'cost', 
-    'created_at', 
+    'order_number',
+    'customer',
+    'device',
+    'status',
+    'priority',
+    'cost',
+    'created_at',
     'actions'
   ];
 
@@ -82,7 +82,7 @@ export class OrdersListComponent implements OnInit {
   private loadOrders(): void {
     this.loading = true;
     const filters = this.filtersForm.value;
-    
+
     this.ordersService.getOrders(1, 100, filters).subscribe({
       next: (orders) => {
         this.dataSource.data = orders;

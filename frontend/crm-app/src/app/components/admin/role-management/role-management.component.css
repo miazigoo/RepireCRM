@@ -197,21 +197,21 @@
   .form-row {
     grid-template-columns: 1fr;
   }
-  
+
   .header {
     flex-direction: column;
     gap: 16px;
     align-items: stretch;
   }
-  
+
   .form-actions {
     flex-direction: column;
   }
-  
+
   .roles-table {
     font-size: 14px;
   }
-  
+
   .role-description {
     max-width: 150px;
   }

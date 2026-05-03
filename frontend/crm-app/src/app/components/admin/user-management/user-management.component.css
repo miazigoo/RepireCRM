@@ -142,21 +142,21 @@
   .filters-form {
     grid-template-columns: 1fr;
   }
-  
+
   .search-field {
     min-width: auto;
   }
-  
+
   .header {
     flex-direction: column;
     gap: 16px;
     align-items: stretch;
   }
-  
+
   .users-table {
     font-size: 14px;
   }
-  
+
   .shops-info {
     max-width: 100px;
   }

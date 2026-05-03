@@ -10,7 +10,6 @@ from Schemas.common import ErrorSchema, MessageSchema
 from .customers_schemas import (
     CustomerCreateSchema,
     CustomerFilterSchema,
-    CustomerListSchema,
     CustomerSchema,
     CustomerUpdateSchema,
 )

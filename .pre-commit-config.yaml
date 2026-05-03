@@ -27,6 +27,7 @@ repos:
         entry: .venv/bin/flake8 --config=backend/.flake8
         language: system
         files: ^backend/
+        types: [python]
         exclude: ^backend/(.flake8|.*/migrations/)
 
       - id: mypy-client-portal

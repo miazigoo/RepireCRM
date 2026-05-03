@@ -189,7 +189,7 @@ class Task(models.Model):
 
         elif self.assignment_type == self.AssignmentType.SHOP and self.assigned_shop:
             # Все пользователи магазина
-            from users.models import UserShop
+            pass
 
             shop_users = User.objects.filter(
                 usershop__shop=self.assigned_shop, is_active=True

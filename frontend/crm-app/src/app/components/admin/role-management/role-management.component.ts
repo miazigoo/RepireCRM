@@ -168,7 +168,7 @@ export class RoleManagementComponent implements OnInit {
         permission_ids: Array.from(this.selectedPermissions)
       };
 
-      const request = this.editingRole 
+      const request = this.editingRole
         ? this.adminService.updateRole(this.editingRole.id, formData)
         : this.adminService.createRole(formData);
 
@@ -220,7 +220,7 @@ export class RoleManagementComponent implements OnInit {
   selectAllInCategory(category: string): void {
     const categoryPermissions = this.permissionsByCategory[category];
     const allSelected = categoryPermissions.every(p => this.selectedPermissions.has(p.id));
-    
+
     if (allSelected) {
       // Deselect all in category
       categoryPermissions.forEach(p => this.selectedPermissions.delete(p.id));

@@ -159,21 +159,21 @@
   .form-row {
     grid-template-columns: 1fr;
   }
-  
+
   .header {
     flex-direction: column;
     gap: 16px;
     align-items: stretch;
   }
-  
+
   .form-actions {
     flex-direction: column;
   }
-  
+
   .shops-table {
     font-size: 14px;
   }
-  
+
   .shop-address {
     max-width: 150px;
   }
