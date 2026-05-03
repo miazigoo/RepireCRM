@@ -9,6 +9,8 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatSelectModule } from '@angular/material/select';
 import { MatListModule } from '@angular/material/list';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
@@ -17,6 +19,7 @@ import { AppState } from '../../../store/app.state';
 import { selectCurrentUser, selectCurrentShop } from '../../../store/auth/auth.selectors';
 import * as AuthActions from '../../../store/auth/auth.actions';
 import { User, Shop } from '../../../core/models/models';
+import { HelpGuideDialogComponent } from '../../help/help-guide-dialog/help-guide-dialog.component';
 import { NotificationsComponent } from '../notifications/notifications.component';
 
 @Component({
@@ -33,6 +36,8 @@ import { NotificationsComponent } from '../notifications/notifications.component
     MatBadgeModule,
     MatSelectModule,
     MatListModule,
+    MatTooltipModule,
+    MatDialogModule,
     NotificationsComponent
   ],
   templateUrl: './main-layout.component.html',
@@ -56,7 +61,8 @@ export class MainLayoutComponent implements OnInit {
   constructor(
     private breakpointObserver: BreakpointObserver,
     private store: Store<AppState>,
-    private router: Router
+    private router: Router,
+    private dialog: MatDialog
   ) {
     this.isHandset$ = this.breakpointObserver.observe(Breakpoints.Handset)
       .pipe(
@@ -89,6 +95,16 @@ export class MainLayoutComponent implements OnInit {
 
   logout(): void {
     this.store.dispatch(AuthActions.logout());
+  }
+
+  openHelp(): void {
+    this.dialog.open(HelpGuideDialogComponent, {
+      width: 'min(980px, calc(100vw - 32px))',
+      maxWidth: '980px',
+      maxHeight: 'calc(100vh - 32px)',
+      panelClass: 'guide-dialog-panel',
+      autoFocus: false
+    });
   }
 
   handleNotification(notification: any): void {

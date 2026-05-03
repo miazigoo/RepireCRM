@@ -1,3 +1,19 @@
+.material-icons,
+.mat-icon {
+  font-family: 'Material Icons', sans-serif;
+  font-feature-settings: 'liga';
+  font-style: normal;
+  font-weight: normal;
+  letter-spacing: normal;
+  line-height: 1;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
 html, body {
   height: 100%;
   margin: 0;
@@ -32,4 +48,9 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.guide-dialog-panel .mat-mdc-dialog-container .mdc-dialog__surface {
+  border-radius: 12px;
+  overflow: hidden;
 }

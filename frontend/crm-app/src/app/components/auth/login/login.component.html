@@ -1,17 +1,53 @@
 
-<div class="login-container">
-  <mat-card class="login-card">
-    <mat-card-header>
-      <mat-card-title class="text-center">
-        <mat-icon class="login-icon">build</mat-icon>
-        <h1>Repair CRM</h1>
-      </mat-card-title>
-      <mat-card-subtitle class="text-center">
-        Система управления ремонтом устройств
-      </mat-card-subtitle>
-    </mat-card-header>
+<div class="login-page">
+  <section class="login-visual">
+    <div class="brand-row">
+      <span class="brand-mark">
+        <mat-icon>construction</mat-icon>
+      </span>
+      <div>
+        <strong>Repair CRM</strong>
+        <span>операционная система сервиса</span>
+      </div>
+    </div>
 
-    <mat-card-content>
+    <div class="login-copy">
+      <span class="eyebrow">Для ремонта телефонов и компьютеров</span>
+      <h1>Заказы, клиенты, склад и статусы в одном рабочем месте</h1>
+      <p>
+        Приемка видит заявки, мастер ведет этапы ремонта, клиент отслеживает
+        устройство без звонков в сервис.
+      </p>
+    </div>
+
+    <div class="signal-grid">
+      <div>
+        <mat-icon>timeline</mat-icon>
+        <span>История статусов</span>
+      </div>
+      <div>
+        <mat-icon>photo_camera</mat-icon>
+        <span>Фото этапов</span>
+      </div>
+      <div>
+        <mat-icon>verified</mat-icon>
+        <span>Согласования</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="login-panel">
+    <mat-card class="login-card">
+      <div class="form-header">
+        <span class="mobile-brand">
+          <mat-icon>construction</mat-icon>
+        </span>
+        <div>
+          <h2>Вход для сотрудников</h2>
+          <p>Выберите филиал после авторизации, если у вас есть доступ к нескольким точкам.</p>
+        </div>
+      </div>
+
       <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
         <mat-form-field class="full-width">
           <mat-label>Логин</mat-label>
@@ -58,6 +94,11 @@
           Кабинет клиента
         </button>
       </form>
-    </mat-card-content>
-  </mat-card>
+
+      <div class="security-note">
+        <mat-icon>lock</mat-icon>
+        <span>Доступ к заказам ограничивается ролью и текущим филиалом.</span>
+      </div>
+    </mat-card>
+  </section>
 </div>

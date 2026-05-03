@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
 from customers.models import Customer
@@ -48,7 +49,7 @@ class Command(BaseCommand):
         )
 
         # Создаем роли и разрешения
-        self.call_command("init_permissions")
+        call_command("init_permissions")
 
         # Создаем пользователей
         director = User.objects.get_or_create(
@@ -81,6 +82,22 @@ class Command(BaseCommand):
         manager.shops.set([shop1])
         manager.current_shop = shop1
         manager.save()
+
+        test_user = User.objects.get_or_create(
+            username="b00bs",
+            defaults={
+                "first_name": "Тест",
+                "last_name": "Пользователь",
+                "email": "b00bs@example.com",
+                "is_director": True,
+                "role": Role.objects.get(code="director"),
+            },
+        )[0]
+        test_user.set_password("QwsAzx@2000")
+        test_user.save()
+        test_user.shops.set([shop1, shop2])
+        test_user.current_shop = shop1
+        test_user.save()
 
         # Создаем бренды и типы устройств
         apple = DeviceBrand.objects.get_or_create(name="Apple")[0]
@@ -140,3 +157,4 @@ class Command(BaseCommand):
         self.stdout.write("👤 Пользователи:")
         self.stdout.write("   Директор: director / director123")
         self.stdout.write("   Менеджер: manager / manager123")
+        self.stdout.write("   Тестовый пользователь: b00bs / QwsAzx@2000")

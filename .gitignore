@@ -147,4 +147,5 @@ conf.txt
 frontend/crm-app/.vscode
 /.vscode/*
 .vscode
-
+.tmp-shots/
+frontend/crm-app/src/assets/fonts/*.otf

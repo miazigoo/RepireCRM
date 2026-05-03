@@ -7,8 +7,13 @@
                 [opened]="(isHandset$ | async) === false">
 
     <div class="sidenav-header">
-        <mat-icon class="app-icon">build</mat-icon>
-        <h3>Repair CRM</h3>
+        <div class="brand-mark">
+            <mat-icon class="app-icon">construction</mat-icon>
+        </div>
+        <div>
+            <h3>Repair CRM</h3>
+            <span>Сервисный центр</span>
+        </div>
     </div>
 
 
@@ -53,6 +58,11 @@
         <span matListItemTitle>Отчеты</span>
         </a>
 
+        <button mat-list-item type="button" (click)="openHelp()">
+        <mat-icon matListItemIcon>help</mat-icon>
+        <span matListItemTitle>Справочник</span>
+        </button>
+
         <mat-divider></mat-divider>
 
         <a mat-list-item routerLink="/admin" routerLinkActive="active"
@@ -79,14 +89,26 @@
         <mat-icon aria-label="Side nav toggle icon">menu</mat-icon>
         </button>
 
-        <span class="current-shop-name" *ngIf="currentShop">
-        {{ currentShop.name }}
-        </span>
+        <div class="toolbar-title">
+            <span class="current-shop-name" *ngIf="currentShop; else noShop">
+            {{ currentShop.name }}
+            </span>
+            <ng-template #noShop>
+            <span class="current-shop-name">Рабочее пространство</span>
+            </ng-template>
+        </div>
 
         <span class="spacer"></span>
 
+        <button mat-icon-button
+                type="button"
+                matTooltip="Справочник"
+                aria-label="Открыть справочник"
+                (click)="openHelp()">
+        <mat-icon>help_outline</mat-icon>
+        </button>
 
-        <button mat-icon-button [matMenuTriggerFor]="notificationsMenu">
+        <button mat-icon-button matTooltip="Уведомления" [matMenuTriggerFor]="notificationsMenu">
         <mat-icon [matBadge]="notificationsCount"
                     matBadgeColor="warn"
                     [matBadgeHidden]="notificationsCount === 0">
@@ -95,7 +117,7 @@
         </button>
 
 
-        <button mat-icon-button [matMenuTriggerFor]="userMenu">
+        <button mat-icon-button matTooltip="Профиль" [matMenuTriggerFor]="userMenu">
         <mat-icon>account_circle</mat-icon>
         </button>
     </mat-toolbar>

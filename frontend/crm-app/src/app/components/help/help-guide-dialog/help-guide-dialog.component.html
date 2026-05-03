@@ -1,0 +1,120 @@
+<div class="guide-shell">
+  <header class="guide-header">
+    <div>
+      <span class="guide-kicker">Справочник Repair CRM</span>
+      <h2 mat-dialog-title>Как работать и где что считается</h2>
+    </div>
+    <button mat-icon-button mat-dialog-close aria-label="Закрыть справочник">
+      <mat-icon>close</mat-icon>
+    </button>
+  </header>
+
+  <mat-dialog-content class="guide-content">
+    <mat-tab-group animationDuration="180ms" mat-stretch-tabs="false">
+      <mat-tab label="Быстрый старт">
+        <div class="tab-panel">
+          <div class="workflow-grid">
+            <article class="workflow-card" *ngFor="let step of workflowSteps; let index = index">
+              <span class="step-index">{{ index + 1 }}</span>
+              <mat-icon>{{ step.icon }}</mat-icon>
+              <h3>{{ step.title }}</h3>
+              <p>{{ step.text }}</p>
+            </article>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Статусы">
+        <div class="tab-panel">
+          <div class="status-grid">
+            <article class="status-card" *ngFor="let status of statuses" [class]="status.tone">
+              <div>
+                <span class="status-code">{{ status.code }}</span>
+                <h3>{{ status.title }}</h3>
+              </div>
+              <p>{{ status.text }}</p>
+            </article>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Расчеты">
+        <div class="tab-panel">
+          <mat-accordion multi>
+            <mat-expansion-panel *ngFor="let item of calculations">
+              <mat-expansion-panel-header>
+                <mat-panel-title>{{ item.title }}</mat-panel-title>
+                <mat-panel-description>{{ item.note }}</mat-panel-description>
+              </mat-expansion-panel-header>
+              <div class="formula-box">
+                <mat-icon>functions</mat-icon>
+                <span>{{ item.formula }}</span>
+              </div>
+            </mat-expansion-panel>
+          </mat-accordion>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Подписка">
+        <div class="tab-panel subscription-panel">
+          <section class="subscription-summary">
+            <div>
+              <h3>Пробный период и тарифы</h3>
+              <p>
+                Новая организация получает 45 дней бесплатно. После этого можно
+                выбрать оплату на месяц, полгода или год. Повторно включить trial нельзя.
+              </p>
+            </div>
+            <mat-icon>workspace_premium</mat-icon>
+          </section>
+
+          <div class="bucket-grid">
+            <article class="bucket-card" *ngFor="let bucket of subscriptionBuckets">
+              <span class="bucket-dot" [style.background]="bucket.color"></span>
+              <strong>{{ bucket.value }}</strong>
+              <span>{{ bucket.label }}</span>
+            </article>
+          </div>
+
+          <mat-divider></mat-divider>
+
+          <div class="notice-box">
+            <mat-icon>notifications_active</mat-icon>
+            <p>
+              Уведомления владельцу и администратору отправляются на 30%, 20%, 10%
+              и 0% оставшегося срока. В production это проверяет сервис
+              <strong>subscription-checker</strong>.
+            </p>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Роли">
+        <div class="tab-panel">
+          <div class="roles-grid">
+            <article>
+              <mat-icon>manage_accounts</mat-icon>
+              <h3>Директор</h3>
+              <p>Видит филиалы, пользователей, настройки, отчеты и подписку.</p>
+            </article>
+            <article>
+              <mat-icon>admin_panel_settings</mat-icon>
+              <h3>Администратор</h3>
+              <p>Может управлять настройками и подпиской без superuser-доступа.</p>
+            </article>
+            <article>
+              <mat-icon>support_agent</mat-icon>
+              <h3>Менеджер</h3>
+              <p>Принимает заказы, ведет клиентов, создает согласования.</p>
+            </article>
+            <article>
+              <mat-icon>precision_manufacturing</mat-icon>
+              <h3>Мастер</h3>
+              <p>Обновляет статусы, добавляет этапы ремонта и фото работ.</p>
+            </article>
+          </div>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </mat-dialog-content>
+</div>

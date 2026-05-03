@@ -45,6 +45,23 @@ interface DashboardStats {
 export class DashboardComponent implements OnInit {
   stats: DashboardStats | null = null;
   recentOrders: Order[] = [];
+  calculationHelpers = [
+    {
+      icon: 'receipt_long',
+      title: 'Выручка',
+      text: 'Считается за выбранный период по оплатам или стоимости закрытых работ.'
+    },
+    {
+      icon: 'functions',
+      title: 'Средний чек',
+      text: 'Выручка периода делится на количество заказов периода.'
+    },
+    {
+      icon: 'timeline',
+      title: 'Статусы',
+      text: 'Диаграмма показывает текущие статусы заказов, а не историю переходов.'
+    }
+  ];
 
   // Chart configuration
   chartType: ChartType = 'doughnut';
@@ -66,6 +83,15 @@ export class DashboardComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadDashboardData();
+  }
+
+  getRecentOrdersShare(): string {
+    const total = this.stats?.total_orders || 0;
+    if (!total) {
+      return '0% от всех заказов';
+    }
+    const share = ((this.stats?.recent_orders || 0) / total) * 100;
+    return `${share.toFixed(1)}% от всех заказов`;
   }
 
   private loadDashboardData(): void {

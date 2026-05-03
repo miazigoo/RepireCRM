@@ -1,0 +1,240 @@
+.guide-shell {
+  width: min(100%, 980px);
+  color: #172033;
+}
+
+.guide-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 28px 12px;
+}
+
+.guide-kicker {
+  color: #4361ee;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.guide-header h2 {
+  margin: 4px 0 0;
+  color: #0f172a;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.guide-content {
+  padding: 0 28px 28px;
+}
+
+.tab-panel {
+  padding-top: 22px;
+}
+
+.workflow-grid,
+.status-grid,
+.roles-grid,
+.bucket-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.workflow-grid {
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
+}
+
+.workflow-card,
+.status-card,
+.roles-grid article,
+.bucket-card,
+.subscription-summary,
+.notice-box,
+.formula-box {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.workflow-card {
+  position: relative;
+  min-height: 210px;
+  padding: 18px;
+}
+
+.workflow-card mat-icon,
+.roles-grid mat-icon {
+  width: 36px;
+  height: 36px;
+  color: #2563eb;
+  font-size: 36px;
+}
+
+.step-index {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-weight: 800;
+}
+
+.workflow-card h3,
+.status-card h3,
+.roles-grid h3,
+.subscription-summary h3 {
+  margin: 14px 0 8px;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.workflow-card p,
+.status-card p,
+.roles-grid p,
+.subscription-summary p,
+.notice-box p {
+  margin: 0;
+  color: #536076;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.status-grid {
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+}
+
+.status-card {
+  min-height: 140px;
+  padding: 16px;
+  border-top: 4px solid #94a3b8;
+}
+
+.status-code {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.status-card h3 {
+  margin-top: 4px;
+}
+
+.status-card.blue { border-top-color: #2563eb; }
+.status-card.amber { border-top-color: #f59e0b; }
+.status-card.violet { border-top-color: #7c3aed; }
+.status-card.orange { border-top-color: #ea580c; }
+.status-card.cyan { border-top-color: #0891b2; }
+.status-card.green { border-top-color: #16a34a; }
+.status-card.neutral { border-top-color: #64748b; }
+.status-card.red { border-top-color: #dc2626; }
+
+.formula-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.formula-box mat-icon {
+  color: #2563eb;
+}
+
+.subscription-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.subscription-summary,
+.notice-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+  background: #f8fbff;
+}
+
+.subscription-summary mat-icon {
+  width: 48px;
+  height: 48px;
+  color: #2563eb;
+  font-size: 48px;
+}
+
+.bucket-grid {
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
+}
+
+.bucket-card {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+}
+
+.bucket-dot {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.bucket-card strong {
+  color: #111827;
+}
+
+.bucket-card span:last-child {
+  color: #64748b;
+}
+
+.notice-box {
+  justify-content: flex-start;
+  background: #fff7ed;
+}
+
+.notice-box mat-icon {
+  color: #ea580c;
+}
+
+.roles-grid {
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+}
+
+.roles-grid article {
+  padding: 18px;
+}
+
+@media (max-width: 900px) {
+  .workflow-grid,
+  .status-grid,
+  .roles-grid,
+  .bucket-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .guide-header {
+    padding: 20px 20px 8px;
+  }
+
+  .guide-content {
+    padding: 0 20px 22px;
+  }
+
+  .workflow-grid,
+  .status-grid,
+  .roles-grid,
+  .bucket-grid {
+    grid-template-columns: 1fr;
+  }
+}

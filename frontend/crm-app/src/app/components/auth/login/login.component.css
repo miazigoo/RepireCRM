@@ -1,68 +1,222 @@
-.login-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.login-page {
+  display: grid;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+  grid-template-columns: minmax(0, 1.05fr) minmax(420px, 0.95fr);
+  background: #f4f7fb;
+  color: #0f172a;
+}
+
+.login-visual {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 48px;
+  background:
+    linear-gradient(145deg, rgba(37, 99, 235, 0.12), rgba(22, 163, 74, 0.08)),
+    #eef4ff;
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark,
+.mobile-brand {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.brand-mark mat-icon,
+.mobile-brand mat-icon {
+  width: 27px;
+  height: 27px;
+  font-size: 27px;
+}
+
+.brand-row strong {
+  display: block;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.brand-row span:last-child {
+  color: #536076;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.login-copy {
+  max-width: 660px;
+}
+
+.eyebrow {
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.login-copy h1 {
+  margin: 12px 0 18px;
+  color: #0f172a;
+  font-size: clamp(36px, 5vw, 64px);
+  font-weight: 900;
+  line-height: 1.02;
+}
+
+.login-copy p {
+  max-width: 560px;
+  margin: 0;
+  color: #475569;
+  font-size: 18px;
+  line-height: 1.55;
+}
+
+.signal-grid {
+  display: grid;
+  max-width: 720px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.signal-grid div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #1f2937;
+  font-weight: 800;
+}
+
+.signal-grid mat-icon {
+  color: #2563eb;
+}
+
+.login-panel {
+  display: grid;
+  place-items: center;
+  padding: 40px;
 }
 
 .login-card {
-  width: 100%;
-  max-width: 400px;
-  padding: 20px;
+  width: min(100%, 440px);
+  padding: 30px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
 }
 
-.text-center {
-  text-align: center;
+.form-header {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.mobile-brand {
+  display: none;
+  flex: 0 0 auto;
+}
+
+.form-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 25px;
+  font-weight: 900;
+}
+
+.form-header p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .full-width {
   width: 100%;
 }
 
-.login-icon {
-  font-size: 48px;
-  height: 48px;
-  width: 48px;
-  color: #1976d2;
-}
-
 .login-button {
-  margin-top: 20px;
   height: 48px;
+  margin-top: 12px;
+  border-radius: 8px;
+  font-weight: 900;
 }
 
 .client-portal-link {
+  height: 44px;
   margin-top: 10px;
+  border-radius: 8px;
+}
+
+.client-portal-link mat-icon {
+  margin-right: 8px;
 }
 
 .error-message {
-  color: #f44336;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 16px 0;
+  margin: 14px 0;
   padding: 12px;
-  background: #ffebee;
-  border-radius: 4px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-weight: 700;
 }
 
-.demo-credentials {
-  margin-top: 24px;
-  padding: 16px;
-  background: #f5f5f5;
-  border-radius: 4px;
-  text-align: center;
+.security-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 22px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
 }
 
-.demo-credentials h4 {
-  margin: 0 0 12px 0;
-  color: #666;
+.security-note mat-icon {
+  color: #2563eb;
 }
 
-.demo-credentials p {
-  margin: 4px 0;
-  font-size: 14px;
-  color: #888;
+@media (max-width: 960px) {
+  .login-page {
+    grid-template-columns: 1fr;
+  }
+
+  .login-visual {
+    display: none;
+  }
+
+  .login-panel {
+    padding: 24px;
+  }
+
+  .mobile-brand {
+    display: grid;
+  }
+}
+
+@media (max-width: 520px) {
+  .login-card {
+    padding: 22px;
+  }
+
+  .form-header {
+    align-items: flex-start;
+  }
 }
