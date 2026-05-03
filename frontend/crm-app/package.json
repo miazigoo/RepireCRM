@@ -13,6 +13,7 @@
     "build:dev": "ng build --configuration development",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "test:ci": "ng test --watch=false --browsers=ChromeHeadlessNoSandbox",
     "start-docker": "ng serve --host 0.0.0.0 --port 4200 --poll 2000 --proxy-config proxy.conf.dev.js --disable-host-check"
   },
   "prettier": {

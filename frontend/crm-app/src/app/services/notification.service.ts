@@ -38,14 +38,17 @@ export class NotificationService {
   }
 
   private connect(): void {
+    if (!environment.production) {
+      return;
+    }
+
     const token = localStorage.getItem('access_token');
     if (!token) {
       return;
     }
 
-    const wsUrl = environment.production
-      ? `wss://${window.location.host}/ws/notifications/`
-      : `ws://localhost:8030/ws/notifications/`;
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/ws/notifications/`;
 
     this.socket = new WebSocket(wsUrl);
 

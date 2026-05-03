@@ -28,6 +28,22 @@ export const routes: Routes = [
         loadChildren: () => import('./routes/customers.routes').then(m => m.CUSTOMERS_ROUTES)
       },
       {
+        path: 'inventory',
+        loadComponent: () => import('./components/inventory/inventory-dashboard/inventory-dashboard.component').then(m => m.InventoryDashboardComponent)
+      },
+      {
+        path: 'reports',
+        loadComponent: () => import('./components/reports/reports-dashboard/reports-dashboard.component').then(m => m.ReportsDashboardComponent)
+      },
+      {
+        path: 'finance',
+        loadComponent: () => import('./components/finance/finance-dashboard/finance-dashboard.component').then(m => m.FinanceDashboardComponent)
+      },
+      {
+        path: 'tasks',
+        loadComponent: () => import('./components/tasks/tasks-dashboard/tasks-dashboard.component').then(m => m.TasksDashboardComponent)
+      },
+      {
         path: 'admin',
         loadChildren: () => import('./routes/admin.routes').then(m => m.ADMIN_ROUTES)
       },

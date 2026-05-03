@@ -56,7 +56,9 @@
     </div>
 
     <mat-card class="auth-panel">
-      <mat-tab-group [selectedIndex]="authMode === 'login' ? 0 : 1">
+      <mat-tab-group
+        [selectedIndex]="authMode === 'login' ? 0 : 1"
+        (selectedIndexChange)="switchAuthMode($event === 0 ? 'login' : 'register')">
         <mat-tab label="Вход">
           <form [formGroup]="loginForm" (ngSubmit)="login()" class="auth-form">
             <mat-form-field appearance="outline">
