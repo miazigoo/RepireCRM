@@ -8,6 +8,10 @@ export interface InventoryItem {
   name: string;
   sku: string;
   category: string;
+  category_name?: string;
+  item_type?: string;
+  primary_supplier_id?: number;
+  primary_supplier_name?: string;
   total_stock: number;
   min_quantity: number;
   selling_price: number;
@@ -33,6 +37,46 @@ export interface InventoryStatistics {
   turnover_rate: number;
 }
 
+export interface Supplier {
+  id: number;
+  name: string;
+  contact_person?: string;
+  email?: string;
+  phone?: string;
+  is_active?: boolean;
+}
+
+export interface QuickCreateInventoryItemRequest {
+  name: string;
+  sku: string;
+  item_type: string;
+  category_name?: string;
+  category_id?: number;
+  purchase_price: number;
+  selling_price: number;
+  barcodes?: string[];
+  unit?: string;
+  primary_supplier_id?: number;
+  description?: string;
+}
+
+export interface PurchaseOrderRequest {
+  supplier_id?: number;
+  supplier_name?: string;
+  notes?: string;
+  items: Array<{
+    item_id: number;
+    quantity: number;
+    unit_price: number;
+  }>;
+}
+
+type ListResponse<T> = T[] | { items?: T[] };
+
+function unwrapList<T>(response: ListResponse<T>): T[] {
+  return Array.isArray(response) ? response : response.items ?? [];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -40,7 +84,8 @@ export class InventoryService {
   constructor(private apiService: ApiService) {}
 
   getInventoryItems(): Observable<InventoryItem[]> {
-    return this.apiService.get<InventoryItem[]>('/inventory/items').pipe(
+    return this.apiService.get<ListResponse<InventoryItem>>('/inventory/items').pipe(
+      map(unwrapList),
       catchError(() => of([]))
     );
   }
@@ -76,5 +121,19 @@ export class InventoryService {
         turnover_rate: 0
       }))
     );
+  }
+
+  getSuppliers(): Observable<Supplier[]> {
+    return this.apiService.get<Supplier[]>('/inventory/suppliers').pipe(
+      catchError(() => of([]))
+    );
+  }
+
+  quickCreateItem(data: QuickCreateInventoryItemRequest): Observable<InventoryItem> {
+    return this.apiService.post<InventoryItem>('/inventory/items/quick-create', data);
+  }
+
+  createPurchaseOrder(data: PurchaseOrderRequest): Observable<any> {
+    return this.apiService.post<any>('/inventory/purchase-orders', data);
   }
 }

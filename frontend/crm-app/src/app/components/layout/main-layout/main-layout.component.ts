@@ -7,7 +7,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatBadgeModule } from '@angular/material/badge';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -21,6 +23,7 @@ import * as AuthActions from '../../../store/auth/auth.actions';
 import { User, Shop } from '../../../core/models/models';
 import { HelpGuideDialogComponent } from '../../help/help-guide-dialog/help-guide-dialog.component';
 import { NotificationsComponent } from '../notifications/notifications.component';
+import { Theme, ThemeService } from '../../../services/theme.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -36,7 +39,9 @@ import { NotificationsComponent } from '../notifications/notifications.component
     MatIconModule,
     MatMenuModule,
     MatBadgeModule,
+    MatDividerModule,
     MatSelectModule,
+    MatSlideToggleModule,
     MatListModule,
     MatTooltipModule,
     MatDialogModule,
@@ -59,12 +64,15 @@ export class MainLayoutComponent implements OnInit {
   pendingOrdersCount = 0;
   notificationsCount = 0;
   notifications: any[] = [];
+  themes: Theme[] = [];
+  currentTheme: Theme | null = null;
 
   constructor(
     private breakpointObserver: BreakpointObserver,
     private store: Store<AppState>,
     private router: Router,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private themeService: ThemeService
   ) {
     this.isHandset$ = this.breakpointObserver.observe(Breakpoints.Handset)
       .pipe(
@@ -76,6 +84,12 @@ export class MainLayoutComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.themes = this.themeService.getAvailableThemes();
+    this.currentTheme = this.themeService.getCurrentTheme();
+    this.themeService.currentTheme$.subscribe(theme => {
+      this.currentTheme = theme;
+    });
+
     this.currentUser$.subscribe(user => {
       this.currentUser = user;
       if (user?.is_director) {
@@ -107,6 +121,14 @@ export class MainLayoutComponent implements OnInit {
       panelClass: 'guide-dialog-panel',
       autoFocus: false
     });
+  }
+
+  setTheme(themeId: string): void {
+    this.themeService.setTheme(themeId);
+  }
+
+  toggleLightDark(isDark: boolean): void {
+    this.themeService.setTheme(isDark ? 'default-dark' : 'default-light');
   }
 
   handleNotification(notification: any): void {

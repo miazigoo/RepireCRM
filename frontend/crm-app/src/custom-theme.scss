@@ -64,14 +64,16 @@ $repair-theme: mat.define-theme((
 }
 
 .repair-toolbar {
-  background: linear-gradient(45deg, #1976d2, #42a5f5) !important;
-  color: white !important;
+  background: var(--color-toolbar) !important;
+  color: var(--color-text-primary) !important;
 }
 
 
 .mat-mdc-card {
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-light);
 }
 
 
@@ -83,6 +85,6 @@ $repair-theme: mat.define-theme((
 .mat-mdc-table {
   .mat-mdc-header-cell {
     font-weight: 600;
-    color: rgba(0,0,0,0.87);
+    color: var(--color-text-primary);
   }
 }

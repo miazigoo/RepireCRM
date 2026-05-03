@@ -1,15 +1,20 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { ApiService } from './api.service';
 import {
   AdditionalService,
+  DeviceModel,
   Order,
   OrderApproval,
   OrderAuditLog,
   OrderFilters,
+  PaginatedResponse,
   OrderStatusHistory,
   RepairStage
 } from '../core/models/models';
+
+type OrderListResponse = Order[] | PaginatedResponse<Order>;
 
 @Injectable({
   providedIn: 'root'
@@ -25,7 +30,9 @@ export class OrdersService {
       page_size: pageSize,
       ...filters
     };
-    return this.apiService.get<Order[]>(this.endpoint, params);
+    return this.apiService.get<OrderListResponse>(this.endpoint, params).pipe(
+      map(response => Array.isArray(response) ? response : response.items)
+    );
   }
 
   getOrder(id: number): Observable<Order> {
@@ -69,6 +76,10 @@ export class OrdersService {
 
   getAdditionalServices(): Observable<AdditionalService[]> {
     return this.apiService.get<AdditionalService[]>(`${this.endpoint}/additional-services`);
+  }
+
+  getDeviceModels(): Observable<DeviceModel[]> {
+    return this.apiService.get<DeviceModel[]>(`${this.endpoint}/device-models`);
   }
 
   getStatistics(): Observable<any> {

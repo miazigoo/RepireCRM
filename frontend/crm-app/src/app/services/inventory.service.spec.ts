@@ -8,7 +8,7 @@ describe('InventoryService', () => {
   let apiService: jasmine.SpyObj<ApiService>;
 
   beforeEach(() => {
-    apiService = jasmine.createSpyObj<ApiService>('ApiService', ['get']);
+    apiService = jasmine.createSpyObj<ApiService>('ApiService', ['get', 'post']);
 
     TestBed.configureTestingModule({
       providers: [
@@ -49,6 +49,17 @@ describe('InventoryService', () => {
     });
   });
 
+  it('unwraps paginated inventory item responses', () => {
+    const item = { id: 7, name: 'Дисплей', sku: 'LCD-1' } as any;
+    apiService.get.and.returnValue(of({ items: [item], count: 1 }));
+
+    service.getInventoryItems().subscribe((items) => {
+      expect(items).toEqual([item]);
+    });
+
+    expect(apiService.get).toHaveBeenCalledOnceWith('/inventory/items');
+  });
+
   it('maps stock dashboard totals into inventory statistics', () => {
     apiService.get.and.returnValue(of({
       totals: {
@@ -70,5 +81,41 @@ describe('InventoryService', () => {
     });
 
     expect(apiService.get).toHaveBeenCalledOnceWith('/inventory/stock/dashboard');
+  });
+
+  it('quick-creates inventory items through backend endpoint', () => {
+    const item = { id: 9, name: 'Аккумулятор', sku: 'BAT-1' } as any;
+    const payload = {
+      name: 'Аккумулятор',
+      sku: 'BAT-1',
+      item_type: 'component',
+      category_name: 'Запчасти',
+      purchase_price: 1000,
+      selling_price: 1800,
+      unit: 'шт',
+      barcodes: []
+    };
+    apiService.post.and.returnValue(of(item));
+
+    service.quickCreateItem(payload).subscribe((result) => {
+      expect(result).toEqual(item);
+    });
+
+    expect(apiService.post).toHaveBeenCalledOnceWith('/inventory/items/quick-create', payload);
+  });
+
+  it('creates supplier purchase orders through backend endpoint', () => {
+    const payload = {
+      supplier_name: 'Основной поставщик',
+      items: [{ item_id: 9, quantity: 2, unit_price: 1000 }],
+      notes: ''
+    };
+    apiService.post.and.returnValue(of({ success: true, order_id: 4 }));
+
+    service.createPurchaseOrder(payload).subscribe((result) => {
+      expect(result).toEqual({ success: true, order_id: 4 });
+    });
+
+    expect(apiService.post).toHaveBeenCalledOnceWith('/inventory/purchase-orders', payload);
   });
 });

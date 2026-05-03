@@ -80,4 +80,11 @@ describe('MainLayoutComponent', () => {
     expect(targets).toContain('/admin');
     expect(targets).toContain('/admin/settings');
   });
+
+  it('renders navbar theme controls', () => {
+    const element: HTMLElement = fixture.nativeElement;
+
+    expect(element.querySelector('[aria-label="Переключить темную тему"]')).toBeTruthy();
+    expect(element.querySelector('[aria-label="Выбрать тему"]')).toBeTruthy();
+  });
 });

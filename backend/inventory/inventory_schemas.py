@@ -336,7 +336,8 @@ class QuickCreateItemInputSchema(Schema):
     name: str
     sku: str
     item_type: str
-    category_id: int
+    category_id: Optional[int] = None
+    category_name: Optional[str] = None
     purchase_price: float
     selling_price: float
     # список штрихкодов

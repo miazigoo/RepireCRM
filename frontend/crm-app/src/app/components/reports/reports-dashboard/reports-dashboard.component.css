@@ -61,8 +61,9 @@
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: var(--color-primary);
-  color: white;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -77,11 +78,11 @@
 }
 
 .metric-trend.success {
-  color: #4caf50;
+  color: var(--color-success);
 }
 
 .metric-trend.warn {
-  color: #f44336;
+  color: var(--color-danger);
 }
 
 .metric-content h3 {
@@ -109,20 +110,21 @@
 }
 
 .metric-breakdown .completed {
-  color: #4caf50;
+  color: var(--color-success);
 }
 
 .metric-breakdown .in-progress {
-  color: #ff9800;
+  color: var(--color-warning);
 }
 
 .metric-badge {
-  background: var(--color-accent);
-  color: white;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
   padding: 4px 8px;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
+  border: 1px solid var(--color-border);
 }
 
 .charts-section {
@@ -165,8 +167,9 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: var(--color-primary);
-  color: white;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -186,6 +186,7 @@ class OrderTestCase(TestCase):
     def test_order_catalog_static_routes_are_not_treated_as_order_id(self):
         static_routes = (
             "/api/orders/additional-services",
+            "/api/orders/device-models",
             "/api/orders/repair-services",
         )
 

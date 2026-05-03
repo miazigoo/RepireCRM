@@ -8,7 +8,7 @@
 
     <div class="sidenav-header">
         <div class="brand-mark">
-            <mat-icon class="app-icon">construction</mat-icon>
+            <img class="brand-emblem" src="favicon.svg" alt="">
         </div>
         <div>
             <h3>Repair CRM</h3>
@@ -100,6 +100,22 @@
 
         <span class="spacer"></span>
 
+        <mat-slide-toggle
+                class="theme-toggle"
+                [checked]="currentTheme?.isDark === true"
+                (change)="toggleLightDark($event.checked)"
+                matTooltip="Светлая/темная тема"
+                aria-label="Переключить темную тему">
+        </mat-slide-toggle>
+
+        <button mat-icon-button
+                type="button"
+                matTooltip="Выбрать тему"
+                aria-label="Выбрать тему"
+                [matMenuTriggerFor]="themeMenu">
+        <mat-icon>palette</mat-icon>
+        </button>
+
         <button mat-icon-button
                 type="button"
                 matTooltip="Справочник"
@@ -122,6 +138,17 @@
         <mat-icon>account_circle</mat-icon>
         </button>
     </mat-toolbar>
+
+
+    <mat-menu #themeMenu="matMenu">
+        <button mat-menu-item
+                *ngFor="let theme of themes"
+                (click)="setTheme(theme.id)">
+        <mat-icon>{{ theme.isDark ? 'dark_mode' : 'light_mode' }}</mat-icon>
+        <span>{{ theme.displayName }}</span>
+        <mat-icon *ngIf="currentTheme?.id === theme.id">check</mat-icon>
+        </button>
+    </mat-menu>
 
 
     <mat-menu #notificationsMenu="matMenu">

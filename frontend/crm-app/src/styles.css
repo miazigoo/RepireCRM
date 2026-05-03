@@ -14,10 +14,176 @@
   -webkit-font-smoothing: antialiased;
 }
 
+:root {
+  --color-primary: #1976d2;
+  --color-secondary: #424242;
+  --color-accent: #0f766e;
+  --color-warn: #d32f2f;
+  --color-background: #f3f6fb;
+  --color-surface: #ffffff;
+  --color-surface-strong: #f3f6fb;
+  --color-border: #d8e0ea;
+  --color-text-primary: #111827;
+  --color-text-secondary: #526071;
+  --color-text-disabled: #8a94a6;
+  --color-primary-soft: rgba(25, 118, 210, 0.12);
+  --color-accent-soft: rgba(13, 148, 136, 0.12);
+  --color-success: #15803d;
+  --color-warning: #b45309;
+  --color-danger: #b91c1c;
+  --color-toolbar: rgba(255, 255, 255, 0.96);
+  --shadow-light: 0 2px 6px rgba(15, 23, 42, 0.08);
+  --shadow-medium: 0 12px 30px rgba(15, 23, 42, 0.10);
+}
+
 html, body {
   height: 100%;
   margin: 0;
+  background: var(--color-background);
+  color: var(--color-text-primary);
   font-family: Roboto, "Helvetica Neue", sans-serif;
+}
+
+body {
+  color-scheme: light;
+}
+
+body.dark-theme {
+  color-scheme: dark;
+}
+
+body .mat-mdc-card {
+  background: var(--color-surface) !important;
+  color: var(--color-text-primary) !important;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-light) !important;
+}
+
+body .mat-mdc-card-title,
+body .mat-mdc-card-subtitle,
+body .mat-mdc-card-content,
+body .mat-mdc-header-cell,
+body .mat-mdc-cell,
+body .mat-mdc-footer-cell {
+  color: var(--color-text-primary);
+}
+
+body .mat-mdc-card-subtitle,
+body .mat-mdc-hint,
+body .mat-step-optional {
+  color: var(--color-text-secondary);
+}
+
+body .mat-mdc-table,
+body .mat-mdc-header-row,
+body .mat-mdc-row,
+body .mat-mdc-paginator,
+body .mat-stepper-horizontal,
+body .mat-stepper-vertical,
+body .mat-mdc-tab-body-content {
+  background: var(--color-surface) !important;
+  color: var(--color-text-primary) !important;
+}
+
+body .mat-mdc-header-cell,
+body .mat-mdc-cell,
+body .mat-mdc-footer-cell {
+  border-bottom-color: var(--color-border);
+}
+
+body .mat-mdc-menu-panel,
+body .mat-mdc-select-panel,
+body .mat-mdc-autocomplete-panel,
+body .mat-datepicker-content,
+body .mat-mdc-dialog-surface {
+  background: var(--color-surface) !important;
+  color: var(--color-text-primary) !important;
+}
+
+body .mat-mdc-menu-item,
+body .mat-mdc-option,
+body .mat-mdc-select-value,
+body .mat-mdc-select-arrow,
+body .mat-mdc-input-element,
+body textarea.mat-mdc-input-element,
+body .mdc-list-item__primary-text,
+body .mat-mdc-menu-item-text,
+body .mat-mdc-icon-button {
+  color: var(--color-text-primary) !important;
+}
+
+body .mat-mdc-form-field,
+body .mat-mdc-floating-label,
+body .mat-mdc-form-field-required-marker {
+  color: var(--color-text-secondary);
+}
+
+body .mdc-text-field--filled,
+body .mdc-text-field--outlined {
+  background: var(--color-surface-strong) !important;
+}
+
+body .mdc-text-field--outlined .mdc-notched-outline__leading,
+body .mdc-text-field--outlined .mdc-notched-outline__notch,
+body .mdc-text-field--outlined .mdc-notched-outline__trailing {
+  border-color: var(--color-border) !important;
+}
+
+body .mat-mdc-tab .mdc-tab__text-label,
+body .mat-step-label {
+  color: var(--color-text-secondary);
+}
+
+body .mat-mdc-tab.mdc-tab--active .mdc-tab__text-label,
+body .mat-step-label-selected,
+body .mat-step-label-active {
+  color: var(--color-primary);
+}
+
+body .mat-mdc-standard-chip {
+  background: var(--color-surface-strong) !important;
+  color: var(--color-text-primary) !important;
+  border: 1px solid var(--color-border);
+}
+
+body .mat-mdc-raised-button:not(:disabled) {
+  box-shadow: var(--shadow-light);
+}
+
+body.dark-theme .content-container h1,
+body.dark-theme .content-container h2,
+body.dark-theme .content-container h3,
+body.dark-theme .content-container h4,
+body.dark-theme .content-container h5,
+body.dark-theme .mat-mdc-card h1,
+body.dark-theme .mat-mdc-card h2,
+body.dark-theme .mat-mdc-card h3,
+body.dark-theme .mat-mdc-card h4,
+body.dark-theme .mat-mdc-card h5 {
+  color: var(--color-text-primary) !important;
+}
+
+body.dark-theme .subtitle,
+body.dark-theme .description,
+body.dark-theme .helper-text,
+body.dark-theme .meta,
+body.dark-theme .empty-state,
+body.dark-theme .user-role,
+body.dark-theme .customer-phone,
+body.dark-theme .mat-mdc-card p {
+  color: var(--color-text-secondary) !important;
+}
+
+body.dark-theme .notification-item,
+body.dark-theme .timeline-content,
+body.dark-theme .comment-item,
+body.dark-theme .info-item,
+body.dark-theme .detail-item,
+body.dark-theme .approval-card,
+body.dark-theme .customer-panel {
+  background: var(--color-surface-strong) !important;
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-border) !important;
 }
 
 .full-width {

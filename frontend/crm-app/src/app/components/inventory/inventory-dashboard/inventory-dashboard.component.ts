@@ -1,6 +1,6 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -80,7 +80,10 @@ export class InventoryDashboardComponent implements OnInit {
     turnover_rate: 0
   };
 
-  constructor(private inventoryService: InventoryService) {}
+  constructor(
+    private inventoryService: InventoryService,
+    private router: Router
+  ) {}
 
   ngOnInit(): void {
     this.loadInventoryData();
@@ -180,7 +183,7 @@ export class InventoryDashboardComponent implements OnInit {
   }
 
   createPurchaseOrder(): void {
-    // Переход к созданию заказа поставщику
+    this.router.navigate(['/inventory/purchase-orders/new']);
   }
 
   adjustStock(item: InventoryItem): void {

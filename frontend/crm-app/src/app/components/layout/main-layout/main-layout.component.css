@@ -1,12 +1,13 @@
 .sidenav-container {
   height: 100%;
-  background: #eef2f7;
+  background: var(--color-background);
+  color: var(--color-text-primary);
 }
 
 .sidenav {
   width: 292px;
-  border-right: 1px solid #e2e8f0;
-  background: #ffffff;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .sidenav-header {
@@ -14,7 +15,7 @@
   align-items: center;
   gap: 12px;
   padding: 22px 20px;
-  border-bottom: 1px solid #eef2f7;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .brand-mark {
@@ -23,32 +24,33 @@
   height: 44px;
   place-items: center;
   border-radius: 8px;
-  background: #0f172a;
-  color: #ffffff;
+  background: var(--color-surface-strong);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
 }
 
-.app-icon {
-  width: 26px;
-  height: 26px;
-  font-size: 26px;
+.brand-emblem {
+  width: 34px;
+  height: 34px;
+  display: block;
 }
 
 .sidenav-header h3 {
   margin: 0;
-  color: #0f172a;
+  color: var(--color-text-primary);
   font-size: 18px;
   font-weight: 800;
 }
 
 .sidenav-header span {
-  color: #64748b;
+  color: var(--color-text-secondary);
   font-size: 12px;
   font-weight: 600;
 }
 
 .shop-selector {
   padding: 16px 18px;
-  border-bottom: 1px solid #eef2f7;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .shop-selector mat-select {
@@ -64,12 +66,12 @@
   height: 46px;
   margin-bottom: 4px;
   border-radius: 8px;
-  color: #465365;
+  color: var(--color-text-secondary);
 }
 
 .sidenav .mat-mdc-list-item.active {
-  background: #eef4ff;
-  color: #1d4ed8;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
 }
 
 .sidenav .mat-mdc-list-item mat-icon {
@@ -92,9 +94,9 @@
   top: 0;
   z-index: 5;
   height: 64px;
-  border-bottom: 1px solid #e2e8f0;
-  background: rgba(255, 255, 255, 0.94) !important;
-  color: #0f172a !important;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-toolbar) !important;
+  color: var(--color-text-primary) !important;
   backdrop-filter: blur(14px);
 }
 
@@ -107,19 +109,21 @@
 
 .current-shop-name {
   overflow: hidden;
-  color: #0f172a;
+  color: var(--color-text-primary);
   font-size: 16px;
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.theme-toggle {
+  margin-right: 6px;
+}
+
 .content-container {
   min-height: calc(100vh - 64px);
   padding: 24px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(238, 242, 247, 0)),
-    #eef2f7;
+  background: var(--color-background);
 }
 
 .notifications-header {
@@ -128,7 +132,7 @@
 
 .notifications-header h4 {
   margin: 0;
-  color: #334155;
+  color: var(--color-text-primary);
   font-weight: 800;
 }
 
@@ -139,13 +143,13 @@
 
 .no-notifications {
   padding: 16px;
-  color: #64748b;
+  color: var(--color-text-secondary);
   text-align: center;
 }
 
 .user-info {
   padding: 16px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .user-info p {
@@ -153,7 +157,7 @@
 }
 
 .user-role {
-  color: #64748b;
+  color: var(--color-text-secondary);
   font-size: 14px;
 }
 

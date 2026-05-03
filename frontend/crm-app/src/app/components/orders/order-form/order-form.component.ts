@@ -9,7 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatStepperModule } from '@angular/material/stepper';
+import { MatStepper, MatStepperModule } from '@angular/material/stepper';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -42,6 +42,7 @@ export class OrderFormComponent implements OnInit {
   isEditMode = false;
   orderId: number | null = null;
   loading = false;
+  creatingCustomer = false;
 
   // Data for form
   customers: Customer[] = [];
@@ -124,10 +125,9 @@ export class OrderFormComponent implements OnInit {
       this.customers = customers;
     });
 
-    // Load device models (would come from a device service)
-    // this.deviceService.getDeviceModels().subscribe(models => {
-    //   this.deviceModels = models;
-    // });
+    this.ordersService.getDeviceModels().subscribe(models => {
+      this.deviceModels = models;
+    });
 
     // Load additional services
     this.ordersService.getAdditionalServices().subscribe(services => {
@@ -195,15 +195,66 @@ export class OrderFormComponent implements OnInit {
     return customer ? `${customer.last_name} ${customer.first_name} (${customer.phone})` : '';
   }
 
-  onCustomerStepNext(): void {
-    if (this.customerForm.valid) {
+  onCustomerStepNext(stepper: MatStepper): void {
+    if (this.getSelectedCustomer()) {
+      this.customerForm.get('customer')?.setErrors(null);
       this.customerStepCompleted = true;
+      stepper.next();
+      return;
     }
+
+    this.customerForm.get('customer')?.setErrors({ required: true });
+    this.customerForm.get('customer')?.markAsTouched();
+    this.snackBar.open('Выберите клиента из списка или добавьте нового', 'Закрыть', {
+      duration: 3000
+    });
   }
 
-  onDeviceStepNext(): void {
+  createCustomerAndContinue(stepper: MatStepper): void {
+    const newCustomer = this.customerForm.get('newCustomer') as FormGroup;
+    const value = newCustomer.getRawValue();
+    const firstName = (value.first_name || '').trim();
+    const lastName = (value.last_name || '').trim();
+    const phone = (value.phone || '').trim();
+    const email = (value.email || '').trim();
+
+    if (!firstName || !lastName || !phone) {
+      newCustomer.markAllAsTouched();
+      this.snackBar.open('Заполните имя, фамилию и телефон клиента', 'Закрыть', {
+        duration: 3000
+      });
+      return;
+    }
+
+    this.creatingCustomer = true;
+    this.customersService.createCustomer({
+      first_name: firstName,
+      last_name: lastName,
+      phone,
+      email: email || undefined
+    }).subscribe({
+      next: (customer) => {
+        this.customers = [customer, ...this.customers.filter(item => item.id !== customer.id)];
+        this.customerForm.patchValue({ customer });
+        this.customerForm.get('customer')?.setErrors(null);
+        newCustomer.reset();
+        this.creatingCustomer = false;
+        this.customerStepCompleted = true;
+        this.snackBar.open('Клиент добавлен', 'Закрыть', { duration: 2500 });
+        stepper.next();
+      },
+      error: (error) => {
+        const message = error?.error?.error || 'Не удалось добавить клиента';
+        this.snackBar.open(message, 'Закрыть', { duration: 4000 });
+        this.creatingCustomer = false;
+      }
+    });
+  }
+
+  onDeviceStepNext(stepper: MatStepper): void {
     if (this.deviceForm.valid) {
       this.deviceStepCompleted = true;
+      stepper.next();
     }
   }
 
@@ -250,16 +301,16 @@ export class OrderFormComponent implements OnInit {
   }
 
   private isFormValid(): boolean {
-    return this.customerForm.valid && this.deviceForm.valid && this.orderForm.valid;
+    return !!this.getSelectedCustomer() && this.deviceForm.valid && this.orderForm.valid;
   }
 
   private buildFormData(): any {
-    const customer = this.customerForm.get('customer')?.value;
+    const customer = this.getSelectedCustomer();
     const device = this.deviceForm.value;
     const order = this.orderForm.value;
 
     return {
-      customer_id: customer.id,
+      customer_id: customer!.id,
       device: device,
       problem_description: order.problem_description,
       accessories: order.accessories,
@@ -276,5 +327,13 @@ export class OrderFormComponent implements OnInit {
 
   cancel(): void {
     this.router.navigate(['/orders']);
+  }
+
+  private getSelectedCustomer(): Customer | null {
+    const customer = this.customerForm.get('customer')?.value;
+    if (customer && typeof customer === 'object' && 'id' in customer) {
+      return customer as Customer;
+    }
+    return null;
   }
 }

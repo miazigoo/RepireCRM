@@ -1,0 +1,86 @@
+<div class="inventory-form-page">
+  <div class="page-header">
+    <div>
+      <h1>Новый товар</h1>
+      <p>Карточка номенклатуры для склада и закупок</p>
+    </div>
+    <button mat-button type="button" (click)="cancel()">
+      <mat-icon>arrow_back</mat-icon>
+      Назад
+    </button>
+  </div>
+
+  <mat-card class="form-card">
+    <mat-card-content>
+      <form [formGroup]="form" (ngSubmit)="save()">
+        <div class="form-grid">
+          <mat-form-field class="span-2">
+            <mat-label>Название</mat-label>
+            <input matInput formControlName="name" autocomplete="off" required>
+            <mat-error *ngIf="form.get('name')?.hasError('required')">
+              Укажите название
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Артикул</mat-label>
+            <input matInput formControlName="sku" autocomplete="off" required>
+            <mat-error *ngIf="form.get('sku')?.hasError('required')">
+              Укажите артикул
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Тип</mat-label>
+            <mat-select formControlName="item_type" required>
+              <mat-option *ngFor="let type of itemTypes" [value]="type.value">
+                {{ type.label }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Категория</mat-label>
+            <input matInput formControlName="category_name" required>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Штрихкод</mat-label>
+            <input matInput formControlName="barcode" autocomplete="off">
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Закупочная цена</mat-label>
+            <input matInput type="number" formControlName="purchase_price" min="0" required>
+            <span matTextSuffix>₽</span>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Цена продажи</mat-label>
+            <input matInput type="number" formControlName="selling_price" min="0" required>
+            <span matTextSuffix>₽</span>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Единица</mat-label>
+            <input matInput formControlName="unit" required>
+          </mat-form-field>
+
+          <mat-form-field class="span-2">
+            <mat-label>Описание</mat-label>
+            <textarea matInput formControlName="description" rows="3"></textarea>
+          </mat-form-field>
+        </div>
+
+        <div class="form-actions">
+          <button mat-button type="button" (click)="cancel()">Отмена</button>
+          <button mat-raised-button color="primary" type="submit" [disabled]="loading">
+            <mat-spinner *ngIf="loading" diameter="18"></mat-spinner>
+            <mat-icon *ngIf="!loading">save</mat-icon>
+            <span>{{ loading ? 'Сохранение' : 'Сохранить' }}</span>
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

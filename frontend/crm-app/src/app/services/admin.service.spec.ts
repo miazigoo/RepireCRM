@@ -53,6 +53,25 @@ describe('AdminService', () => {
     expect(apiService.get).toHaveBeenCalledOnceWith('/shops/subscription/plans');
   });
 
+  it('loads system statistics from admin API', () => {
+    const stats = {
+      total_users: 3,
+      active_users: 2,
+      total_shops: 1,
+      active_shops: 1,
+      total_orders_today: 5,
+      total_revenue_today: 14000,
+      system_health: 'good',
+    };
+    apiService.get.and.returnValue(of(stats));
+
+    service.getSystemStatistics().subscribe((result) => {
+      expect(result).toEqual(stats);
+    });
+
+    expect(apiService.get).toHaveBeenCalledOnceWith('/admin/statistics');
+  });
+
   it('changes subscription using backend plan_code contract', () => {
     const status = { status: 'active', plan: { code: 'yearly' } } as SubscriptionStatus;
     apiService.post.and.returnValue(of(status));

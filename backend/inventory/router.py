@@ -4,7 +4,7 @@ from typing import List, Optional
 from django.db import transaction
 from django.db.models import F, Q
 from django.shortcuts import get_object_or_404
-from ninja import Router
+from ninja import Body, Router
 from ninja.pagination import paginate
 
 from .inventory_schemas import (
@@ -34,6 +34,10 @@ from .models import (
 from .services import InventoryService
 
 router = Router(tags=["Складской учет"])
+
+
+def _has_any_permission(user, *codenames: str) -> bool:
+    return any(user.has_permission(codename) for codename in codenames)
 
 
 @router.get("/items", response=List[InventoryItemSchema])
@@ -110,7 +114,9 @@ def create_stock_movement(request, data: dict):
 @paginate
 def list_purchase_orders(request, status: str = None):
     """Заказы поставщикам"""
-    if not request.auth.has_permission("inventory.view_purchase_orders"):
+    if not _has_any_permission(
+        request.auth, "inventory.view_purchase_orders", "inventory.view_purchase"
+    ):
         raise PermissionError("Нет прав для просмотра заказов поставщикам")
 
     queryset = PurchaseOrder.objects.select_related(
@@ -128,51 +134,76 @@ def list_purchase_orders(request, status: str = None):
     return queryset.order_by("-created_at")
 
 
-@router.post("/purchase-orders", response=dict)
-def create_purchase_order(request, data: dict):
+@router.post("/purchase-orders", response={201: dict, 400: dict})
+def create_purchase_order(request, data: dict = Body(...)):
     """Создание заказа поставщику"""
-    if not request.auth.has_permission("inventory.add_purchase_order"):
+    if not _has_any_permission(
+        request.auth, "inventory.add_purchase_order", "inventory.add_purchase"
+    ):
         raise PermissionError("Нет прав для создания заказов поставщикам")
 
     try:
         with transaction.atomic():
+            shop = getattr(request, "current_shop", None)
+            if not shop:
+                raise ValueError("Не выбран магазин для заказа поставщику")
+
+            supplier_id = data.get("supplier_id")
+            supplier_name = (data.get("supplier_name") or "").strip()
+            if supplier_id:
+                supplier = get_object_or_404(Supplier, id=supplier_id, is_active=True)
+            elif supplier_name:
+                supplier, _ = Supplier.objects.get_or_create(name=supplier_name)
+            else:
+                raise ValueError("Укажите поставщика")
+
+            items = data.get("items") or []
+            if not items:
+                raise ValueError("Добавьте хотя бы одну позицию закупки")
+
             # Создаем заказ
             purchase_order = PurchaseOrder.objects.create(
-                supplier_id=data["supplier_id"],
-                shop=request.current_shop,
+                supplier=supplier,
+                shop=shop,
                 notes=data.get("notes", ""),
                 created_by=request.auth,
             )
 
             # Добавляем позиции
             total_amount = Decimal("0")
-            for item_data in data["items"]:
+            for item_data in items:
+                quantity = int(item_data["quantity"])
+                if quantity <= 0:
+                    raise ValueError("Количество должно быть больше нуля")
                 po_item = PurchaseOrderItem.objects.create(
                     purchase_order=purchase_order,
                     item_id=item_data["item_id"],
-                    ordered_quantity=item_data["quantity"],
-                    unit_price=item_data["unit_price"],
+                    ordered_quantity=quantity,
+                    unit_price=Decimal(str(item_data["unit_price"])),
                 )
                 total_amount += po_item.total_price
 
             # Обновляем общую сумму
+            purchase_order.subtotal = total_amount
             purchase_order.total_amount = total_amount
-            purchase_order.save()
+            purchase_order.save(update_fields=["subtotal", "total_amount"])
 
-            return {
+            return 201, {
                 "success": True,
                 "order_id": purchase_order.id,
                 "order_number": purchase_order.order_number,
             }
 
-    except Exception as e:
-        return {"error": str(e)}
+    except ValueError as e:
+        return 400, {"error": str(e)}
 
 
 @router.post("/purchase-orders/{order_id}/receive", response=dict)
-def receive_purchase_order(request, order_id: int, data: dict):
+def receive_purchase_order(request, order_id: int, data: dict = Body(...)):
     """Приемка заказа поставщика"""
-    if not request.auth.has_permission("inventory.receive_purchase_orders"):
+    if not _has_any_permission(
+        request.auth, "inventory.receive_purchase_orders", "inventory.receive_purchase"
+    ):
         raise PermissionError("Нет прав для приемки заказов")
 
     purchase_order = get_object_or_404(PurchaseOrder, id=order_id)
@@ -188,7 +219,9 @@ def receive_purchase_order(request, order_id: int, data: dict):
 @router.get("/suppliers", response=List[SupplierSchema])
 def list_suppliers(request, active_only: bool = True):
     """Список поставщиков"""
-    if not request.auth.has_permission("inventory.view_suppliers"):
+    if not _has_any_permission(
+        request.auth, "inventory.view_suppliers", "inventory.view_supplier"
+    ):
         raise PermissionError("Нет прав для просмотра поставщиков")
 
     queryset = Supplier.objects.all()

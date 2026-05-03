@@ -1,7 +1,10 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { ApiService } from './api.service';
 import { Customer, CustomerFilters, PaginatedResponse } from '../core/models/models';
+
+type CustomerListResponse = Customer[] | PaginatedResponse<Customer>;
 
 @Injectable({
   providedIn: 'root'
@@ -21,7 +24,9 @@ export class CustomersService {
       Object.entries(rawParams).filter(([, value]) => value !== '' && value !== null && value !== undefined)
     );
 
-    return this.apiService.get<Customer[]>(this.endpoint, params);
+    return this.apiService.get<CustomerListResponse>(this.endpoint, params).pipe(
+      map(response => Array.isArray(response) ? response : response.items)
+    );
   }
 
   getCustomer(id: number): Observable<Customer> {

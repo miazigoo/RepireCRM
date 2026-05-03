@@ -29,9 +29,9 @@ export interface Theme {
 })
 export class ThemeService {
   private readonly THEME_STORAGE_KEY = 'selectedTheme';
-  private currentThemeSubject = new BehaviorSubject<Theme>(this.getDefaultTheme());
+  private currentThemeSubject!: BehaviorSubject<Theme>;
 
-  public currentTheme$ = this.currentThemeSubject.asObservable();
+  public currentTheme$!: Observable<Theme>;
 
   private themes: Theme[] = [
     {
@@ -182,6 +182,8 @@ export class ThemeService {
   ];
 
   constructor() {
+    this.currentThemeSubject = new BehaviorSubject<Theme>(this.getDefaultTheme());
+    this.currentTheme$ = this.currentThemeSubject.asObservable();
     this.loadSavedTheme();
     this.applyTheme(this.currentThemeSubject.value);
   }
@@ -238,6 +240,15 @@ export class ThemeService {
     root.style.setProperty('--color-surface', theme.colors.surface);
     root.style.setProperty('--color-text-primary', theme.colors.text.primary);
     root.style.setProperty('--color-text-secondary', theme.colors.text.secondary);
+    root.style.setProperty('--color-text-disabled', theme.colors.text.disabled);
+    root.style.setProperty('--color-border', theme.isDark ? '#334155' : '#d8e0ea');
+    root.style.setProperty('--color-surface-strong', theme.isDark ? '#223047' : '#f3f6fb');
+    root.style.setProperty('--color-primary-soft', theme.isDark ? 'rgba(144, 202, 249, 0.18)' : 'rgba(25, 118, 210, 0.12)');
+    root.style.setProperty('--color-accent-soft', theme.isDark ? 'rgba(244, 143, 177, 0.18)' : 'rgba(13, 148, 136, 0.12)');
+    root.style.setProperty('--color-success', theme.isDark ? '#86efac' : '#15803d');
+    root.style.setProperty('--color-warning', theme.isDark ? '#fbbf24' : '#b45309');
+    root.style.setProperty('--color-danger', theme.isDark ? '#fca5a5' : '#b91c1c');
+    root.style.setProperty('--color-toolbar', theme.isDark ? 'rgba(30, 41, 59, 0.96)' : 'rgba(255, 255, 255, 0.96)');
 
     // Добавляем/убираем класс для темной темы
     document.body.classList.toggle('dark-theme', theme.isDark);

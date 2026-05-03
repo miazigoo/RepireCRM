@@ -25,6 +25,7 @@ from .models import (
 )
 from .orders_schemas import (
     AdditionalServiceSchema,
+    DeviceModelSchema,
     OrderApprovalCreateSchema,
     OrderApprovalSchema,
     OrderAuditLogSchema,
@@ -290,6 +291,26 @@ def list_repair_services(
         qs = qs.filter(Q(name__icontains=search) | Q(code__icontains=search))
 
     return qs.order_by("brand__name", "model__name", "name")
+
+
+@router.get("/device-models", response=List[DeviceModelSchema])
+def list_device_models(request, search: str = None):
+    """Список моделей устройств для формы заказа."""
+    if not request.auth.has_permission("orders.view_order"):
+        raise PermissionError("Нет прав для просмотра моделей устройств")
+
+    qs = DeviceModel.objects.select_related("brand", "device_type").filter(
+        is_active=True
+    )
+    if search:
+        qs = qs.filter(
+            Q(name__icontains=search)
+            | Q(model_number__icontains=search)
+            | Q(brand__name__icontains=search)
+            | Q(device_type__name__icontains=search)
+        )
+
+    return qs.order_by("brand__name", "name")
 
 
 @router.get("/{order_id}", response=OrderSchema)

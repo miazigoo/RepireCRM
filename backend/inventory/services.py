@@ -11,6 +11,7 @@ from users.models import User
 
 from .models import (
     BarcodeScanEvent,
+    Category,
     InventoryItem,
     InventoryItemBarcode,
     InventoryItemCostHistory,
@@ -623,12 +624,23 @@ class InventoryService:
         # при желании можно проверить глобальные конфликты (другие товары) — пока
         # не требовалось
 
+        category_id = data.get("category_id")
+        if not category_id:
+            category_name = (data.get("category_name") or "Запчасти").strip()
+            if not category_name:
+                category_name = "Запчасти"
+            category, _ = Category.objects.get_or_create(
+                name=category_name,
+                defaults={"description": "Категория для быстрых добавлений"},
+            )
+            category_id = category.id
+
         item = InventoryItem.objects.create(
             name=data["name"].strip(),
             sku=sku,
             barcode="",  # одиночное поле не используется
             item_type=data["item_type"],
-            category_id=data["category_id"],
+            category_id=category_id,
             description=(data.get("description") or "").strip(),
             purchase_price=Decimal(str(data["purchase_price"])),
             selling_price=Decimal(str(data["selling_price"])),

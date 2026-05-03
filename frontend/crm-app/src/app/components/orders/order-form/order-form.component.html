@@ -18,26 +18,69 @@
             <ng-template matStepLabel>Клиент</ng-template>
 
             <div class="step-content">
-              <h3>Выберите клиента</h3>
+              <h3>Клиент</h3>
 
-              <mat-form-field class="full-width">
-                <mat-label>Поиск клиента</mat-label>
-                <input matInput
-                       formControlName="customer"
-                       [matAutocomplete]="customerAuto"
-                       placeholder="Введите имя, фамилию или телефон">
-                <mat-autocomplete #customerAuto="matAutocomplete" [displayWith]="displayCustomer">
-                  <mat-option *ngFor="let customer of filteredCustomers | async" [value]="customer">
-                    <div class="customer-option">
-                      <div class="customer-name">{{ customer.last_name }} {{ customer.first_name }}</div>
-                      <div class="customer-phone">{{ customer.phone }}</div>
-                    </div>
-                  </mat-option>
-                </mat-autocomplete>
-              </mat-form-field>
+              <div class="customer-layout">
+                <section class="customer-panel">
+                  <h4>Выбрать существующего</h4>
+                  <mat-form-field class="full-width">
+                    <mat-label>Поиск клиента</mat-label>
+                    <input matInput
+                           formControlName="customer"
+                           [matAutocomplete]="customerAuto"
+                           placeholder="Введите имя, фамилию или телефон">
+                    <mat-autocomplete #customerAuto="matAutocomplete" [displayWith]="displayCustomer">
+                      <mat-option *ngFor="let customer of filteredCustomers | async" [value]="customer">
+                        <div class="customer-option">
+                          <div class="customer-name">{{ customer.last_name }} {{ customer.first_name }}</div>
+                          <div class="customer-phone">{{ customer.phone }}</div>
+                        </div>
+                      </mat-option>
+                    </mat-autocomplete>
+                  </mat-form-field>
+                </section>
+
+                <section class="customer-panel" formGroupName="newCustomer">
+                  <h4>Быстро добавить</h4>
+                  <div class="form-row compact-row">
+                    <mat-form-field>
+                      <mat-label>Имя</mat-label>
+                      <input matInput formControlName="first_name" autocomplete="off">
+                    </mat-form-field>
+
+                    <mat-form-field>
+                      <mat-label>Фамилия</mat-label>
+                      <input matInput formControlName="last_name" autocomplete="off">
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row compact-row">
+                    <mat-form-field>
+                      <mat-label>Телефон</mat-label>
+                      <input matInput formControlName="phone" autocomplete="tel">
+                    </mat-form-field>
+
+                    <mat-form-field>
+                      <mat-label>Email</mat-label>
+                      <input matInput formControlName="email" autocomplete="email">
+                    </mat-form-field>
+                  </div>
+
+                  <button
+                    mat-stroked-button
+                    color="primary"
+                    type="button"
+                    (click)="createCustomerAndContinue(stepper)"
+                    [disabled]="creatingCustomer">
+                    <mat-spinner *ngIf="creatingCustomer" diameter="18"></mat-spinner>
+                    <mat-icon *ngIf="!creatingCustomer">person_add</mat-icon>
+                    <span>{{ creatingCustomer ? 'Добавление' : 'Добавить и далее' }}</span>
+                  </button>
+                </section>
+              </div>
 
               <div class="step-actions">
-                <button mat-raised-button color="primary" (click)="onCustomerStepNext()">
+                <button mat-raised-button color="primary" type="button" (click)="onCustomerStepNext(stepper)">
                   Далее
                 </button>
               </div>
@@ -61,6 +104,9 @@
                       {{ model.brand.name }} {{ model.name }}
                     </mat-option>
                   </mat-select>
+                  <mat-hint *ngIf="deviceModels.length === 0">
+                    Модели устройств не найдены в справочнике
+                  </mat-hint>
                 </mat-form-field>
 
                 <mat-form-field>
@@ -88,7 +134,7 @@
 
               <div class="step-actions">
                 <button mat-button matStepperPrevious>Назад</button>
-                <button mat-raised-button color="primary" (click)="onDeviceStepNext()">
+                <button mat-raised-button color="primary" type="button" (click)="onDeviceStepNext(stepper)">
                   Далее
                 </button>
               </div>

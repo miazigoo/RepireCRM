@@ -13,7 +13,7 @@
 
 .header h1 {
   margin: 0;
-  color: #333;
+  color: var(--color-text-primary);
 }
 
 .form-card {
@@ -27,12 +27,12 @@
 
 .step-content h3 {
   margin: 0 0 24px 0;
-  color: #333;
+  color: var(--color-text-primary);
 }
 
 .step-content h4 {
   margin: 24px 0 16px 0;
-  color: #666;
+  color: var(--color-text-secondary);
 }
 
 .full-width {
@@ -65,13 +65,43 @@
 
 .customer-phone {
   font-size: 12px;
-  color: #666;
+  color: var(--color-text-secondary);
+}
+
+.customer-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.customer-panel {
+  padding: 18px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-strong);
+}
+
+.customer-panel h4 {
+  margin: 0 0 14px;
+  color: var(--color-text-primary);
+}
+
+.compact-row {
+  margin-bottom: 0;
+}
+
+.customer-panel button {
+  margin-top: 10px;
+}
+
+.customer-panel mat-spinner {
+  margin-right: 8px;
 }
 
 .additional-services-section {
   margin-top: 32px;
   padding-top: 24px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--color-border);
 }
 
 .services-grid {
@@ -92,8 +122,8 @@
 }
 
 .service-card.selected {
-  border-color: #1976d2;
-  background-color: #e3f2fd;
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-soft);
 }
 
 .service-card mat-card-content {
@@ -115,12 +145,12 @@
 .service-description {
   margin: 0 0 8px 0;
   font-size: 14px;
-  color: #666;
+  color: var(--color-text-secondary);
 }
 
 .service-price {
   font-weight: 500;
-  color: #2e7d32;
+  color: var(--color-success);
 }
 
 .service-actions {
@@ -133,7 +163,7 @@
 
 .selected-services h5 {
   margin: 0 0 12px 0;
-  color: #666;
+  color: var(--color-text-secondary);
 }
 
 @media (max-width: 768px) {
@@ -142,6 +172,10 @@
   }
 
   .services-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-layout {
     grid-template-columns: 1fr;
   }
 

@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
-import { Order, RepairStage } from '../core/models/models';
+import { DeviceModel, Order, RepairStage } from '../core/models/models';
 import { ApiService } from './api.service';
 import { OrdersService } from './orders.service';
 
@@ -44,6 +44,15 @@ describe('OrdersService', () => {
     });
   });
 
+  it('unwraps backend paginated order responses', () => {
+    const order = { id: 1, order_number: 'ORD-001', status: 'received' } as Order;
+    apiService.get.and.returnValue(of({ items: [order], count: 1 }));
+
+    service.getOrders().subscribe((result) => {
+      expect(result).toEqual([order]);
+    });
+  });
+
   it('posts repair stages as multipart form data', () => {
     const formData = new FormData();
     formData.append('title', 'Перепаяли Type-C');
@@ -73,5 +82,23 @@ describe('OrdersService', () => {
       description: 'Оригинальный модуль',
       amount: 12000,
     });
+  });
+
+  it('loads device models for order creation', () => {
+    const models = [
+      {
+        id: 2,
+        name: 'iPhone 15 Pro',
+        brand: { id: 1, name: 'Apple' },
+        device_type: { id: 1, name: 'Смартфон' },
+      },
+    ] as DeviceModel[];
+    apiService.get.and.returnValue(of(models));
+
+    service.getDeviceModels().subscribe((result) => {
+      expect(result).toEqual(models);
+    });
+
+    expect(apiService.get).toHaveBeenCalledOnceWith('/orders/device-models');
   });
 });

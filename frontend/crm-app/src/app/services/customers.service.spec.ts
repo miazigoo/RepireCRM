@@ -36,4 +36,18 @@ describe('CustomersService', () => {
       page_size: 100,
     });
   });
+
+  it('unwraps paginated customer responses', () => {
+    const customer = {
+      id: 1,
+      first_name: 'Петр',
+      last_name: 'Петров',
+      phone: '+79161234567',
+    } as any;
+    apiService.get.and.returnValue(of({ items: [customer], count: 1 }));
+
+    service.getCustomers().subscribe((customers) => {
+      expect(customers).toEqual([customer]);
+    });
+  });
 });

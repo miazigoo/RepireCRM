@@ -29,7 +29,7 @@ export const routes: Routes = [
       },
       {
         path: 'inventory',
-        loadComponent: () => import('./components/inventory/inventory-dashboard/inventory-dashboard.component').then(m => m.InventoryDashboardComponent)
+        loadChildren: () => import('./routes/inventory.routes').then(m => m.INVENTORY_ROUTES)
       },
       {
         path: 'reports',
