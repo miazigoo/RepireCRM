@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 import { ApiService } from './api.service';
 
 export interface InventoryItem {
@@ -46,13 +46,28 @@ export class InventoryService {
   }
 
   getStockAlerts(): Observable<StockAlert[]> {
-    return this.apiService.get<StockAlert[]>('/inventory/alerts').pipe(
+    return this.apiService.get<any[]>('/inventory/stock-balances', { low_stock_only: true }).pipe(
+      map((balances): StockAlert[] => balances.map((balance) => ({
+        id: balance.id,
+        item_name: balance.item_name,
+        current_stock: balance.available_quantity,
+        min_quantity: balance.min_quantity,
+        shop_name: balance.shop_name,
+        alert_type: balance.available_quantity <= 0 ? 'out_of_stock' : 'low_stock',
+      }))),
       catchError(() => of([]))
     );
   }
 
   getInventoryStatistics(): Observable<InventoryStatistics> {
-    return this.apiService.get<InventoryStatistics>('/inventory/statistics').pipe(
+    return this.apiService.get<any>('/inventory/stock/dashboard').pipe(
+      map((dashboard) => ({
+        total_items: dashboard.totals?.total_skus ?? 0,
+        low_stock_items: dashboard.totals?.low_stock_count ?? 0,
+        out_of_stock_items: 0,
+        total_value: 0,
+        turnover_rate: 0
+      })),
       catchError(() => of({
         total_items: 0,
         low_stock_items: 0,

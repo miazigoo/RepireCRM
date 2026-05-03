@@ -123,6 +123,15 @@ class SubscriptionApiTestCase(TestCase):
         self.assertEqual(plans["half_year"]["duration_days"], 182)
         self.assertEqual(plans["yearly"]["duration_days"], 365)
 
+    def test_organizations_static_route_is_not_treated_as_shop_id(self):
+        response = self.client.get(
+            "/api/shops/organizations",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()[0]["name"], self.organization.name)
+
     def test_subscription_can_change_to_yearly_plan(self):
         response = self.client.post(
             "/api/shops/subscription/change",

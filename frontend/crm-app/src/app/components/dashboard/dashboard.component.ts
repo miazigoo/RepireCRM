@@ -14,6 +14,9 @@ import { Order } from '../../core/models/models';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
 import { RouterModule } from '@angular/router';
+import { ensureChartComponentsRegistered } from '../../core/charts/register-chart-components';
+
+ensureChartComponentsRegistered();
 
 interface DashboardStats {
   total_orders: number;

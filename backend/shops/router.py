@@ -73,6 +73,21 @@ def list_shops(request, active_only: bool = True):
     return qs.order_by("name")
 
 
+@router.get("/organizations", response=List[OrganizationSchema])
+def list_organizations(request):
+    if not request.auth.has_permission("settings.view_shop"):
+        raise PermissionError("Нет прав")
+    return Organization.objects.all().order_by("name")
+
+
+@router.post("/organizations", response=OrganizationSchema)
+def create_organization(request, data: OrganizationSchema):
+    if not request.auth.has_permission("settings.change_shop"):
+        raise PermissionError("Нет прав")
+    org = Organization.objects.create(**data.dict())
+    return org
+
+
 @router.get("/{shop_id}", response=ShopSchema)
 def get_shop(request, shop_id: int):
     if not request.auth.has_permission("settings.view_shop"):
@@ -104,21 +119,6 @@ def update_shop_settings(request, shop_id: int, data: ShopSettingsSchema):
         setattr(settings, field, value)
     settings.save()
     return settings
-
-
-@router.get("/organizations", response=List[OrganizationSchema])
-def list_organizations(request):
-    if not request.auth.has_permission("settings.view_shop"):
-        raise PermissionError("Нет прав")
-    return Organization.objects.all().order_by("name")
-
-
-@router.post("/organizations", response=OrganizationSchema)
-def create_organization(request, data: OrganizationSchema):
-    if not request.auth.has_permission("settings.change_shop"):
-        raise PermissionError("Нет прав")
-    org = Organization.objects.create(**data.dict())
-    return org
 
 
 @router.post("/{shop_id}/link-organization", response=dict)

@@ -93,6 +93,11 @@ class Command(BaseCommand):
                 "role": Role.objects.get(code="director"),
             },
         )[0]
+        test_user.first_name = "Тест"
+        test_user.last_name = "Пользователь"
+        test_user.email = "b00bs@example.com"
+        test_user.is_director = True
+        test_user.role = Role.objects.get(code="director")
         test_user.set_password("QwsAzx@2000")
         test_user.save()
         test_user.shops.set([shop1, shop2])

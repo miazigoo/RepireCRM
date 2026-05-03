@@ -2,7 +2,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.db import models
-from django.db.models import Avg, Count, Q, Sum
+from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Q, Sum
 
 from orders.models import Order, OrderService
 
@@ -46,10 +46,14 @@ class ReportService:
             current_date += timedelta(days=1)
 
         # Доходы по услугам
+        service_revenue = ExpressionWrapper(
+            F("price") * F("quantity"),
+            output_field=DecimalField(max_digits=12, decimal_places=2),
+        )
         services_revenue = (
             OrderService.objects.filter(order__in=completed_orders)
             .values("service__name")
-            .annotate(total_revenue=Sum("total_price"), count=Count("id"))
+            .annotate(total_revenue=Sum(service_revenue), count=Count("id"))
             .order_by("-total_revenue")
         )
 
@@ -75,7 +79,7 @@ class ReportService:
             "services_breakdown": [
                 {
                     "service": item["service__name"],
-                    "revenue": float(item["total_revenue"]),
+                    "revenue": float(item["total_revenue"] or 0),
                     "count": item["count"],
                 }
                 for item in services_revenue

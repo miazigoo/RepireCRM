@@ -168,6 +168,33 @@ class OrderTestCase(TestCase):
         self.assertEqual(history_response.status_code, 200)
         self.assertEqual(history_response.json()[0]["new_status"], "diagnosed")
 
+    def test_order_statistics_static_route_is_not_treated_as_order_id(self):
+        order = self.create_order()
+        order.final_cost = 5000
+        order.save(update_fields=["final_cost"])
+
+        response = self.client.get(
+            "/api/orders/statistics",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        payload = response.json()
+        self.assertEqual(payload["total_orders"], 1)
+        self.assertEqual(payload["total_revenue"], 5000.0)
+
+    def test_order_catalog_static_routes_are_not_treated_as_order_id(self):
+        static_routes = (
+            "/api/orders/additional-services",
+            "/api/orders/repair-services",
+        )
+
+        for route in static_routes:
+            with self.subTest(route=route):
+                response = self.client.get(route, **self.auth_headers())
+
+                self.assertEqual(response.status_code, 200, response.content)
+
     @override_settings(MEDIA_ROOT="/tmp/repair_crm_test_media")
     def test_repair_stage_api_accepts_photo_and_writes_audit_log(self):
         order = self.create_order()

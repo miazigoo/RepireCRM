@@ -43,7 +43,8 @@
             <div class="summary-icon">
               <mat-icon [matBadge]="tasksSummary.overdue_tasks"
                        matBadgeColor="warn"
-                       [matBadgeHidden]="tasksSummary.overdue_tasks === 0">
+                       [matBadgeHidden]="tasksSummary.overdue_tasks === 0"
+                       aria-hidden="false">
                 schedule
               </mat-icon>
             </div>

@@ -1,5 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
-import { LOCALE_ID } from '@angular/core';
+import { DEFAULT_CURRENCY_CODE, LOCALE_ID } from '@angular/core';
 import { appConfig } from './app.config';
 
 describe('appConfig locale', () => {
@@ -23,5 +23,17 @@ describe('appConfig locale', () => {
 
     expect(formatted).toContain('₽');
     expect(formatted).not.toContain('RUB');
+  });
+
+  it('uses RUB as the default currency code', () => {
+    const currencyProvider = appConfig.providers.find(
+      (provider): provider is { provide: unknown; useValue: string } =>
+        typeof provider === 'object' &&
+        provider !== null &&
+        'provide' in provider &&
+        provider.provide === DEFAULT_CURRENCY_CODE
+    );
+
+    expect(currencyProvider?.useValue).toBe('RUB');
   });
 });

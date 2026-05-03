@@ -16,6 +16,9 @@ import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData } from 'chart.js';
 import { FinanceService } from '../../../services/finance.service';
 import { forkJoin } from 'rxjs';
+import { ensureChartComponentsRegistered } from '../../../core/charts/register-chart-components';
+
+ensureChartComponentsRegistered();
 
 interface FinancialSummary {
   total_income: number;

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional
 
-from django.db.models import Avg, Count, Sum
+from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Sum
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from ninja import Router
@@ -78,10 +78,14 @@ def get_dashboard_metrics(request):
     # Топ услуги
     from orders.models import OrderService
 
+    service_revenue = ExpressionWrapper(
+        F("price") * F("quantity"),
+        output_field=DecimalField(max_digits=12, decimal_places=2),
+    )
     top_services = (
         OrderService.objects.filter(order__created_at__range=[start_date, end_date])
         .values("service__name")
-        .annotate(total_count=Count("id"), total_revenue=Sum("total_price"))
+        .annotate(total_count=Count("id"), total_revenue=Sum(service_revenue))
         .order_by("-total_revenue")[:5]
     )
 
@@ -96,7 +100,6 @@ def get_dashboard_metrics(request):
         .annotate(
             completed_orders=Count("id"),
             total_revenue=Sum("final_cost"),
-            avg_completion_time=Avg("completed_at"),  # Нужно будет пересчитать
         )
         .order_by("-completed_orders")
     )
@@ -129,7 +132,7 @@ def get_dashboard_metrics(request):
             {
                 "name": item["service__name"],
                 "count": item["total_count"],
-                "revenue": float(item["total_revenue"]),
+                "revenue": float(item["total_revenue"] or 0),
             }
             for item in top_services
         ],

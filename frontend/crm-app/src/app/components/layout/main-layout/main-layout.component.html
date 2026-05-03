@@ -111,7 +111,8 @@
         <button mat-icon-button matTooltip="Уведомления" [matMenuTriggerFor]="notificationsMenu">
         <mat-icon [matBadge]="notificationsCount"
                     matBadgeColor="warn"
-                    [matBadgeHidden]="notificationsCount === 0">
+                    [matBadgeHidden]="notificationsCount === 0"
+                    aria-hidden="false">
             notifications
         </mat-icon>
         </button>

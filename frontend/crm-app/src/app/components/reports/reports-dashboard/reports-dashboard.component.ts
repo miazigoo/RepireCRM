@@ -12,6 +12,9 @@ import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ReportsService } from '../../../services/reports.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { ensureChartComponentsRegistered } from '../../../core/charts/register-chart-components';
+
+ensureChartComponentsRegistered();
 
 interface DashboardMetrics {
   period: {

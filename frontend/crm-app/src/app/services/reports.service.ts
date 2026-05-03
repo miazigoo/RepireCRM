@@ -48,7 +48,7 @@ export class ReportsService {
   constructor(private apiService: ApiService) {}
 
   getDashboardMetrics(): Observable<DashboardMetrics> {
-    return this.apiService.get<DashboardMetrics>('/reports/dashboard');
+    return this.apiService.get<DashboardMetrics>('/reports/dashboard-metrics');
   }
 
   getFinancialReport(

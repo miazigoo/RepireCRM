@@ -6,7 +6,8 @@
           [disabled]="!(connectionStatus$ | async)">
     <mat-icon [matBadge]="unreadCount$ | async"
               matBadgeColor="warn"
-              [matBadgeHidden]="(unreadCount$ | async) === 0">
+              [matBadgeHidden]="(unreadCount$ | async) === 0"
+              aria-hidden="false">
       notifications
     </mat-icon>
   </button>

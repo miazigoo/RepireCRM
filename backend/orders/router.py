@@ -164,6 +164,134 @@ def list_orders(request, filters: OrderFilterSchema = Query(...)):
     return queryset.order_by("-created_at")
 
 
+@router.get("/additional-services", response=List[AdditionalServiceSchema])
+def list_additional_services(request):
+    """Получение списка дополнительных услуг"""
+    if not request.auth.has_permission("orders.view_order"):
+        raise PermissionError("Нет прав для просмотра услуг")
+
+    queryset = AdditionalService.objects.filter(is_active=True)
+
+    # Фильтруем по доступным в текущем магазине
+    if hasattr(request, "current_shop") and request.current_shop:
+        queryset = queryset.filter(
+            Q(shops__isnull=True) | Q(shops=request.current_shop)
+        ).distinct()
+
+    return queryset.order_by("category", "name")
+
+
+@router.get("/statistics", response=dict)
+def get_orders_statistics(request):
+    """Получение статистики по заказам"""
+    if not request.auth.has_permission("reports.view_analytics"):
+        raise PermissionError("Нет прав для просмотра аналитики")
+
+    from datetime import timedelta
+
+    from django.db.models import Avg, Count, Sum
+    from django.utils import timezone
+
+    # Базовый queryset с учетом прав доступа
+    queryset = Order.objects.all()
+    if not request.auth.has_permission("orders.view_all_shops"):
+        available_shops = request.auth.get_available_shops()
+        queryset = queryset.filter(shop__in=available_shops)
+    elif hasattr(request, "current_shop") and request.current_shop:
+        queryset = queryset.filter(shop=request.current_shop)
+
+    # Статистика за последние 30 дней
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    recent_orders = queryset.filter(created_at__gte=thirty_days_ago)
+
+    # Общая статистика
+    total_stats = queryset.aggregate(
+        total_orders=Count("id"),
+        total_revenue=Sum("final_cost"),
+        avg_order_value=Avg("final_cost"),
+    )
+
+    # Статистика за последние 30 дней
+    recent_stats = recent_orders.aggregate(
+        recent_orders=Count("id"), recent_revenue=Sum("final_cost")
+    )
+
+    # Статистика по статусам
+    status_stats = (
+        queryset.values("status").annotate(count=Count("id")).order_by("-count")
+    )
+
+    return {
+        "total_orders": total_stats["total_orders"] or 0,
+        "total_revenue": float(total_stats["total_revenue"] or 0),
+        "avg_order_value": float(total_stats["avg_order_value"] or 0),
+        "recent_orders": recent_stats["recent_orders"] or 0,
+        "recent_revenue": float(recent_stats["recent_revenue"] or 0),
+        "status_distribution": list(status_stats),
+        "period": "30 days",
+    }
+
+
+@router.get("/repair-services/suggest", response=List[RepairServiceSchema])
+def suggest_repair_services(request, device_model_id: int):
+    """Подсказки типовых работ под конкретную модель"""
+    if not request.auth.has_permission("orders.view_order"):
+        raise PermissionError("Нет прав")
+
+    from device.models import DeviceModel
+
+    dm = get_object_or_404(
+        DeviceModel.objects.select_related("brand", "device_type"), id=device_model_id
+    )
+
+    qs = RepairService.objects.filter(is_active=True).filter(
+        models.Q(model=dm)
+        | models.Q(brand=dm.brand, model__isnull=True)
+        | models.Q(device_type=dm.device_type, brand__isnull=True, model__isnull=True)
+    )
+
+    if hasattr(request, "current_shop") and request.current_shop:
+        qs = qs.filter(
+            models.Q(shops__isnull=True) | models.Q(shops=request.current_shop)
+        ).distinct()
+
+    return qs.order_by("name")
+
+
+@router.get("/repair-services", response=List[RepairServiceSchema])
+def list_repair_services(
+    request,
+    device_type_id: int = None,
+    brand_id: int = None,
+    model_id: int = None,
+    search: str = None,
+):
+    """Список типовых работ с фильтрами"""
+    if not request.auth.has_permission("orders.view_order"):
+        raise PermissionError("Нет прав")
+
+    qs = RepairService.objects.filter(is_active=True)
+
+    # доступность в магазине
+    if hasattr(request, "current_shop") and request.current_shop:
+        qs = qs.filter(
+            models.Q(shops__isnull=True) | models.Q(shops=request.current_shop)
+        ).distinct()
+
+    if model_id:
+        qs = qs.filter(models.Q(model_id=model_id) | models.Q(model__isnull=True))
+    if brand_id:
+        qs = qs.filter(models.Q(brand_id=brand_id) | models.Q(brand__isnull=True))
+    if device_type_id:
+        qs = qs.filter(
+            models.Q(device_type_id=device_type_id) | models.Q(device_type__isnull=True)
+        )
+    if search:
+        qs = qs.filter(Q(name__icontains=search) | Q(code__icontains=search))
+
+    return qs.order_by("brand__name", "model__name", "name")
+
+
 @router.get("/{order_id}", response=OrderSchema)
 def get_order(request, order_id: int):
     """Получение заказа по ID"""
@@ -548,131 +676,3 @@ def request_order_approval(
         changes={"approval_id": approval.id, "amount": float(approval.amount)},
     )
     return 201, approval
-
-
-@router.get("/additional-services", response=List[AdditionalServiceSchema])
-def list_additional_services(request):
-    """Получение списка дополнительных услуг"""
-    if not request.auth.has_permission("orders.view_order"):
-        raise PermissionError("Нет прав для просмотра услуг")
-
-    queryset = AdditionalService.objects.filter(is_active=True)
-
-    # Фильтруем по доступным в текущем магазине
-    if hasattr(request, "current_shop") and request.current_shop:
-        queryset = queryset.filter(
-            Q(shops__isnull=True) | Q(shops=request.current_shop)
-        ).distinct()
-
-    return queryset.order_by("category", "name")
-
-
-@router.get("/statistics", response=dict)
-def get_orders_statistics(request):
-    """Получение статистики по заказам"""
-    if not request.auth.has_permission("reports.view_analytics"):
-        raise PermissionError("Нет прав для просмотра аналитики")
-
-    from datetime import timedelta
-
-    from django.db.models import Avg, Count, Sum
-    from django.utils import timezone
-
-    # Базовый queryset с учетом прав доступа
-    queryset = Order.objects.all()
-    if not request.auth.has_permission("orders.view_all_shops"):
-        available_shops = request.auth.get_available_shops()
-        queryset = queryset.filter(shop__in=available_shops)
-    elif hasattr(request, "current_shop") and request.current_shop:
-        queryset = queryset.filter(shop=request.current_shop)
-
-    # Статистика за последние 30 дней
-    thirty_days_ago = timezone.now() - timedelta(days=30)
-    recent_orders = queryset.filter(created_at__gte=thirty_days_ago)
-
-    # Общая статистика
-    total_stats = queryset.aggregate(
-        total_orders=Count("id"),
-        total_revenue=Sum("final_cost"),
-        avg_order_value=Avg("final_cost"),
-    )
-
-    # Статистика за последние 30 дней
-    recent_stats = recent_orders.aggregate(
-        recent_orders=Count("id"), recent_revenue=Sum("final_cost")
-    )
-
-    # Статистика по статусам
-    status_stats = (
-        queryset.values("status").annotate(count=Count("id")).order_by("-count")
-    )
-
-    return {
-        "total_orders": total_stats["total_orders"] or 0,
-        "total_revenue": float(total_stats["total_revenue"] or 0),
-        "avg_order_value": float(total_stats["avg_order_value"] or 0),
-        "recent_orders": recent_stats["recent_orders"] or 0,
-        "recent_revenue": float(recent_stats["recent_revenue"] or 0),
-        "status_distribution": list(status_stats),
-        "period": "30 days",
-    }
-
-
-@router.get("/repair-services", response=List[RepairServiceSchema])
-def list_repair_services(
-    request,
-    device_type_id: int = None,
-    brand_id: int = None,
-    model_id: int = None,
-    search: str = None,
-):
-    """Список типовых работ с фильтрами"""
-    if not request.auth.has_permission("orders.view_order"):
-        raise PermissionError("Нет прав")
-
-    qs = RepairService.objects.filter(is_active=True)
-
-    # доступность в магазине
-    if hasattr(request, "current_shop") and request.current_shop:
-        qs = qs.filter(
-            models.Q(shops__isnull=True) | models.Q(shops=request.current_shop)
-        ).distinct()
-
-    if model_id:
-        qs = qs.filter(models.Q(model_id=model_id) | models.Q(model__isnull=True))
-    if brand_id:
-        qs = qs.filter(models.Q(brand_id=brand_id) | models.Q(brand__isnull=True))
-    if device_type_id:
-        qs = qs.filter(
-            models.Q(device_type_id=device_type_id) | models.Q(device_type__isnull=True)
-        )
-    if search:
-        qs = qs.filter(Q(name__icontains=search) | Q(code__icontains=search))
-
-    return qs.order_by("brand__name", "model__name", "name")
-
-
-@router.get("/repair-services/suggest", response=List[RepairServiceSchema])
-def suggest_repair_services(request, device_model_id: int):
-    """Подсказки типовых работ под конкретную модель"""
-    if not request.auth.has_permission("orders.view_order"):
-        raise PermissionError("Нет прав")
-
-    from device.models import DeviceModel
-
-    dm = get_object_or_404(
-        DeviceModel.objects.select_related("brand", "device_type"), id=device_model_id
-    )
-
-    qs = RepairService.objects.filter(is_active=True).filter(
-        models.Q(model=dm)
-        | models.Q(brand=dm.brand, model__isnull=True)
-        | models.Q(device_type=dm.device_type, brand__isnull=True, model__isnull=True)
-    )
-
-    if hasattr(request, "current_shop") and request.current_shop:
-        qs = qs.filter(
-            models.Q(shops__isnull=True) | models.Q(shops=request.current_shop)
-        ).distinct()
-
-    return qs.order_by("name")

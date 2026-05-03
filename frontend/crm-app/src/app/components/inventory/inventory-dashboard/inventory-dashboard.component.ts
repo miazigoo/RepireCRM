@@ -21,6 +21,7 @@ interface InventoryItem {
   name: string;
   sku: string;
   category: string;
+  category_name?: string;
   total_stock: number;
   min_quantity: number;
   selling_price: number;

@@ -1,5 +1,5 @@
 import { registerLocaleData } from '@angular/common';
-import { ApplicationConfig, LOCALE_ID } from '@angular/core';
+import { ApplicationConfig, DEFAULT_CURRENCY_CODE, LOCALE_ID } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
@@ -20,6 +20,7 @@ registerLocaleData(localeRu);
 export const appConfig: ApplicationConfig = {
   providers: [
     { provide: LOCALE_ID, useValue: 'ru-RU' },
+    { provide: DEFAULT_CURRENCY_CODE, useValue: 'RUB' },
     provideRouter(routes),
     provideAnimationsAsync(),
     provideHttpClient(withInterceptorsFromDi()),

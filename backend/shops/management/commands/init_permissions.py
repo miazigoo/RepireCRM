@@ -24,9 +24,33 @@ class Command(BaseCommand):
             # Склад
             ("inventory.view_inventory", "Просмотр склада", "inventory"),
             ("inventory.change_inventory", "Управление складом", "inventory"),
+            ("inventory.view_item", "Просмотр товаров", "inventory"),
+            ("inventory.add_item", "Создание товаров", "inventory"),
+            ("inventory.view_stock", "Просмотр остатков", "inventory"),
+            ("inventory.receive_stock", "Приемка остатков", "inventory"),
+            ("inventory.adjust_stock", "Корректировка остатков", "inventory"),
+            ("inventory.add_movement", "Создание движений склада", "inventory"),
+            ("inventory.view_purchase", "Просмотр закупок", "inventory"),
+            ("inventory.add_purchase", "Создание закупок", "inventory"),
+            ("inventory.receive_purchase", "Приемка закупок", "inventory"),
+            ("inventory.view_supplier", "Просмотр поставщиков", "inventory"),
+            ("inventory.add_sale", "Создание продаж", "inventory"),
+            ("inventory.change_sale", "Изменение продаж", "inventory"),
+            ("inventory.view_reports", "Складские отчеты", "inventory"),
             # Отчеты
+            ("reports.view_dashboard", "Дашборд отчетов", "reports"),
             ("reports.view_financial", "Финансовые отчеты", "reports"),
             ("reports.view_analytics", "Аналитические отчеты", "reports"),
+            ("reports.generate_reports", "Генерация отчетов", "reports"),
+            ("reports.export_reports", "Экспорт отчетов", "reports"),
+            # Задачи
+            ("tasks.view_task", "Просмотр задач", "tasks"),
+            ("tasks.add_task", "Создание задач", "tasks"),
+            ("tasks.change_task", "Изменение задач", "tasks"),
+            ("tasks.view_template", "Просмотр шаблонов задач", "tasks"),
+            # Финансы
+            ("finance.add_payment", "Создание платежей", "finance"),
+            ("payments.add_payment", "Создание платежей", "finance"),
             # Настройки
             ("settings.view_shop", "Просмотр филиалов", "settings"),
             ("settings.change_shop", "Изменение филиалов", "settings"),

@@ -12,11 +12,15 @@ export class CustomersService {
   constructor(private apiService: ApiService) {}
 
   getCustomers(page: number = 1, pageSize: number = 20, filters?: CustomerFilters): Observable<Customer[]> {
-    const params = {
+    const rawParams = {
       page,
       page_size: pageSize,
       ...filters
     };
+    const params = Object.fromEntries(
+      Object.entries(rawParams).filter(([, value]) => value !== '' && value !== null && value !== undefined)
+    );
+
     return this.apiService.get<Customer[]>(this.endpoint, params);
   }
 

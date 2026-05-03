@@ -5,25 +5,29 @@ import {
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
-import { AuthService } from '../../services/auth.service';
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
-  constructor(
-    private router: Router,
-    private authService: AuthService
-  ) {}
+  constructor(private router: Router) {}
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     const isPortalRequest = req.url.includes('/portal');
     const token = isPortalRequest
       ? localStorage.getItem('portal_access_token')
       : localStorage.getItem('access_token');
+    const currentShopId = isPortalRequest ? null : localStorage.getItem('current_shop_id');
+    const headers: Record<string, string> = {};
 
-    const authReq = token
-      ? req.clone({
-          setHeaders: { Authorization: `Bearer ${token}` }
-        })
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    if (currentShopId) {
+      headers['X-Current-Shop'] = currentShopId;
+    }
+
+    const authReq = Object.keys(headers).length
+      ? req.clone({ setHeaders: headers })
       : req;
 
     return next.handle(authReq).pipe(
@@ -34,11 +38,17 @@ export class AuthInterceptor implements HttpInterceptor {
             localStorage.removeItem('portal_customer');
             this.router.navigate(['/portal']);
           } else {
-            this.authService.logout();
+            this.clearPrimarySession();
           }
         }
         return throwError(() => err);
       })
     );
+  }
+
+  private clearPrimarySession(): void {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('current_shop_id');
+    this.router.navigate(['/login']);
   }
 }
