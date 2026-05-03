@@ -63,9 +63,22 @@
   font-weight: 500;
 }
 
-.customer-phone {
+.customer-phone,
+.device-meta {
   font-size: 12px;
   color: var(--color-text-secondary);
+}
+
+.device-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.device-name {
+  color: var(--color-text-primary);
+  font-weight: 600;
 }
 
 .customer-layout {

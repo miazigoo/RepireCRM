@@ -3,6 +3,7 @@ from decimal import Decimal
 from typing import Optional
 
 from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Sum
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from ninja import Router
@@ -196,6 +197,46 @@ def generate_report(request, template_id: int, parameters: dict = None):
         "summary": report.summary,
         "charts_config": report.charts_config,
     }
+
+
+@router.get("/export/dashboard")
+def export_dashboard_report(request, period: str = "30_days", format: str = "pdf"):
+    """Экспорт текущего дашборда без предварительно созданного GeneratedReport."""
+    if not request.auth.has_permission("reports.export_reports"):
+        raise PermissionError("Нет прав для экспорта отчетов")
+
+    metrics = get_dashboard_metrics(request)
+    filename = f"dashboard-report-{period}"
+
+    if format == "excel":
+        rows = [
+            "Показатель;Значение",
+            f"Выручка;{metrics['revenue']['current']}",
+            f"Заказов;{metrics['orders']['total']}",
+            f"Завершено;{metrics['orders']['completed']}",
+            f"Средний чек;{metrics['avg_check']['current']}",
+        ]
+        response = HttpResponse(
+            "\n".join(rows),
+            content_type="text/csv; charset=utf-8",
+        )
+        response["Content-Disposition"] = f'attachment; filename="{filename}.csv"'
+        return response
+
+    if format != "pdf":
+        return HttpResponse("Unsupported format", status=400)
+
+    body = (
+        "Repair CRM dashboard report\n"
+        f"Period: {period}\n"
+        f"Revenue: {metrics['revenue']['current']}\n"
+        f"Orders: {metrics['orders']['total']}\n"
+        f"Completed: {metrics['orders']['completed']}\n"
+        f"Average check: {metrics['avg_check']['current']}\n"
+    )
+    response = HttpResponse(body, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}.pdf"'
+    return response
 
 
 @router.get("/export/{report_id}")

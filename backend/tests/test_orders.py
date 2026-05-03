@@ -196,6 +196,53 @@ class OrderTestCase(TestCase):
 
                 self.assertEqual(response.status_code, 200, response.content)
 
+    def test_create_order_endpoint_accepts_trailing_slash_post(self):
+        response = self.client.post(
+            "/api/orders/",
+            data=json.dumps(
+                {
+                    "customer_id": self.customer.id,
+                    "device": {
+                        "model_id": self.device.model_id,
+                        "serial_number": "",
+                        "imei": "",
+                        "color": "Black",
+                        "storage_capacity": "128GB",
+                    },
+                    "problem_description": "Не заряжается",
+                    "cost_estimate": 1500,
+                    "priority": "normal",
+                    "additional_services": [],
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 201, response.content)
+        self.assertIn("order_number", response.json())
+
+    def test_staff_can_create_missing_device_model_from_order_form(self):
+        response = self.client.post(
+            "/api/orders/device-models",
+            data=json.dumps(
+                {
+                    "brand_name": "Samsung",
+                    "name": "Galaxy A55",
+                    "device_type_name": "Смартфон",
+                    "model_number": "SM-A556E",
+                    "release_year": 2024,
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 201, response.content)
+        payload = response.json()
+        self.assertEqual(payload["brand"]["name"], "Samsung")
+        self.assertEqual(payload["name"], "Galaxy A55")
+
     @override_settings(MEDIA_ROOT="/tmp/repair_crm_test_media")
     def test_repair_stage_api_accepts_photo_and_writes_audit_log(self):
         order = self.create_order()

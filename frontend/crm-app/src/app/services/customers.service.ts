@@ -34,7 +34,7 @@ export class CustomersService {
   }
 
   createCustomer(customer: Partial<Customer>): Observable<Customer> {
-    return this.apiService.post<Customer>(this.endpoint, customer);
+    return this.apiService.post<Customer>(`${this.endpoint}/`, customer);
   }
 
   updateCustomer(id: number, customer: Partial<Customer>): Observable<Customer> {

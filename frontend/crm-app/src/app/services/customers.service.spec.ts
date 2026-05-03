@@ -8,7 +8,7 @@ describe('CustomersService', () => {
   let apiService: jasmine.SpyObj<ApiService>;
 
   beforeEach(() => {
-    apiService = jasmine.createSpyObj<ApiService>('ApiService', ['get']);
+    apiService = jasmine.createSpyObj<ApiService>('ApiService', ['get', 'post']);
 
     TestBed.configureTestingModule({
       providers: [
@@ -49,5 +49,21 @@ describe('CustomersService', () => {
     service.getCustomers().subscribe((customers) => {
       expect(customers).toEqual([customer]);
     });
+  });
+
+  it('creates customers using trailing slash endpoint', () => {
+    const payload = {
+      first_name: 'Анна',
+      last_name: 'Иванова',
+      phone: '+79990000000',
+    };
+    const customer = { id: 2, ...payload } as any;
+    apiService.post.and.returnValue(of(customer));
+
+    service.createCustomer(payload).subscribe((result) => {
+      expect(result).toEqual(customer);
+    });
+
+    expect(apiService.post).toHaveBeenCalledOnceWith('/customers/', payload);
   });
 });

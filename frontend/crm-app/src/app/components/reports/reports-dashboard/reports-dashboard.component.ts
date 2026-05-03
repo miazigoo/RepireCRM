@@ -258,7 +258,7 @@ export class ReportsDashboardComponent implements OnInit {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `dashboard-report.${format}`;
+        a.download = `dashboard-report.${format === 'excel' ? 'csv' : 'pdf'}`;
         a.click();
         window.URL.revokeObjectURL(url);
 

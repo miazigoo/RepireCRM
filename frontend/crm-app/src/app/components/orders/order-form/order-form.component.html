@@ -99,13 +99,31 @@
               <div class="form-row">
                 <mat-form-field>
                   <mat-label>Модель устройства</mat-label>
-                  <mat-select formControlName="model_id" required>
-                    <mat-option *ngFor="let model of deviceModels" [value]="model.id">
-                      {{ model.brand.name }} {{ model.name }}
+                  <input
+                    matInput
+                    formControlName="model"
+                    required
+                    [matAutocomplete]="deviceModelAuto"
+                    placeholder="Например, Samsung Galaxy S24">
+                  <mat-autocomplete
+                    #deviceModelAuto="matAutocomplete"
+                    [displayWith]="displayDeviceModel"
+                    (optionSelected)="onDeviceModelSelected($event.option.value)">
+                    <mat-option *ngFor="let model of filteredDeviceModels | async" [value]="model">
+                      <div class="device-option">
+                        <div class="device-name">{{ model.brand.name }} {{ model.name }}</div>
+                        <div class="device-meta">
+                          {{ model.device_type.name }}
+                          <span *ngIf="model.model_number"> · {{ model.model_number }}</span>
+                        </div>
+                      </div>
                     </mat-option>
-                  </mat-select>
+                  </mat-autocomplete>
                   <mat-hint *ngIf="deviceModels.length === 0">
                     Модели устройств не найдены в справочнике
+                  </mat-hint>
+                  <mat-hint *ngIf="deviceModels.length > 0">
+                    Если модели нет в списке, она добавится при переходе далее
                   </mat-hint>
                 </mat-form-field>
 

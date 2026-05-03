@@ -123,6 +123,40 @@ body .mdc-text-field--outlined {
   background: var(--color-surface-strong) !important;
 }
 
+body .mat-mdc-form-field {
+  --mdc-filled-text-field-container-shape: 10px;
+  --mdc-outlined-text-field-container-shape: 10px;
+  --mdc-filled-text-field-container-color: var(--color-surface-strong);
+  --mdc-filled-text-field-input-text-color: var(--color-text-primary);
+  --mdc-filled-text-field-label-text-color: var(--color-text-secondary);
+  --mdc-filled-text-field-hover-label-text-color: var(--color-text-primary);
+  --mdc-filled-text-field-focus-label-text-color: var(--color-primary);
+  --mdc-filled-text-field-active-indicator-color: var(--color-border);
+  --mdc-filled-text-field-hover-active-indicator-color: var(--color-primary);
+  --mdc-outlined-text-field-input-text-color: var(--color-text-primary);
+  --mdc-outlined-text-field-label-text-color: var(--color-text-secondary);
+  --mdc-outlined-text-field-focus-label-text-color: var(--color-primary);
+  --mdc-outlined-text-field-outline-color: var(--color-border);
+  --mdc-outlined-text-field-hover-outline-color: var(--color-primary);
+  --mat-form-field-subscript-text-color: var(--color-text-secondary);
+}
+
+body .mat-mdc-text-field-wrapper {
+  border-radius: 10px !important;
+}
+
+body .mat-mdc-form-field-focus-overlay {
+  background: transparent !important;
+}
+
+body .mat-mdc-form-field-subscript-wrapper {
+  min-height: 20px;
+}
+
+body .mat-mdc-form-field.mat-focused .mat-mdc-text-field-wrapper {
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
 body .mdc-text-field--outlined .mdc-notched-outline__leading,
 body .mdc-text-field--outlined .mdc-notched-outline__notch,
 body .mdc-text-field--outlined .mdc-notched-outline__trailing {
@@ -184,6 +218,38 @@ body.dark-theme .customer-panel {
   background: var(--color-surface-strong) !important;
   color: var(--color-text-primary) !important;
   border-color: var(--color-border) !important;
+}
+
+.page-header,
+.dashboard-header,
+.header {
+  color: var(--color-text-primary);
+}
+
+.form-card,
+.filters-card,
+.table-card,
+.inventory-table-card,
+.alerts-card {
+  border-radius: 8px !important;
+}
+
+.form-card .mat-mdc-card-content,
+.filters-card .mat-mdc-card-content,
+.table-card .mat-mdc-card-content {
+  padding: 24px !important;
+}
+
+.mat-mdc-raised-button,
+.mat-mdc-unelevated-button,
+.mat-mdc-outlined-button,
+.mat-mdc-button {
+  border-radius: 999px !important;
+  letter-spacing: 0;
+}
+
+.mat-mdc-icon-button {
+  border-radius: 10px !important;
 }
 
 .full-width {

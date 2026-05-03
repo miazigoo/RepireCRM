@@ -84,6 +84,18 @@ describe('OrdersService', () => {
     });
   });
 
+  it('creates orders using trailing slash endpoint to avoid Django POST redirect', () => {
+    const order = { id: 8, order_number: 'ORD-008' } as Order;
+    const payload = { customer_id: 1, device: { model_id: 2 } };
+    apiService.post.and.returnValue(of(order));
+
+    service.createOrder(payload).subscribe((result) => {
+      expect(result).toEqual(order);
+    });
+
+    expect(apiService.post).toHaveBeenCalledOnceWith('/orders/', payload);
+  });
+
   it('loads device models for order creation', () => {
     const models = [
       {
@@ -100,5 +112,26 @@ describe('OrdersService', () => {
     });
 
     expect(apiService.get).toHaveBeenCalledOnceWith('/orders/device-models');
+  });
+
+  it('creates missing device models from order form', () => {
+    const model = {
+      id: 5,
+      name: 'Galaxy A55',
+      brand: { id: 1, name: 'Samsung' },
+      device_type: { id: 1, name: 'Смартфон' },
+    } as DeviceModel;
+    const payload = {
+      brand_name: 'Samsung',
+      name: 'Galaxy A55',
+      device_type_name: 'Смартфон',
+    };
+    apiService.post.and.returnValue(of(model));
+
+    service.createDeviceModel(payload).subscribe((result) => {
+      expect(result).toEqual(model);
+    });
+
+    expect(apiService.post).toHaveBeenCalledOnceWith('/orders/device-models', payload);
   });
 });

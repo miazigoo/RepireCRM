@@ -9,7 +9,7 @@ from ninja.files import UploadedFile
 from ninja.pagination import PageNumberPagination, paginate
 
 from customers.models import Customer
-from device.models import Device, DeviceModel
+from device.models import Device, DeviceBrand, DeviceModel, DeviceType
 from Schemas.common import ErrorSchema
 from users.models import User
 
@@ -25,6 +25,7 @@ from .models import (
 )
 from .orders_schemas import (
     AdditionalServiceSchema,
+    DeviceModelCreateSchema,
     DeviceModelSchema,
     OrderApprovalCreateSchema,
     OrderApprovalSchema,
@@ -313,6 +314,35 @@ def list_device_models(request, search: str = None):
     return qs.order_by("brand__name", "name")
 
 
+@router.post("/device-models", response={201: DeviceModelSchema, 400: ErrorSchema})
+def create_device_model(request, data: DeviceModelCreateSchema):
+    """Создать модель устройства из формы заказа, если ее нет в справочнике."""
+    if not request.auth.has_permission("orders.add_order"):
+        raise PermissionError("Нет прав для создания моделей устройств")
+
+    brand_name = data.brand_name.strip()
+    model_name = data.name.strip()
+    device_type_name = (data.device_type_name or "Смартфон").strip() or "Смартфон"
+    if not brand_name or not model_name:
+        return 400, {"error": "Укажите бренд и модель устройства"}
+
+    brand, _ = DeviceBrand.objects.get_or_create(name=brand_name)
+    device_type, _ = DeviceType.objects.get_or_create(
+        name=device_type_name,
+        defaults={"icon": "smartphone"},
+    )
+    model, _ = DeviceModel.objects.get_or_create(
+        brand=brand,
+        device_type=device_type,
+        name=model_name,
+        defaults={
+            "model_number": data.model_number or "",
+            "release_year": data.release_year,
+        },
+    )
+    return 201, model
+
+
 @router.get("/{order_id}", response=OrderSchema)
 def get_order(request, order_id: int):
     """Получение заказа по ID"""
@@ -358,7 +388,8 @@ def create_order(request, data: OrderCreateSchema):
             # Создаем или получаем устройство
             device_model = get_object_or_404(DeviceModel, id=data.device.model_id)
             device = Device.objects.create(
-                model=device_model, **data.device.dict(exclude={"model_id"})
+                model=device_model,
+                **data.device.dict(exclude={"model_id"}, exclude_none=True),
             )
 
             # Создаем заказ

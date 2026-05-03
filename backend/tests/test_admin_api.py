@@ -10,7 +10,7 @@ from customers.models import Customer
 from device.models import Device, DeviceBrand, DeviceModel, DeviceType
 from orders.models import Order
 from shops.models import Shop
-from users.models import Role
+from users.models import Permission, Role
 
 User = get_user_model()
 
@@ -82,3 +82,24 @@ class AdminApiTestCase(TestCase):
         self.assertEqual(payload["total_orders_today"], 1)
         self.assertEqual(payload["total_revenue_today"], 7000.0)
         self.assertEqual(payload["system_health"], "good")
+
+    def test_admin_management_endpoints_return_lists(self):
+        Permission.objects.create(
+            name="Просмотр пользователей",
+            codename="users.view_user",
+            category=Permission.PermissionCategory.USERS,
+        )
+
+        endpoints = (
+            "/api/admin/users?page=1&page_size=20",
+            "/api/admin/roles",
+            "/api/admin/shops",
+            "/api/admin/permissions",
+        )
+
+        for endpoint in endpoints:
+            with self.subTest(endpoint=endpoint):
+                response = self.client.get(endpoint, **self.auth_headers())
+
+                self.assertEqual(response.status_code, 200, response.content)
+                self.assertIsInstance(response.json(), list)

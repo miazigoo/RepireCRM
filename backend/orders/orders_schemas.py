@@ -46,6 +46,14 @@ class DeviceCreateSchema(Schema):
     specifications: Optional[dict] = None
 
 
+class DeviceModelCreateSchema(Schema):
+    brand_name: str
+    name: str
+    device_type_name: Optional[str] = "Смартфон"
+    model_number: Optional[str] = None
+    release_year: Optional[int] = None
+
+
 class AdditionalServiceSchema(Schema):
     id: int
     name: str

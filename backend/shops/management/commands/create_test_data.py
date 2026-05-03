@@ -104,29 +104,43 @@ class Command(BaseCommand):
         test_user.current_shop = shop1
         test_user.save()
 
-        # Создаем бренды и типы устройств
-        apple = DeviceBrand.objects.get_or_create(name="Apple")[0]
-        samsung = DeviceBrand.objects.get_or_create(name="Samsung")[0]
-        DeviceBrand.objects.get_or_create(name="Xiaomi")
-
         phone_type = DeviceType.objects.get_or_create(
             name="Смартфон", defaults={"icon": "phone"}
         )[0]
         DeviceType.objects.get_or_create(name="Планшет", defaults={"icon": "tablet"})
 
-        # Создаем модели устройств
-        DeviceModel.objects.get_or_create(
-            brand=apple,
-            device_type=phone_type,
-            name="iPhone 15 Pro",
-            defaults={"model_number": "A3101", "release_year": 2023},
-        )
-        DeviceModel.objects.get_or_create(
-            brand=samsung,
-            device_type=phone_type,
-            name="Galaxy S24",
-            defaults={"model_number": "SM-S921B", "release_year": 2024},
-        )
+        # Популярные модели на российском рынке для быстрого поиска на приемке.
+        popular_models = [
+            ("Apple", "iPhone 15 Pro", "A3101", 2023),
+            ("Apple", "iPhone 15", "A3090", 2023),
+            ("Apple", "iPhone 14 Pro", "A2890", 2022),
+            ("Apple", "iPhone 13", "A2633", 2021),
+            ("Samsung", "Galaxy S24", "SM-S921B", 2024),
+            ("Samsung", "Galaxy S23", "SM-S911B", 2023),
+            ("Samsung", "Galaxy A55", "SM-A556E", 2024),
+            ("Samsung", "Galaxy A35", "SM-A356E", 2024),
+            ("Xiaomi", "14", "23127PN0CG", 2024),
+            ("Xiaomi", "13T", "2306EPN60G", 2023),
+            ("Redmi", "Note 13 Pro", "2312DRA50G", 2024),
+            ("Redmi", "Note 12", "23021RAAEG", 2023),
+            ("Poco", "X6 Pro", "2311DRK48G", 2024),
+            ("Realme", "12 Pro+", "RMX3840", 2024),
+            ("Honor", "90", "REA-NX9", 2023),
+            ("Honor", "X9b", "ALI-NX1", 2024),
+            ("Huawei", "P60 Pro", "MNA-LX9", 2023),
+            ("Tecno", "Camon 30", "CL6", 2024),
+            ("Infinix", "Note 40 Pro", "X6850", 2024),
+            ("OnePlus", "12", "CPH2581", 2024),
+            ("Google", "Pixel 8", "GKWS6", 2023),
+        ]
+        for brand_name, model_name, model_number, release_year in popular_models:
+            brand = DeviceBrand.objects.get_or_create(name=brand_name)[0]
+            DeviceModel.objects.get_or_create(
+                brand=brand,
+                device_type=phone_type,
+                name=model_name,
+                defaults={"model_number": model_number, "release_year": release_year},
+            )
 
         # Создаем дополнительные услуги
         AdditionalService.objects.get_or_create(

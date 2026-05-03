@@ -48,6 +48,7 @@ export class OrderFormComponent implements OnInit {
   customers: Customer[] = [];
   filteredCustomers!: Observable<Customer[]>;
   deviceModels: DeviceModel[] = [];
+  filteredDeviceModels!: Observable<DeviceModel[]>;
   additionalServices: AdditionalService[] = [];
   selectedServices: AdditionalService[] = [];
 
@@ -65,11 +66,13 @@ export class OrderFormComponent implements OnInit {
   ) {
     // Инициализируем с пустым Observable, чтобы избежать ошибки
     this.filteredCustomers = of([]);
+    this.filteredDeviceModels = of([]);
   }
 
   ngOnInit(): void {
     this.initializeForms();
     this.setupFilteredCustomers();
+    this.setupFilteredDeviceModels();
 
     this.route.params.subscribe(params => {
       if (params['id']) {
@@ -89,6 +92,13 @@ export class OrderFormComponent implements OnInit {
     );
   }
 
+  private setupFilteredDeviceModels(): void {
+    this.filteredDeviceModels = this.deviceForm.get('model')!.valueChanges.pipe(
+      startWith(''),
+      map(value => this.filterDeviceModels(value))
+    );
+  }
+
   private initializeForms(): void {
     this.customerForm = this.fb.group({
       customer: ['', Validators.required],
@@ -101,7 +111,8 @@ export class OrderFormComponent implements OnInit {
     });
 
     this.deviceForm = this.fb.group({
-      model_id: ['', Validators.required],
+      model: ['', Validators.required],
+      model_id: [null],
       serial_number: [''],
       imei: [''],
       color: [''],
@@ -157,6 +168,7 @@ export class OrderFormComponent implements OnInit {
 
     // Populate device form
     this.deviceForm.patchValue({
+      model: order.device.model,
       model_id: order.device.model.id,
       serial_number: order.device.serial_number,
       imei: order.device.imei,
@@ -193,6 +205,20 @@ export class OrderFormComponent implements OnInit {
 
   displayCustomer(customer: Customer): string {
     return customer ? `${customer.last_name} ${customer.first_name} (${customer.phone})` : '';
+  }
+
+  displayDeviceModel(model: DeviceModel | string): string {
+    if (!model || typeof model === 'string') {
+      return model || '';
+    }
+    return `${model.brand.name} ${model.name}`;
+  }
+
+  onDeviceModelSelected(model: DeviceModel): void {
+    this.deviceForm.patchValue({
+      model,
+      model_id: model.id
+    });
   }
 
   onCustomerStepNext(stepper: MatStepper): void {
@@ -252,10 +278,51 @@ export class OrderFormComponent implements OnInit {
   }
 
   onDeviceStepNext(stepper: MatStepper): void {
-    if (this.deviceForm.valid) {
+    if (!this.deviceForm.get('model')?.value) {
+      this.deviceForm.get('model')?.markAsTouched();
+      return;
+    }
+
+    const selectedModel = this.getSelectedDeviceModel();
+    if (selectedModel) {
+      this.deviceForm.patchValue({ model_id: selectedModel.id });
       this.deviceStepCompleted = true;
       stepper.next();
+      return;
     }
+
+    const modelQuery = String(this.deviceForm.get('model')?.value || '').trim();
+    if (modelQuery.length < 2) {
+      this.snackBar.open('Укажите модель устройства', 'Закрыть', { duration: 3000 });
+      return;
+    }
+
+    const parsed = this.parseDeviceModel(modelQuery);
+    this.loading = true;
+    this.ordersService.createDeviceModel({
+      brand_name: parsed.brandName,
+      name: parsed.modelName,
+      device_type_name: parsed.deviceTypeName
+    }).subscribe({
+      next: (model) => {
+        this.deviceModels = [model, ...this.deviceModels.filter(item => item.id !== model.id)];
+        this.deviceForm.patchValue({
+          model,
+          model_id: model.id
+        });
+        this.deviceStepCompleted = true;
+        this.loading = false;
+        this.snackBar.open('Модель устройства добавлена в справочник', 'Закрыть', {
+          duration: 2500
+        });
+        stepper.next();
+      },
+      error: (error) => {
+        const message = error?.error?.error || 'Не удалось добавить модель устройства';
+        this.snackBar.open(message, 'Закрыть', { duration: 4000 });
+        this.loading = false;
+      }
+    });
   }
 
   addService(service: AdditionalService): void {
@@ -306,7 +373,13 @@ export class OrderFormComponent implements OnInit {
 
   private buildFormData(): any {
     const customer = this.getSelectedCustomer();
-    const device = this.deviceForm.value;
+    const device = {
+      model_id: this.deviceForm.get('model_id')?.value,
+      serial_number: this.deviceForm.get('serial_number')?.value,
+      imei: this.deviceForm.get('imei')?.value,
+      color: this.deviceForm.get('color')?.value,
+      storage_capacity: this.deviceForm.get('storage_capacity')?.value
+    };
     const order = this.orderForm.value;
 
     return {
@@ -335,5 +408,62 @@ export class OrderFormComponent implements OnInit {
       return customer as Customer;
     }
     return null;
+  }
+
+  private filterDeviceModels(value: DeviceModel | string): DeviceModel[] {
+    if (!value || typeof value !== 'string') {
+      return this.deviceModels.slice(0, 30);
+    }
+
+    const filterValue = value.toLowerCase();
+    return this.deviceModels.filter(model => {
+      const fullName = `${model.brand.name} ${model.name}`.toLowerCase();
+      const modelNumber = model.model_number?.toLowerCase() || '';
+      return fullName.includes(filterValue) ||
+        modelNumber.includes(filterValue);
+    }).slice(0, 30);
+  }
+
+  private getSelectedDeviceModel(): DeviceModel | null {
+    const model = this.deviceForm.get('model')?.value;
+    if (model && typeof model === 'object' && 'id' in model) {
+      return model as DeviceModel;
+    }
+
+    const query = String(model || '').trim().toLowerCase();
+    return this.deviceModels.find(candidate =>
+      `${candidate.brand.name} ${candidate.name}`.toLowerCase() === query
+    ) || null;
+  }
+
+  private parseDeviceModel(value: string): {
+    brandName: string;
+    modelName: string;
+    deviceTypeName: string;
+  } {
+    const knownBrands = [
+      'Apple', 'Samsung', 'Xiaomi', 'Redmi', 'Poco', 'Huawei', 'Honor', 'Realme',
+      'Tecno', 'Infinix', 'Oppo', 'Vivo', 'OnePlus', 'Google', 'Sony', 'Nokia',
+      'Lenovo', 'Asus', 'Acer', 'HP', 'Dell', 'MSI'
+    ];
+    const normalized = value.replace(/\s+/g, ' ').trim();
+    const foundBrand = knownBrands.find(brand =>
+      normalized.toLowerCase().startsWith(brand.toLowerCase())
+    );
+
+    if (foundBrand) {
+      return {
+        brandName: foundBrand,
+        modelName: normalized.slice(foundBrand.length).trim() || normalized,
+        deviceTypeName: 'Смартфон'
+      };
+    }
+
+    const [brandName, ...modelParts] = normalized.split(' ');
+    return {
+      brandName: brandName || 'Другое',
+      modelName: modelParts.join(' ') || normalized,
+      deviceTypeName: 'Смартфон'
+    };
   }
 }

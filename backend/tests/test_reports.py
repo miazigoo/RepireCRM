@@ -21,7 +21,11 @@ class ReportsApiTestCase(TestCase):
             currency="RUB",
         )
         role = Role.objects.create(name="Director", code=Role.RoleType.DIRECTOR)
-        for codename in ("reports.view_dashboard", "reports.view_financial"):
+        for codename in (
+            "reports.view_dashboard",
+            "reports.view_financial",
+            "reports.export_reports",
+        ):
             permission = Permission.objects.create(
                 name=codename,
                 codename=codename,
@@ -79,3 +83,13 @@ class ReportsApiTestCase(TestCase):
         payload = response.json()
         self.assertEqual(payload["summary"]["total_orders"], 0)
         self.assertEqual(payload["services_breakdown"], [])
+
+    def test_dashboard_export_static_route_is_not_treated_as_report_id(self):
+        response = self.client.get(
+            "/api/reports/export/dashboard",
+            data={"period": "30_days", "format": "pdf"},
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response["Content-Type"], "application/pdf")

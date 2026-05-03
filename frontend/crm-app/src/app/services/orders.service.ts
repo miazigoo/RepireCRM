@@ -40,7 +40,7 @@ export class OrdersService {
   }
 
   createOrder(order: any): Observable<Order> {
-    return this.apiService.post<Order>(this.endpoint, order);
+    return this.apiService.post<Order>(`${this.endpoint}/`, order);
   }
 
   updateOrder(id: number, order: Partial<Order>): Observable<Order> {
@@ -80,6 +80,16 @@ export class OrdersService {
 
   getDeviceModels(): Observable<DeviceModel[]> {
     return this.apiService.get<DeviceModel[]>(`${this.endpoint}/device-models`);
+  }
+
+  createDeviceModel(data: {
+    brand_name: string;
+    name: string;
+    device_type_name?: string;
+    model_number?: string;
+    release_year?: number;
+  }): Observable<DeviceModel> {
+    return this.apiService.post<DeviceModel>(`${this.endpoint}/device-models`, data);
   }
 
   getStatistics(): Observable<any> {
