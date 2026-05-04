@@ -1,13 +1,18 @@
 .sidenav-container {
   height: 100%;
   background: var(--color-background);
+  background-image: var(--app-background-image);
+  background-size: var(--app-background-size);
   color: var(--color-text-primary);
 }
 
 .sidenav {
   width: var(--sidebar-width, 292px);
-  border-right: 1px solid var(--color-border);
-  background: var(--color-surface);
+  border-right: var(--sidenav-border);
+  background: var(--sidenav-background);
+  background-image: var(--sidenav-background-image);
+  color: var(--sidenav-text);
+  backdrop-filter: var(--panel-backdrop-filter);
 }
 
 .sidenav-header {
@@ -16,8 +21,8 @@
   gap: 12px;
   min-height: 72px;
   padding: 20px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface);
+  border-bottom: var(--sidenav-border);
+  background: transparent;
 }
 
 .brand-mark {
@@ -26,9 +31,7 @@
   height: 44px;
   place-items: center;
   border-radius: var(--card-radius);
-  background:
-    linear-gradient(135deg, var(--color-primary-soft), var(--color-accent-soft)),
-    var(--color-surface-strong);
+  background: var(--brand-background);
   color: var(--color-text-primary);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-light);
@@ -58,7 +61,7 @@
   padding: 10px 12px;
   border: 1px solid var(--color-border);
   border-radius: var(--card-radius);
-  background: var(--color-surface-strong);
+  background: color-mix(in srgb, var(--sidenav-hover-background) 74%, transparent);
 }
 
 .shop-selector mat-select {
@@ -75,7 +78,7 @@
   margin-bottom: 5px;
   border: 1px solid transparent;
   border-radius: var(--control-radius);
-  color: var(--color-text-secondary);
+  color: var(--sidenav-text);
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
@@ -85,15 +88,15 @@
 
 .sidenav .mat-mdc-list-item:hover,
 .sidenav button.mat-mdc-list-item:hover {
-  background: var(--color-surface-strong);
+  background: var(--sidenav-hover-background);
   color: var(--color-text-primary);
 }
 
 .sidenav .mat-mdc-list-item.active {
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
+  background: var(--sidenav-active-background);
+  color: var(--sidenav-active-color);
   border-color: color-mix(in srgb, var(--color-primary) 34%, transparent);
-  box-shadow: inset 3px 0 0 var(--color-primary);
+  box-shadow: var(--sidenav-active-shadow);
 }
 
 .sidenav .mat-mdc-list-item mat-icon {
@@ -115,9 +118,9 @@
   position: sticky;
   top: 0;
   z-index: 5;
-  height: 64px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-toolbar) !important;
+  height: var(--header-height, 64px);
+  border-bottom: var(--toolbar-border);
+  background: var(--toolbar-background) !important;
   color: var(--color-text-primary) !important;
   backdrop-filter: blur(14px);
 }
@@ -142,6 +145,13 @@
   min-height: calc(100vh - 64px);
   padding: var(--content-padding);
   background: var(--color-background);
+  background-image: var(--app-background-image);
+  background-size: var(--app-background-size);
+}
+
+.content-container > * {
+  max-width: var(--content-max-width);
+  margin-inline: var(--content-margin-inline);
 }
 
 .notifications-header {

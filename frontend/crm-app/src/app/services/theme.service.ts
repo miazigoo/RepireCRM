@@ -33,17 +33,39 @@ export interface InterfaceStyle {
   customProperties: Record<string, string>;
 }
 
+export interface VisualSkin {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string;
+  icon: string;
+  customProperties: Record<string, string>;
+}
+
+export interface AppearancePreset {
+  id: string;
+  displayName: string;
+  description: string;
+  icon: string;
+  themeId: string;
+  styleId: string;
+  skinId: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class ThemeService {
   private readonly THEME_STORAGE_KEY = 'selectedTheme';
   private readonly STYLE_STORAGE_KEY = 'selectedInterfaceStyle';
+  private readonly SKIN_STORAGE_KEY = 'selectedVisualSkin';
   private currentThemeSubject!: BehaviorSubject<Theme>;
   private currentStyleSubject!: BehaviorSubject<InterfaceStyle>;
+  private currentSkinSubject!: BehaviorSubject<VisualSkin>;
 
   public currentTheme$!: Observable<Theme>;
   public currentStyle$!: Observable<InterfaceStyle>;
+  public currentSkin$!: Observable<VisualSkin>;
 
   private themes: Theme[] = [
     {
@@ -587,17 +609,255 @@ export class ThemeService {
     }
   ];
 
+  private visualSkins: VisualSkin[] = [
+    {
+      id: 'classic-admin',
+      name: 'skin-classic-admin',
+      displayName: 'Классическая CRM',
+      description: 'Чистая админка: левое меню, белые панели, спокойная работа',
+      icon: 'view_sidebar',
+      customProperties: {
+        '--font-ui': 'Roboto, "Helvetica Neue", Arial, sans-serif',
+        '--app-background-image': 'none',
+        '--app-background-size': 'auto',
+        '--panel-background': 'var(--color-surface)',
+        '--panel-border': '1px solid var(--color-border)',
+        '--panel-shadow': 'var(--shadow-light)',
+        '--panel-backdrop-filter': 'none',
+        '--sidenav-background': 'var(--color-surface)',
+        '--sidenav-background-image': 'none',
+        '--sidenav-border': '1px solid var(--color-border)',
+        '--sidenav-text': 'var(--color-text-secondary)',
+        '--sidenav-hover-background': 'var(--color-surface-strong)',
+        '--sidenav-active-background': 'var(--color-primary-soft)',
+        '--sidenav-active-color': 'var(--color-primary)',
+        '--sidenav-active-shadow': 'inset 3px 0 0 var(--color-primary)',
+        '--toolbar-background': 'var(--color-toolbar)',
+        '--toolbar-border': '1px solid var(--color-border)',
+        '--brand-background': 'linear-gradient(135deg, var(--color-primary-soft), var(--color-accent-soft)), var(--color-surface-strong)',
+        '--content-max-width': 'none',
+        '--content-margin-inline': '0'
+      }
+    },
+    {
+      id: 'command-center',
+      name: 'skin-command-center',
+      displayName: 'Операционный центр',
+      description: 'Плотный monitoring-вид с сеткой, темными панелями и резким фокусом',
+      icon: 'monitoring',
+      customProperties: {
+        '--font-ui': '"Segoe UI", Roboto, Arial, sans-serif',
+        '--app-background-image': 'linear-gradient(0deg, color-mix(in srgb, var(--color-border) 34%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--color-border) 28%, transparent) 1px, transparent 1px)',
+        '--app-background-size': '32px 32px',
+        '--panel-background': 'color-mix(in srgb, var(--color-surface) 90%, var(--color-primary) 10%)',
+        '--panel-border': '1px solid color-mix(in srgb, var(--color-primary) 32%, var(--color-border))',
+        '--panel-shadow': '0 18px 52px rgba(0,0,0,0.28)',
+        '--panel-backdrop-filter': 'none',
+        '--sidenav-background': 'color-mix(in srgb, var(--color-surface) 72%, #020617)',
+        '--sidenav-background-image': 'linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 12%, transparent), transparent 260px)',
+        '--sidenav-border': '1px solid color-mix(in srgb, var(--color-primary) 28%, var(--color-border))',
+        '--sidenav-text': 'var(--color-text-secondary)',
+        '--sidenav-hover-background': 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
+        '--sidenav-active-background': 'color-mix(in srgb, var(--color-primary) 20%, transparent)',
+        '--sidenav-active-color': 'var(--color-text-primary)',
+        '--sidenav-active-shadow': 'inset 0 0 0 1px var(--color-primary)',
+        '--toolbar-background': 'color-mix(in srgb, var(--color-surface) 86%, #020617)',
+        '--toolbar-border': '1px solid color-mix(in srgb, var(--color-primary) 24%, var(--color-border))',
+        '--brand-background': 'var(--color-primary)',
+        '--content-max-width': 'none',
+        '--content-margin-inline': '0'
+      }
+    },
+    {
+      id: 'glass-studio',
+      name: 'skin-glass-studio',
+      displayName: 'Стеклянная студия',
+      description: 'Полупрозрачные панели, мягкий фон и ощущение отдельного продукта',
+      icon: 'blur_on',
+      customProperties: {
+        '--font-ui': '"Segoe UI", Roboto, Arial, sans-serif',
+        '--app-background-image': 'linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 13%, transparent), transparent 34%), linear-gradient(315deg, color-mix(in srgb, var(--color-accent) 14%, transparent), transparent 42%)',
+        '--app-background-size': 'cover',
+        '--panel-background': 'color-mix(in srgb, var(--color-surface) 78%, transparent)',
+        '--panel-border': '1px solid color-mix(in srgb, var(--color-text-primary) 14%, transparent)',
+        '--panel-shadow': '0 22px 70px rgba(15,23,42,0.16)',
+        '--panel-backdrop-filter': 'blur(18px) saturate(140%)',
+        '--sidenav-background': 'color-mix(in srgb, var(--color-surface) 76%, transparent)',
+        '--sidenav-background-image': 'linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent)',
+        '--sidenav-border': '1px solid color-mix(in srgb, var(--color-text-primary) 14%, transparent)',
+        '--sidenav-text': 'var(--color-text-secondary)',
+        '--sidenav-hover-background': 'color-mix(in srgb, var(--color-surface) 72%, transparent)',
+        '--sidenav-active-background': 'color-mix(in srgb, var(--color-primary) 18%, transparent)',
+        '--sidenav-active-color': 'var(--color-text-primary)',
+        '--sidenav-active-shadow': '0 10px 24px color-mix(in srgb, var(--color-primary) 20%, transparent)',
+        '--toolbar-background': 'color-mix(in srgb, var(--color-surface) 70%, transparent)',
+        '--toolbar-border': '1px solid color-mix(in srgb, var(--color-text-primary) 14%, transparent)',
+        '--brand-background': 'color-mix(in srgb, var(--color-primary) 20%, transparent)',
+        '--content-max-width': 'none',
+        '--content-margin-inline': '0'
+      }
+    },
+    {
+      id: 'ledger-console',
+      name: 'skin-ledger-console',
+      displayName: 'Табличная консоль',
+      description: 'Похоже на учетную систему: плотные линии, моноширинный ритм, минимум воздуха',
+      icon: 'table_rows',
+      customProperties: {
+        '--font-ui': 'Arial, "Helvetica Neue", sans-serif',
+        '--app-background-image': 'repeating-linear-gradient(0deg, transparent 0 31px, color-mix(in srgb, var(--color-border) 42%, transparent) 31px 32px)',
+        '--app-background-size': 'auto',
+        '--panel-background': 'var(--color-surface)',
+        '--panel-border': '1px solid var(--color-border)',
+        '--panel-shadow': 'none',
+        '--panel-backdrop-filter': 'none',
+        '--sidenav-background': 'var(--color-surface-strong)',
+        '--sidenav-background-image': 'none',
+        '--sidenav-border': '1px solid var(--color-border)',
+        '--sidenav-text': 'var(--color-text-secondary)',
+        '--sidenav-hover-background': 'var(--color-surface)',
+        '--sidenav-active-background': 'var(--color-primary)',
+        '--sidenav-active-color': 'var(--color-surface)',
+        '--sidenav-active-shadow': 'none',
+        '--toolbar-background': 'var(--color-surface)',
+        '--toolbar-border': '1px solid var(--color-border)',
+        '--brand-background': 'var(--color-surface)',
+        '--content-max-width': 'none',
+        '--content-margin-inline': '0'
+      }
+    },
+    {
+      id: 'editorial-soft',
+      name: 'skin-editorial-soft',
+      displayName: 'Мягкая студия',
+      description: 'Шире поля, центрированная рабочая область и спокойные карточки',
+      icon: 'auto_awesome',
+      customProperties: {
+        '--font-ui': 'Arial, "Helvetica Neue", sans-serif',
+        '--app-background-image': 'linear-gradient(180deg, color-mix(in srgb, var(--color-surface-strong) 80%, transparent), transparent 420px)',
+        '--app-background-size': 'cover',
+        '--panel-background': 'var(--color-surface)',
+        '--panel-border': '1px solid color-mix(in srgb, var(--color-border) 70%, transparent)',
+        '--panel-shadow': '0 18px 48px rgba(15,23,42,0.10)',
+        '--panel-backdrop-filter': 'none',
+        '--sidenav-background': 'var(--color-surface)',
+        '--sidenav-background-image': 'none',
+        '--sidenav-border': '0 solid transparent',
+        '--sidenav-text': 'var(--color-text-secondary)',
+        '--sidenav-hover-background': 'var(--color-surface-strong)',
+        '--sidenav-active-background': 'var(--color-primary-soft)',
+        '--sidenav-active-color': 'var(--color-primary)',
+        '--sidenav-active-shadow': 'none',
+        '--toolbar-background': 'transparent',
+        '--toolbar-border': '0 solid transparent',
+        '--brand-background': 'var(--color-surface-strong)',
+        '--content-max-width': '1180px',
+        '--content-margin-inline': 'auto'
+      }
+    },
+    {
+      id: 'contrast-console',
+      name: 'skin-contrast-console',
+      displayName: 'Контрастная система',
+      description: 'Толстые границы, явные состояния и максимальная читаемость',
+      icon: 'contrast',
+      customProperties: {
+        '--font-ui': 'Arial, "Helvetica Neue", sans-serif',
+        '--app-background-image': 'none',
+        '--app-background-size': 'auto',
+        '--panel-background': 'var(--color-surface)',
+        '--panel-border': '2px solid var(--color-border)',
+        '--panel-shadow': 'none',
+        '--panel-backdrop-filter': 'none',
+        '--sidenav-background': 'var(--color-surface)',
+        '--sidenav-background-image': 'none',
+        '--sidenav-border': '2px solid var(--color-border)',
+        '--sidenav-text': 'var(--color-text-primary)',
+        '--sidenav-hover-background': 'var(--color-surface-strong)',
+        '--sidenav-active-background': 'var(--color-primary)',
+        '--sidenav-active-color': 'var(--color-surface)',
+        '--sidenav-active-shadow': 'none',
+        '--toolbar-background': 'var(--color-surface)',
+        '--toolbar-border': '2px solid var(--color-border)',
+        '--brand-background': 'var(--color-primary)',
+        '--content-max-width': 'none',
+        '--content-margin-inline': '0'
+      }
+    }
+  ];
+
+  private appearancePresets: AppearancePreset[] = [
+    {
+      id: 'repair-office',
+      displayName: 'Сервисный офис',
+      description: 'Светлая рабочая CRM для приемки и менеджеров',
+      icon: 'storefront',
+      themeId: 'default-light',
+      styleId: 'balanced',
+      skinId: 'classic-admin'
+    },
+    {
+      id: 'ops-center',
+      displayName: 'Операционный центр',
+      description: 'Темный monitoring-режим для смены и контроля заказов',
+      icon: 'monitoring',
+      themeId: 'default-dark',
+      styleId: 'focus',
+      skinId: 'command-center'
+    },
+    {
+      id: 'premium-studio',
+      displayName: 'Премиум студия',
+      description: 'Стеклянные панели и мягкий внешний вид',
+      icon: 'blur_on',
+      themeId: 'coral-light',
+      styleId: 'comfortable',
+      skinId: 'glass-studio'
+    },
+    {
+      id: 'cash-desk',
+      displayName: 'Кассовый учет',
+      description: 'Плотная табличная система для склада и закупок',
+      icon: 'point_of_sale',
+      themeId: 'mono-light',
+      styleId: 'compact',
+      skinId: 'ledger-console'
+    },
+    {
+      id: 'calm-workshop',
+      displayName: 'Спокойная мастерская',
+      description: 'Центрированная рабочая область и мягкие зеленые акценты',
+      icon: 'handyman',
+      themeId: 'sage-light',
+      styleId: 'comfortable',
+      skinId: 'editorial-soft'
+    },
+    {
+      id: 'accessible-console',
+      displayName: 'Доступная консоль',
+      description: 'Высокий контраст, толстые границы и явный фокус',
+      icon: 'visibility',
+      themeId: 'high-contrast',
+      styleId: 'focus',
+      skinId: 'contrast-console'
+    }
+  ];
+
   constructor() {
     this.currentThemeSubject = new BehaviorSubject<Theme>(this.getDefaultTheme());
     this.currentStyleSubject = new BehaviorSubject<InterfaceStyle>(
       this.getDefaultStyle()
     );
+    this.currentSkinSubject = new BehaviorSubject<VisualSkin>(this.getDefaultSkin());
     this.currentTheme$ = this.currentThemeSubject.asObservable();
     this.currentStyle$ = this.currentStyleSubject.asObservable();
+    this.currentSkin$ = this.currentSkinSubject.asObservable();
     this.loadSavedTheme();
     this.loadSavedStyle();
+    this.loadSavedSkin();
     this.applyTheme(this.currentThemeSubject.value);
     this.applyInterfaceStyle(this.currentStyleSubject.value);
+    this.applyVisualSkin(this.currentSkinSubject.value);
   }
 
   getAvailableThemes(): Theme[] {
@@ -608,6 +868,14 @@ export class ThemeService {
     return [...this.interfaceStyles];
   }
 
+  getAvailableSkins(): VisualSkin[] {
+    return [...this.visualSkins];
+  }
+
+  getAppearancePresets(): AppearancePreset[] {
+    return [...this.appearancePresets];
+  }
+
   getCurrentTheme(): Theme {
     return this.currentThemeSubject.value;
   }
@@ -616,12 +884,17 @@ export class ThemeService {
     return this.currentStyleSubject.value;
   }
 
+  getCurrentSkin(): VisualSkin {
+    return this.currentSkinSubject.value;
+  }
+
   setTheme(themeId: string): void {
     const theme = this.themes.find(t => t.id === themeId);
     if (theme) {
       this.currentThemeSubject.next(theme);
       this.applyTheme(theme);
       this.applyInterfaceStyle(this.currentStyleSubject.value);
+      this.applyVisualSkin(this.currentSkinSubject.value);
       this.saveTheme(theme.id);
     }
   }
@@ -631,8 +904,43 @@ export class ThemeService {
     if (style) {
       this.currentStyleSubject.next(style);
       this.applyInterfaceStyle(style);
+      this.applyVisualSkin(this.currentSkinSubject.value);
       this.saveStyle(style.id);
     }
+  }
+
+  setSkin(skinId: string): void {
+    const skin = this.visualSkins.find(item => item.id === skinId);
+    if (skin) {
+      this.currentSkinSubject.next(skin);
+      this.applyVisualSkin(skin);
+      this.saveSkin(skin.id);
+    }
+  }
+
+  applyAppearancePreset(presetId: string): void {
+    const preset = this.appearancePresets.find(item => item.id === presetId);
+    if (!preset) {
+      return;
+    }
+
+    const theme = this.themes.find(item => item.id === preset.themeId);
+    const style = this.interfaceStyles.find(item => item.id === preset.styleId);
+    const skin = this.visualSkins.find(item => item.id === preset.skinId);
+
+    if (!theme || !style || !skin) {
+      return;
+    }
+
+    this.currentThemeSubject.next(theme);
+    this.currentStyleSubject.next(style);
+    this.currentSkinSubject.next(skin);
+    this.applyTheme(theme);
+    this.applyInterfaceStyle(style);
+    this.applyVisualSkin(skin);
+    this.saveTheme(theme.id);
+    this.saveStyle(style.id);
+    this.saveSkin(skin.id);
   }
 
   private getDefaultTheme(): Theme {
@@ -641,6 +949,10 @@ export class ThemeService {
 
   private getDefaultStyle(): InterfaceStyle {
     return this.interfaceStyles[0];
+  }
+
+  private getDefaultSkin(): VisualSkin {
+    return this.visualSkins[0];
   }
 
   private loadSavedTheme(): void {
@@ -663,12 +975,26 @@ export class ThemeService {
     }
   }
 
+  private loadSavedSkin(): void {
+    const savedSkinId = localStorage.getItem(this.SKIN_STORAGE_KEY);
+    if (savedSkinId) {
+      const skin = this.visualSkins.find(item => item.id === savedSkinId);
+      if (skin) {
+        this.currentSkinSubject.next(skin);
+      }
+    }
+  }
+
   private saveTheme(themeId: string): void {
     localStorage.setItem(this.THEME_STORAGE_KEY, themeId);
   }
 
   private saveStyle(styleId: string): void {
     localStorage.setItem(this.STYLE_STORAGE_KEY, styleId);
+  }
+
+  private saveSkin(skinId: string): void {
+    localStorage.setItem(this.SKIN_STORAGE_KEY, skinId);
   }
 
   private applyTheme(theme: Theme): void {
@@ -712,6 +1038,24 @@ export class ThemeService {
 
   private applyInterfaceStyle(style: InterfaceStyle): void {
     const root = document.documentElement;
+    const defaults: Record<string, string> = {
+      '--content-padding': '24px',
+      '--section-gap': '20px',
+      '--card-radius': '8px',
+      '--control-radius': '8px',
+      '--button-radius': '12px',
+      '--icon-button-radius': '10px',
+      '--field-radius': '8px',
+      '--table-row-height': '52px',
+      '--card-content-padding': '24px',
+      '--focus-ring-width': '3px',
+      '--shadow-light': this.currentThemeSubject.value.customProperties['--shadow-light'] ?? '0 12px 34px rgba(15,23,42,0.08)',
+      '--shadow-medium': this.currentThemeSubject.value.customProperties['--shadow-medium'] ?? '0 18px 48px rgba(15,23,42,0.12)'
+    };
+
+    Object.entries(defaults).forEach(([property, value]) => {
+      root.style.setProperty(property, value);
+    });
 
     Object.entries(style.customProperties).forEach(([property, value]) => {
       root.style.setProperty(property, value);
@@ -719,6 +1063,43 @@ export class ThemeService {
 
     document.body.classList.remove(...this.interfaceStyles.map(item => item.name));
     document.body.classList.add(style.name);
+  }
+
+  private applyVisualSkin(skin: VisualSkin): void {
+    const root = document.documentElement;
+    const defaults: Record<string, string> = {
+      '--font-ui': 'Roboto, "Helvetica Neue", Arial, sans-serif',
+      '--app-background-image': 'none',
+      '--app-background-size': 'auto',
+      '--panel-background': 'var(--color-surface)',
+      '--panel-border': '1px solid var(--color-border)',
+      '--panel-shadow': 'var(--shadow-light)',
+      '--panel-backdrop-filter': 'none',
+      '--sidenav-background': 'var(--color-surface)',
+      '--sidenav-background-image': 'none',
+      '--sidenav-border': '1px solid var(--color-border)',
+      '--sidenav-text': 'var(--color-text-secondary)',
+      '--sidenav-hover-background': 'var(--color-surface-strong)',
+      '--sidenav-active-background': 'var(--color-primary-soft)',
+      '--sidenav-active-color': 'var(--color-primary)',
+      '--sidenav-active-shadow': 'inset 3px 0 0 var(--color-primary)',
+      '--toolbar-background': 'var(--color-toolbar)',
+      '--toolbar-border': '1px solid var(--color-border)',
+      '--brand-background': 'linear-gradient(135deg, var(--color-primary-soft), var(--color-accent-soft)), var(--color-surface-strong)',
+      '--content-max-width': 'none',
+      '--content-margin-inline': '0'
+    };
+
+    Object.entries(defaults).forEach(([property, value]) => {
+      root.style.setProperty(property, value);
+    });
+
+    Object.entries(skin.customProperties).forEach(([property, value]) => {
+      root.style.setProperty(property, value);
+    });
+
+    document.body.classList.remove(...this.visualSkins.map(item => item.name));
+    document.body.classList.add(skin.name);
   }
 
   // Дополнительные методы для кастомизации
@@ -732,6 +1113,8 @@ export class ThemeService {
 
       if (this.currentThemeSubject.value.id === themeId) {
         this.applyTheme(this.themes[themeIndex]);
+        this.applyInterfaceStyle(this.currentStyleSubject.value);
+        this.applyVisualSkin(this.currentSkinSubject.value);
       }
     }
   }

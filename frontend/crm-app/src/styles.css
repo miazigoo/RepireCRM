@@ -32,6 +32,26 @@
   --color-warning: #b45309;
   --color-danger: #b91c1c;
   --color-toolbar: rgba(255, 255, 255, 0.96);
+  --font-ui: Roboto, "Helvetica Neue", Arial, sans-serif;
+  --app-background-image: none;
+  --app-background-size: auto;
+  --panel-background: var(--color-surface);
+  --panel-border: 1px solid var(--color-border);
+  --panel-shadow: var(--shadow-light);
+  --panel-backdrop-filter: none;
+  --sidenav-background: var(--color-surface);
+  --sidenav-background-image: none;
+  --sidenav-border: 1px solid var(--color-border);
+  --sidenav-text: var(--color-text-secondary);
+  --sidenav-hover-background: var(--color-surface-strong);
+  --sidenav-active-background: var(--color-primary-soft);
+  --sidenav-active-color: var(--color-primary);
+  --sidenav-active-shadow: inset 3px 0 0 var(--color-primary);
+  --toolbar-background: var(--color-toolbar);
+  --toolbar-border: 1px solid var(--color-border);
+  --brand-background: linear-gradient(135deg, var(--color-primary-soft), var(--color-accent-soft)), var(--color-surface-strong);
+  --content-max-width: none;
+  --content-margin-inline: 0;
   --content-padding: 24px;
   --section-gap: 20px;
   --card-radius: 8px;
@@ -40,6 +60,7 @@
   --icon-button-radius: 10px;
   --field-radius: 8px;
   --table-row-height: 52px;
+  --card-content-padding: 24px;
   --focus-ring-width: 3px;
   --shadow-light: 0 2px 6px rgba(15, 23, 42, 0.08);
   --shadow-medium: 0 12px 30px rgba(15, 23, 42, 0.10);
@@ -49,8 +70,10 @@ html, body {
   height: 100%;
   margin: 0;
   background: var(--color-background);
+  background-image: var(--app-background-image);
+  background-size: var(--app-background-size);
   color: var(--color-text-primary);
-  font-family: Roboto, "Helvetica Neue", sans-serif;
+  font-family: var(--font-ui);
 }
 
 body {
@@ -62,11 +85,12 @@ body.dark-theme {
 }
 
 body .mat-mdc-card {
-  background: var(--color-surface) !important;
+  background: var(--panel-background) !important;
   color: var(--color-text-primary) !important;
-  border: 1px solid var(--color-border);
+  border: var(--panel-border);
   border-radius: var(--card-radius) !important;
-  box-shadow: var(--shadow-light) !important;
+  box-shadow: var(--panel-shadow) !important;
+  backdrop-filter: var(--panel-backdrop-filter);
 }
 
 body .mat-mdc-card-title,
@@ -91,7 +115,7 @@ body .mat-mdc-paginator,
 body .mat-stepper-horizontal,
 body .mat-stepper-vertical,
 body .mat-mdc-tab-body-content {
-  background: var(--color-surface) !important;
+  background: var(--panel-background) !important;
   color: var(--color-text-primary) !important;
 }
 
@@ -112,7 +136,7 @@ body .mat-mdc-select-panel,
 body .mat-mdc-autocomplete-panel,
 body .mat-datepicker-content,
 body .mat-mdc-dialog-surface {
-  background: var(--color-surface) !important;
+  background: var(--panel-background) !important;
   color: var(--color-text-primary) !important;
 }
 
@@ -253,7 +277,7 @@ body.dark-theme .customer-panel {
 .form-card .mat-mdc-card-content,
 .filters-card .mat-mdc-card-content,
 .table-card .mat-mdc-card-content {
-  padding: 24px !important;
+  padding: var(--card-content-padding) !important;
 }
 
 .mat-mdc-raised-button,

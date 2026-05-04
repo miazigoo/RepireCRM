@@ -28,22 +28,40 @@ describe('ThemesPageComponent', () => {
     const element: HTMLElement = fixture.nativeElement;
 
     expect(element.textContent).toContain('Темы');
+    expect(element.textContent).toContain('Готовые образы');
     expect(element.textContent).toContain('Палитры');
-    expect(element.textContent).toContain('Стиль');
+    expect(element.textContent).toContain('Облик');
+    expect(element.textContent).toContain('Детали');
+    expect(element.querySelectorAll('.preset-card').length).toBeGreaterThan(5);
     expect(element.querySelectorAll('.theme-card').length).toBeGreaterThan(9);
+    expect(element.querySelectorAll('.skin-card').length).toBeGreaterThan(5);
     expect(element.querySelectorAll('.style-card').length).toBeGreaterThan(4);
   });
 
-  it('applies selected theme and style from the page', () => {
+  it('applies selected theme, skin and style from the page', () => {
     const component = fixture.componentInstance;
 
     component.selectTheme('graphite-gold');
+    component.selectSkin('command-center');
     component.selectStyle('sharp');
     fixture.detectChanges();
 
     expect(component.currentTheme.id).toBe('graphite-gold');
+    expect(component.currentSkin.id).toBe('command-center');
     expect(component.currentStyle.id).toBe('sharp');
     expect(document.body.classList).toContain('graphite-gold');
+    expect(document.body.classList).toContain('skin-command-center');
     expect(document.body.classList).toContain('interface-sharp');
+  });
+
+  it('applies appearance presets from the page', () => {
+    const component = fixture.componentInstance;
+
+    component.applyPreset('cash-desk');
+    fixture.detectChanges();
+
+    expect(component.currentTheme.id).toBe('mono-light');
+    expect(component.currentSkin.id).toBe('ledger-console');
+    expect(component.currentStyle.id).toBe('compact');
   });
 });

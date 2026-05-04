@@ -5,9 +5,11 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
+  AppearancePreset,
   InterfaceStyle,
   Theme,
-  ThemeService
+  ThemeService,
+  VisualSkin
 } from '../../../services/theme.service';
 
 type ThemeModeFilter = 'all' | 'light' | 'dark';
@@ -28,8 +30,11 @@ type ThemeModeFilter = 'all' | 'light' | 'dark';
 export class ThemesPageComponent implements OnInit {
   themes: Theme[] = [];
   styles: InterfaceStyle[] = [];
+  skins: VisualSkin[] = [];
+  presets: AppearancePreset[] = [];
   currentTheme!: Theme;
   currentStyle!: InterfaceStyle;
+  currentSkin!: VisualSkin;
   modeFilter: ThemeModeFilter = 'all';
 
   constructor(private themeService: ThemeService) {}
@@ -37,8 +42,11 @@ export class ThemesPageComponent implements OnInit {
   ngOnInit(): void {
     this.themes = this.themeService.getAvailableThemes();
     this.styles = this.themeService.getAvailableStyles();
+    this.skins = this.themeService.getAvailableSkins();
+    this.presets = this.themeService.getAppearancePresets();
     this.currentTheme = this.themeService.getCurrentTheme();
     this.currentStyle = this.themeService.getCurrentStyle();
+    this.currentSkin = this.themeService.getCurrentSkin();
 
     this.themeService.currentTheme$.subscribe(theme => {
       this.currentTheme = theme;
@@ -46,6 +54,10 @@ export class ThemesPageComponent implements OnInit {
 
     this.themeService.currentStyle$.subscribe(style => {
       this.currentStyle = style;
+    });
+
+    this.themeService.currentSkin$.subscribe(skin => {
+      this.currentSkin = skin;
     });
   }
 
@@ -73,7 +85,15 @@ export class ThemesPageComponent implements OnInit {
     this.themeService.setStyle(styleId);
   }
 
-  trackById(_: number, item: Theme | InterfaceStyle): string {
+  selectSkin(skinId: string): void {
+    this.themeService.setSkin(skinId);
+  }
+
+  applyPreset(presetId: string): void {
+    this.themeService.applyAppearancePreset(presetId);
+  }
+
+  trackById(_: number, item: Theme | InterfaceStyle | VisualSkin | AppearancePreset): string {
     return item.id;
   }
 
@@ -101,5 +121,18 @@ export class ThemesPageComponent implements OnInit {
       theme.colors.warn,
       theme.colors.background
     ];
+  }
+
+  getPresetPreviewStyles(preset: AppearancePreset): Record<string, string> {
+    const theme = this.themes.find(item => item.id === preset.themeId) ?? this.currentTheme;
+    return this.getThemePreviewStyles(theme);
+  }
+
+  isPresetActive(preset: AppearancePreset): boolean {
+    return (
+      preset.themeId === this.currentTheme.id &&
+      preset.styleId === this.currentStyle.id &&
+      preset.skinId === this.currentSkin.id
+    );
   }
 }

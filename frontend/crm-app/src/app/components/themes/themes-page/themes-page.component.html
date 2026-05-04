@@ -9,9 +9,43 @@
       <mat-icon>palette</mat-icon>
       <span>{{ currentTheme.displayName }}</span>
       <span class="choice-separator"></span>
+      <span>{{ currentSkin.displayName }}</span>
+      <span class="choice-separator"></span>
       <span>{{ currentStyle.displayName }}</span>
     </div>
   </header>
+
+  <section class="preset-section">
+    <div class="section-toolbar">
+      <div>
+        <h2>Готовые образы</h2>
+        <span>Меняют палитру, облик и детали интерфейса одним нажатием</span>
+      </div>
+    </div>
+
+    <div class="preset-grid">
+      <button
+        type="button"
+        class="preset-card"
+        *ngFor="let preset of presets; trackBy: trackById"
+        [class.selected]="isPresetActive(preset)"
+        [attr.aria-pressed]="isPresetActive(preset)"
+        [ngStyle]="getPresetPreviewStyles(preset)"
+        (click)="applyPreset(preset.id)">
+        <div class="preset-topline">
+          <mat-icon>{{ preset.icon }}</mat-icon>
+          <mat-icon *ngIf="isPresetActive(preset)">check_circle</mat-icon>
+        </div>
+        <div class="preset-preview">
+          <span class="preset-nav"></span>
+          <span class="preset-panel"></span>
+          <span class="preset-panel short"></span>
+        </div>
+        <h3>{{ preset.displayName }}</h3>
+        <p>{{ preset.description }}</p>
+      </button>
+    </div>
+  </section>
 
   <section class="theme-workspace">
     <div class="themes-catalog">
@@ -75,8 +109,34 @@
     <aside class="style-panel">
       <div class="section-toolbar compact">
         <div>
-          <h2>Стиль</h2>
-          <span>{{ styles.length }} режимов</span>
+          <h2>Облик</h2>
+          <span>{{ skins.length }} вариантов продукта</span>
+        </div>
+      </div>
+
+      <div class="skin-list">
+        <button
+          type="button"
+          class="skin-card"
+          *ngFor="let skin of skins; trackBy: trackById"
+          [class.selected]="skin.id === currentSkin.id"
+          [attr.aria-pressed]="skin.id === currentSkin.id"
+          (click)="selectSkin(skin.id)">
+          <mat-icon>{{ skin.icon }}</mat-icon>
+          <div>
+            <h3>{{ skin.displayName }}</h3>
+            <span>{{ skin.description }}</span>
+          </div>
+          <mat-icon class="selected-icon" *ngIf="skin.id === currentSkin.id">
+            done
+          </mat-icon>
+        </button>
+      </div>
+
+      <div class="section-toolbar compact detail-toolbar">
+        <div>
+          <h2>Детали</h2>
+          <span>{{ styles.length }} режима плотности</span>
         </div>
       </div>
 
@@ -102,7 +162,7 @@
       <div class="live-preview" [ngStyle]="getThemePreviewStyles(currentTheme)">
         <div class="preview-title">
           <span>Repair CRM</span>
-          <strong>{{ currentTheme.displayName }}</strong>
+          <strong>{{ currentSkin.displayName }}</strong>
         </div>
         <div class="preview-shell">
           <div class="preview-menu">
