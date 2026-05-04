@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { provideRouter, RouterLink } from '@angular/router';
+import { provideRouter, Router, RouterLink } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { of } from 'rxjs';
 import { NotificationService } from '../../../services/notification.service';
@@ -88,5 +88,17 @@ describe('MainLayoutComponent', () => {
     expect(element.querySelector('[aria-label="Переключить темную тему"]')).toBeNull();
     expect(element.querySelector('[aria-label="Выбрать тему"]')).toBeNull();
     expect(element.textContent).toContain('Темы');
+  });
+
+  it('does not highlight admin when system settings are active', () => {
+    const router = TestBed.inject(Router);
+    spyOnProperty(router, 'url', 'get').and.returnValue('/admin/settings');
+
+    const systemItems = fixture.componentInstance.navigationGroups.find(group => group.label === 'Система')!.items;
+    const adminItem = systemItems.find(item => item.label === 'Администрирование')!;
+    const settingsItem = systemItems.find(item => item.label === 'Настройки')!;
+
+    expect(fixture.componentInstance.isNavigationItemActive(adminItem)).toBeFalse();
+    expect(fixture.componentInstance.isNavigationItemActive(settingsItem)).toBeTrue();
   });
 });

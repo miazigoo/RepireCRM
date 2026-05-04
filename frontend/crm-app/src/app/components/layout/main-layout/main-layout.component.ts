@@ -1,6 +1,6 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { MatSidenavModule, MatSidenav } from '@angular/material/sidenav';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -29,6 +29,7 @@ interface NavigationItem {
   badge?: 'pendingOrdersCount' | 'notificationsCount';
   action?: 'help' | 'notifications';
   directorOnly?: boolean;
+  activeRoutes?: string[];
 }
 
 interface NavigationGroup {
@@ -42,7 +43,6 @@ interface NavigationGroup {
   imports: [
     CommonModule,
     RouterLink,
-    RouterLinkActive,
     RouterOutlet,
     MatSidenavModule,
     MatButtonModule,
@@ -57,7 +57,7 @@ interface NavigationGroup {
     NotificationsComponent
   ],
   templateUrl: './main-layout.component.html',
-  styleUrl: './main-layout.component.css'
+  styleUrl: './main-layout.component.scss'
 })
 export class MainLayoutComponent implements OnInit {
   @ViewChild('drawer') drawer!: MatSidenav;
@@ -96,7 +96,13 @@ export class MainLayoutComponent implements OnInit {
     {
       label: 'Система',
       items: [
-        { label: 'Администрирование', icon: 'admin_panel_settings', route: '/admin', directorOnly: true },
+        {
+          label: 'Администрирование',
+          icon: 'admin_panel_settings',
+          route: '/admin',
+          directorOnly: true,
+          activeRoutes: ['/admin/users', '/admin/shops', '/admin/roles']
+        },
         { label: 'Настройки', icon: 'tune', route: '/admin/settings', directorOnly: true },
         { label: 'Темы', icon: 'palette', route: '/themes' }
       ]
@@ -181,6 +187,20 @@ export class MainLayoutComponent implements OnInit {
     return !item.directorOnly || this.currentUser?.is_director === true;
   }
 
+  isNavigationItemActive(item: NavigationItem): boolean {
+    if (!item.route) {
+      return false;
+    }
+
+    const cleanUrl = this.getCleanUrl(this.router.url);
+
+    if (item.activeRoutes) {
+      return cleanUrl === item.route || item.activeRoutes.some(route => cleanUrl === route || cleanUrl.startsWith(`${route}/`));
+    }
+
+    return cleanUrl === item.route || cleanUrl.startsWith(`${item.route}/`);
+  }
+
   getBadgeValue(item: NavigationItem): number {
     if (item.badge === 'pendingOrdersCount') {
       return this.pendingOrdersCount;
@@ -256,7 +276,11 @@ export class MainLayoutComponent implements OnInit {
   }
 
   private updateRouteTitle(url: string): void {
-    const cleanUrl = url.split('?')[0].replace(/\/\d+(\/edit)?$/, '');
+    const cleanUrl = this.getCleanUrl(url);
     this.currentRouteTitle = this.routeTitles[cleanUrl] || 'Рабочее пространство';
+  }
+
+  private getCleanUrl(url: string): string {
+    return url.split('?')[0].replace(/\/\d+(\/edit)?$/, '');
   }
 }

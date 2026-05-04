@@ -63,8 +63,9 @@
               <a *ngIf="item.route && isNavItemVisible(item)"
                  mat-list-item
                  class="nav-item"
+                 [class.active]="isNavigationItemActive(item)"
                  [routerLink]="item.route"
-                 routerLinkActive="active">
+                 [attr.aria-current]="isNavigationItemActive(item) ? 'page' : null">
                 <span class="nav-icon-frame" matListItemIcon>
                   <mat-icon>{{ item.icon }}</mat-icon>
                 </span>

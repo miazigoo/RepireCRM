@@ -1,3 +1,11 @@
+@font-face {
+  font-family: 'Material Icons';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/assets/fonts/MaterialIcons-Regular.otf') format('opentype');
+  font-display: block;
+}
+
 .material-icons,
 .mat-icon {
   font-family: 'Material Icons', sans-serif;
@@ -43,6 +51,13 @@
   --sidenav-background-image: none;
   --sidenav-border: 1px solid var(--color-border);
   --sidenav-text: var(--color-text-secondary);
+  --sidenav-text-strong: var(--color-text-primary);
+  --sidenav-text-muted: var(--color-text-secondary);
+  --sidenav-section-border: 1px solid color-mix(in srgb, var(--sidenav-text) 18%, transparent);
+  --sidenav-control-border: 1px solid color-mix(in srgb, var(--sidenav-text) 22%, transparent);
+  --sidenav-control-background: color-mix(in srgb, var(--panel-background) 82%, transparent);
+  --sidenav-icon-background: color-mix(in srgb, var(--sidenav-hover-background) 68%, transparent);
+  --sidenav-active-border: 1px solid color-mix(in srgb, var(--color-primary) 36%, var(--color-border));
   --sidenav-hover-background: var(--color-surface-strong);
   --sidenav-active-background: var(--color-primary-soft);
   --sidenav-active-color: var(--color-primary);
@@ -64,6 +79,33 @@
   --focus-ring-width: 3px;
   --shadow-light: 0 2px 6px rgba(15, 23, 42, 0.08);
   --shadow-medium: 0 12px 30px rgba(15, 23, 42, 0.10);
+}
+
+.sidenav {
+  --side-text: var(--sidenav-text, var(--color-text-secondary));
+  --side-strong: var(--sidenav-text-strong, var(--color-text-primary));
+  --side-muted: var(--sidenav-text-muted, var(--color-text-secondary));
+  --side-accent: var(--sidenav-accent-color, var(--color-primary));
+  --side-active-text: var(--sidenav-active-color, var(--side-strong));
+  --side-active-border: var(--sidenav-active-border, 1px solid color-mix(in srgb, var(--side-accent) 36%, var(--color-border)));
+  --side-section-border: var(--sidenav-section-border, 1px solid color-mix(in srgb, var(--side-text) 18%, transparent));
+  --side-control-border: var(--sidenav-control-border, 1px solid color-mix(in srgb, var(--side-text) 22%, transparent));
+  --side-control-bg: var(--sidenav-control-background, color-mix(in srgb, var(--panel-background) 82%, transparent));
+  --side-icon-bg: var(--sidenav-icon-background, color-mix(in srgb, var(--sidenav-hover-background) 68%, transparent));
+  --side-active-icon-bg: var(--sidenav-active-icon-background, color-mix(in srgb, var(--side-accent) 20%, transparent));
+}
+
+body.dark-theme .sidenav,
+body.skin-command-center .sidenav {
+  --side-text: var(--sidenav-text, #cbd5e1);
+  --side-strong: var(--sidenav-text-strong, #f8fafc);
+  --side-muted: var(--sidenav-text-muted, #a7b4c6);
+  --side-active-text: var(--sidenav-active-text, #ffffff);
+  --side-active-border: var(--sidenav-active-border, 1px solid color-mix(in srgb, var(--side-accent) 54%, rgba(255, 255, 255, 0.16)));
+  --side-section-border: var(--sidenav-section-border, 1px solid rgba(148, 163, 184, 0.18));
+  --side-control-border: var(--sidenav-control-border, 1px solid rgba(148, 163, 184, 0.22));
+  --side-control-bg: var(--sidenav-control-background, rgba(15, 23, 42, 0.46));
+  --side-icon-bg: var(--sidenav-icon-background, rgba(255, 255, 255, 0.08));
 }
 
 html, body {
