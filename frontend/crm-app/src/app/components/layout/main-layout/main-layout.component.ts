@@ -1,6 +1,6 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatSidenavModule, MatSidenav } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -15,13 +15,27 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
-import { map, shareReplay } from 'rxjs/operators';
+import { filter, map, shareReplay } from 'rxjs/operators';
 import { AppState } from '../../../store/app.state';
 import { selectCurrentUser, selectCurrentShop } from '../../../store/auth/auth.selectors';
 import * as AuthActions from '../../../store/auth/auth.actions';
 import { User, Shop } from '../../../core/models/models';
 import { HelpGuideDialogComponent } from '../../help/help-guide-dialog/help-guide-dialog.component';
 import { NotificationsComponent } from '../notifications/notifications.component';
+
+interface NavigationItem {
+  label: string;
+  icon: string;
+  route?: string;
+  badge?: 'pendingOrdersCount';
+  action?: 'help';
+  directorOnly?: boolean;
+}
+
+interface NavigationGroup {
+  label: string;
+  items: NavigationItem[];
+}
 
 @Component({
   selector: 'app-main-layout',
@@ -61,6 +75,52 @@ export class MainLayoutComponent implements OnInit {
   pendingOrdersCount = 0;
   notificationsCount = 0;
   notifications: any[] = [];
+  currentRouteTitle = 'Панель управления';
+
+  navigationGroups: NavigationGroup[] = [
+    {
+      label: 'Работа',
+      items: [
+        { label: 'Панель', icon: 'dashboard', route: '/dashboard' },
+        { label: 'Заказы', icon: 'assignment', route: '/orders', badge: 'pendingOrdersCount' },
+        { label: 'Клиенты', icon: 'people', route: '/customers' },
+        { label: 'Склад', icon: 'inventory_2', route: '/inventory' }
+      ]
+    },
+    {
+      label: 'Контроль',
+      items: [
+        { label: 'Отчеты', icon: 'query_stats', route: '/reports' },
+        { label: 'Справочник', icon: 'help_center', action: 'help' }
+      ]
+    },
+    {
+      label: 'Система',
+      items: [
+        { label: 'Администрирование', icon: 'admin_panel_settings', route: '/admin', directorOnly: true },
+        { label: 'Настройки', icon: 'tune', route: '/admin/settings', directorOnly: true },
+        { label: 'Темы', icon: 'palette', route: '/themes' }
+      ]
+    }
+  ];
+
+  private routeTitles: Record<string, string> = {
+    '/dashboard': 'Панель управления',
+    '/orders': 'Заказы',
+    '/orders/new': 'Новый заказ',
+    '/customers': 'Клиенты',
+    '/inventory': 'Склад',
+    '/inventory/items/new': 'Новый товар',
+    '/inventory/purchase-orders/new': 'Заказ поставщику',
+    '/reports': 'Отчеты',
+    '/admin': 'Администрирование',
+    '/admin/users': 'Пользователи',
+    '/admin/users/new': 'Новый пользователь',
+    '/admin/shops': 'Магазины',
+    '/admin/roles': 'Роли и права',
+    '/admin/settings': 'Настройки',
+    '/themes': 'Темы'
+  };
 
   constructor(
     private breakpointObserver: BreakpointObserver,
@@ -78,6 +138,13 @@ export class MainLayoutComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.updateRouteTitle(this.router.url);
+    this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe(event => {
+        this.updateRouteTitle(event.urlAfterRedirects);
+      });
+
     this.currentUser$.subscribe(user => {
       this.currentUser = user;
       if (user?.is_director) {
@@ -109,6 +176,24 @@ export class MainLayoutComponent implements OnInit {
       panelClass: 'guide-dialog-panel',
       autoFocus: false
     });
+  }
+
+  isNavItemVisible(item: NavigationItem): boolean {
+    return !item.directorOnly || this.currentUser?.is_director === true;
+  }
+
+  getBadgeValue(item: NavigationItem): number {
+    if (item.badge === 'pendingOrdersCount') {
+      return this.pendingOrdersCount;
+    }
+
+    return 0;
+  }
+
+  onNavigationAction(item: NavigationItem): void {
+    if (item.action === 'help') {
+      this.openHelp();
+    }
   }
 
   handleNotification(notification: any): void {
@@ -165,5 +250,10 @@ export class MainLayoutComponent implements OnInit {
   private loadPendingOrdersCount(): void {
     // Загрузка количества ожидающих заказов
     this.pendingOrdersCount = 5;
+  }
+
+  private updateRouteTitle(url: string): void {
+    const cleanUrl = url.split('?')[0].replace(/\/\d+(\/edit)?$/, '');
+    this.currentRouteTitle = this.routeTitles[cleanUrl] || 'Рабочее пространство';
   }
 }
