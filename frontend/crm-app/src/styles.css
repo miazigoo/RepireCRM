@@ -32,6 +32,15 @@
   --color-warning: #b45309;
   --color-danger: #b91c1c;
   --color-toolbar: rgba(255, 255, 255, 0.96);
+  --content-padding: 24px;
+  --section-gap: 20px;
+  --card-radius: 8px;
+  --control-radius: 8px;
+  --button-radius: 12px;
+  --icon-button-radius: 10px;
+  --field-radius: 8px;
+  --table-row-height: 52px;
+  --focus-ring-width: 3px;
   --shadow-light: 0 2px 6px rgba(15, 23, 42, 0.08);
   --shadow-medium: 0 12px 30px rgba(15, 23, 42, 0.10);
 }
@@ -56,6 +65,7 @@ body .mat-mdc-card {
   background: var(--color-surface) !important;
   color: var(--color-text-primary) !important;
   border: 1px solid var(--color-border);
+  border-radius: var(--card-radius) !important;
   box-shadow: var(--shadow-light) !important;
 }
 
@@ -91,6 +101,12 @@ body .mat-mdc-footer-cell {
   border-bottom-color: var(--color-border);
 }
 
+body .mat-mdc-header-row,
+body .mat-mdc-row,
+body .mat-mdc-footer-row {
+  height: var(--table-row-height);
+}
+
 body .mat-mdc-menu-panel,
 body .mat-mdc-select-panel,
 body .mat-mdc-autocomplete-panel,
@@ -124,8 +140,8 @@ body .mdc-text-field--outlined {
 }
 
 body .mat-mdc-form-field {
-  --mdc-filled-text-field-container-shape: 10px;
-  --mdc-outlined-text-field-container-shape: 10px;
+  --mdc-filled-text-field-container-shape: var(--field-radius);
+  --mdc-outlined-text-field-container-shape: var(--field-radius);
   --mdc-filled-text-field-container-color: var(--color-surface-strong);
   --mdc-filled-text-field-input-text-color: var(--color-text-primary);
   --mdc-filled-text-field-label-text-color: var(--color-text-secondary);
@@ -142,7 +158,7 @@ body .mat-mdc-form-field {
 }
 
 body .mat-mdc-text-field-wrapper {
-  border-radius: 10px !important;
+  border-radius: var(--field-radius) !important;
 }
 
 body .mat-mdc-form-field-focus-overlay {
@@ -154,7 +170,7 @@ body .mat-mdc-form-field-subscript-wrapper {
 }
 
 body .mat-mdc-form-field.mat-focused .mat-mdc-text-field-wrapper {
-  box-shadow: 0 0 0 3px var(--color-primary-soft);
+  box-shadow: 0 0 0 var(--focus-ring-width) var(--color-primary-soft);
 }
 
 body .mdc-text-field--outlined .mdc-notched-outline__leading,
@@ -231,7 +247,7 @@ body.dark-theme .customer-panel {
 .table-card,
 .inventory-table-card,
 .alerts-card {
-  border-radius: 8px !important;
+  border-radius: var(--card-radius) !important;
 }
 
 .form-card .mat-mdc-card-content,
@@ -244,12 +260,12 @@ body.dark-theme .customer-panel {
 .mat-mdc-unelevated-button,
 .mat-mdc-outlined-button,
 .mat-mdc-button {
-  border-radius: 999px !important;
+  border-radius: var(--button-radius) !important;
   letter-spacing: 0;
 }
 
 .mat-mdc-icon-button {
-  border-radius: 10px !important;
+  border-radius: var(--icon-button-radius) !important;
 }
 
 .full-width {

@@ -1,0 +1,129 @@
+<div class="themes-page">
+  <header class="themes-header">
+    <div>
+      <span class="eyebrow">Оформление</span>
+      <h1>Темы</h1>
+    </div>
+
+    <div class="current-choice">
+      <mat-icon>palette</mat-icon>
+      <span>{{ currentTheme.displayName }}</span>
+      <span class="choice-separator"></span>
+      <span>{{ currentStyle.displayName }}</span>
+    </div>
+  </header>
+
+  <section class="theme-workspace">
+    <div class="themes-catalog">
+      <div class="section-toolbar">
+        <div>
+          <h2>Палитры</h2>
+          <span>{{ filteredThemes.length }} вариантов</span>
+        </div>
+
+        <mat-button-toggle-group
+          [value]="modeFilter"
+          aria-label="Фильтр тем"
+          (change)="setModeFilter($event.value)">
+          <mat-button-toggle value="all">Все</mat-button-toggle>
+          <mat-button-toggle value="light">Светлые</mat-button-toggle>
+          <mat-button-toggle value="dark">Темные</mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+
+      <div class="theme-grid">
+        <button
+          type="button"
+          class="theme-card"
+          *ngFor="let theme of filteredThemes; trackBy: trackById"
+          [class.selected]="theme.id === currentTheme.id"
+          [attr.aria-pressed]="theme.id === currentTheme.id"
+          [ngStyle]="getThemePreviewStyles(theme)"
+          (click)="selectTheme(theme.id)">
+          <div class="theme-preview">
+            <div class="preview-sidebar">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <div class="preview-content">
+              <div class="preview-toolbar"></div>
+              <div class="preview-row strong"></div>
+              <div class="preview-row"></div>
+              <div class="preview-row short"></div>
+            </div>
+          </div>
+
+          <div class="theme-meta">
+            <div>
+              <h3>{{ theme.displayName }}</h3>
+              <span>{{ theme.isDark ? 'Темная' : 'Светлая' }}</span>
+            </div>
+            <mat-icon *ngIf="theme.id === currentTheme.id">check_circle</mat-icon>
+          </div>
+
+          <div class="palette-dots">
+            <span
+              *ngFor="let color of getThemePalette(theme)"
+              [style.background]="color">
+            </span>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <aside class="style-panel">
+      <div class="section-toolbar compact">
+        <div>
+          <h2>Стиль</h2>
+          <span>{{ styles.length }} режимов</span>
+        </div>
+      </div>
+
+      <div class="style-list">
+        <button
+          type="button"
+          class="style-card"
+          *ngFor="let style of styles; trackBy: trackById"
+          [class.selected]="style.id === currentStyle.id"
+          [attr.aria-pressed]="style.id === currentStyle.id"
+          (click)="selectStyle(style.id)">
+          <mat-icon>{{ style.icon }}</mat-icon>
+          <div>
+            <h3>{{ style.displayName }}</h3>
+            <span>{{ style.description }}</span>
+          </div>
+          <mat-icon class="selected-icon" *ngIf="style.id === currentStyle.id">
+            done
+          </mat-icon>
+        </button>
+      </div>
+
+      <div class="live-preview" [ngStyle]="getThemePreviewStyles(currentTheme)">
+        <div class="preview-title">
+          <span>Repair CRM</span>
+          <strong>{{ currentTheme.displayName }}</strong>
+        </div>
+        <div class="preview-shell">
+          <div class="preview-menu">
+            <span class="active"></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div class="preview-main">
+            <div class="preview-head"></div>
+            <div class="preview-table">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <div class="preview-actions">
+              <span></span>
+              <span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </section>
+</div>

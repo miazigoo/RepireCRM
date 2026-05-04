@@ -79,12 +79,14 @@ describe('MainLayoutComponent', () => {
     expect(targets).toContain('/reports');
     expect(targets).toContain('/admin');
     expect(targets).toContain('/admin/settings');
+    expect(targets).toContain('/themes');
   });
 
-  it('renders navbar theme controls', () => {
+  it('moves theme controls out of the top navbar and into the sidebar', () => {
     const element: HTMLElement = fixture.nativeElement;
 
-    expect(element.querySelector('[aria-label="Переключить темную тему"]')).toBeTruthy();
-    expect(element.querySelector('[aria-label="Выбрать тему"]')).toBeTruthy();
+    expect(element.querySelector('[aria-label="Переключить темную тему"]')).toBeNull();
+    expect(element.querySelector('[aria-label="Выбрать тему"]')).toBeNull();
+    expect(element.textContent).toContain('Темы');
   });
 });

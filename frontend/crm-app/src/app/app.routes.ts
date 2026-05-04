@@ -44,6 +44,10 @@ export const routes: Routes = [
         loadComponent: () => import('./components/tasks/tasks-dashboard/tasks-dashboard.component').then(m => m.TasksDashboardComponent)
       },
       {
+        path: 'themes',
+        loadComponent: () => import('./components/themes/themes-page/themes-page.component').then(m => m.ThemesPageComponent)
+      },
+      {
         path: 'admin',
         loadChildren: () => import('./routes/admin.routes').then(m => m.ADMIN_ROUTES)
       },

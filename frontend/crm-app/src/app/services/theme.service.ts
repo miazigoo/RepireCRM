@@ -24,14 +24,26 @@ export interface Theme {
   customProperties: Record<string, string>;
 }
 
+export interface InterfaceStyle {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string;
+  icon: string;
+  customProperties: Record<string, string>;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class ThemeService {
   private readonly THEME_STORAGE_KEY = 'selectedTheme';
+  private readonly STYLE_STORAGE_KEY = 'selectedInterfaceStyle';
   private currentThemeSubject!: BehaviorSubject<Theme>;
+  private currentStyleSubject!: BehaviorSubject<InterfaceStyle>;
 
   public currentTheme$!: Observable<Theme>;
+  public currentStyle$!: Observable<InterfaceStyle>;
 
   private themes: Theme[] = [
     {
@@ -163,6 +175,134 @@ export class ThemeService {
       }
     },
     {
+      id: 'nord-light',
+      name: 'nord-light',
+      displayName: 'Северное утро',
+      description: 'Чистая светлая тема с холодным воздухом и зеленым акцентом',
+      isDark: false,
+      colors: {
+        primary: '#0e7490',
+        secondary: '#475569',
+        accent: '#16a34a',
+        warn: '#dc2626',
+        background: '#f1f7f8',
+        surface: '#ffffff',
+        text: {
+          primary: '#102027',
+          secondary: '#54656d',
+          disabled: '#93a4ac',
+          hint: '#93a4ac'
+        }
+      },
+      customProperties: {
+        '--sidebar-width': '292px',
+        '--header-height': '64px',
+        '--border-radius': '8px',
+        '--shadow-light': '0 12px 32px rgba(8,47,73,0.08)',
+        '--shadow-medium': '0 18px 48px rgba(8,47,73,0.12)',
+        '--shadow-heavy': '0 26px 70px rgba(8,47,73,0.18)',
+        '--color-border': '#c9dde2',
+        '--color-surface-strong': '#e7f0f2',
+        '--color-toolbar': 'rgba(255,255,255,0.96)'
+      }
+    },
+    {
+      id: 'coral-light',
+      name: 'coral-light',
+      displayName: 'Коралл',
+      description: 'Светлая тема с энергичным кораллом и спокойным индиго',
+      isDark: false,
+      colors: {
+        primary: '#e11d48',
+        secondary: '#1e1b4b',
+        accent: '#0d9488',
+        warn: '#b91c1c',
+        background: '#fff5f6',
+        surface: '#ffffff',
+        text: {
+          primary: '#241521',
+          secondary: '#65515d',
+          disabled: '#a78b98',
+          hint: '#a78b98'
+        }
+      },
+      customProperties: {
+        '--sidebar-width': '292px',
+        '--header-height': '64px',
+        '--border-radius': '8px',
+        '--shadow-light': '0 12px 32px rgba(190,18,60,0.09)',
+        '--shadow-medium': '0 18px 48px rgba(190,18,60,0.13)',
+        '--shadow-heavy': '0 26px 70px rgba(190,18,60,0.18)',
+        '--color-border': '#f0cdd3',
+        '--color-surface-strong': '#feecef',
+        '--color-toolbar': 'rgba(255,255,255,0.96)'
+      }
+    },
+    {
+      id: 'sage-light',
+      name: 'sage-light',
+      displayName: 'Шалфей',
+      description: 'Спокойная светлая тема для долгой работы с таблицами',
+      isDark: false,
+      colors: {
+        primary: '#166534',
+        secondary: '#475569',
+        accent: '#7c3aed',
+        warn: '#dc2626',
+        background: '#f3f7f1',
+        surface: '#ffffff',
+        text: {
+          primary: '#17251a',
+          secondary: '#56645a',
+          disabled: '#95a197',
+          hint: '#95a197'
+        }
+      },
+      customProperties: {
+        '--sidebar-width': '292px',
+        '--header-height': '64px',
+        '--border-radius': '8px',
+        '--shadow-light': '0 12px 32px rgba(22,101,52,0.08)',
+        '--shadow-medium': '0 18px 48px rgba(22,101,52,0.12)',
+        '--shadow-heavy': '0 26px 70px rgba(22,101,52,0.18)',
+        '--color-border': '#d2dfcf',
+        '--color-surface-strong': '#e8f0e5',
+        '--color-toolbar': 'rgba(255,255,255,0.96)'
+      }
+    },
+    {
+      id: 'mono-light',
+      name: 'mono-light',
+      displayName: 'Монохром',
+      description: 'Нейтральный интерфейс с резкими акцентами и минимумом шума',
+      isDark: false,
+      colors: {
+        primary: '#111827',
+        secondary: '#4b5563',
+        accent: '#2563eb',
+        warn: '#dc2626',
+        background: '#f5f6f8',
+        surface: '#ffffff',
+        text: {
+          primary: '#111827',
+          secondary: '#4b5563',
+          disabled: '#9ca3af',
+          hint: '#9ca3af'
+        }
+      },
+      customProperties: {
+        '--sidebar-width': '280px',
+        '--header-height': '64px',
+        '--border-radius': '6px',
+        '--shadow-light': '0 10px 26px rgba(17,24,39,0.08)',
+        '--shadow-medium': '0 16px 42px rgba(17,24,39,0.12)',
+        '--shadow-heavy': '0 24px 64px rgba(17,24,39,0.18)',
+        '--color-border': '#d1d5db',
+        '--color-surface-strong': '#eceff3',
+        '--color-toolbar': 'rgba(255,255,255,0.96)'
+      }
+    },
+    {
       id: 'teal-dark',
       name: 'teal-dark',
       displayName: 'Темная бирюзовая',
@@ -227,6 +367,102 @@ export class ThemeService {
       }
     },
     {
+      id: 'graphite-gold',
+      name: 'graphite-gold',
+      displayName: 'Графит и золото',
+      description: 'Темный графит с теплым акцентом для вечерней смены',
+      isDark: true,
+      colors: {
+        primary: '#f59e0b',
+        secondary: '#a7f3d0',
+        accent: '#38bdf8',
+        warn: '#fb7185',
+        background: '#111111',
+        surface: '#1a1a1a',
+        text: {
+          primary: '#f8fafc',
+          secondary: '#d4d4d4',
+          disabled: '#737373',
+          hint: '#a3a3a3'
+        }
+      },
+      customProperties: {
+        '--sidebar-width': '292px',
+        '--header-height': '64px',
+        '--border-radius': '8px',
+        '--shadow-light': '0 16px 40px rgba(0,0,0,0.30)',
+        '--shadow-medium': '0 22px 58px rgba(0,0,0,0.42)',
+        '--shadow-heavy': '0 28px 72px rgba(0,0,0,0.52)',
+        '--color-border': '#313131',
+        '--color-surface-strong': '#252525',
+        '--color-toolbar': 'rgba(26,26,26,0.96)'
+      }
+    },
+    {
+      id: 'forest-dark',
+      name: 'forest-dark',
+      displayName: 'Темный лес',
+      description: 'Глубокая зеленая тема с мягким желтым акцентом',
+      isDark: true,
+      colors: {
+        primary: '#86efac',
+        secondary: '#93c5fd',
+        accent: '#facc15',
+        warn: '#fb7185',
+        background: '#07120b',
+        surface: '#102018',
+        text: {
+          primary: '#f0fdf4',
+          secondary: '#c2d8ca',
+          disabled: '#64746b',
+          hint: '#91a99b'
+        }
+      },
+      customProperties: {
+        '--sidebar-width': '292px',
+        '--header-height': '64px',
+        '--border-radius': '8px',
+        '--shadow-light': '0 16px 40px rgba(0,0,0,0.30)',
+        '--shadow-medium': '0 22px 58px rgba(0,0,0,0.40)',
+        '--shadow-heavy': '0 28px 72px rgba(0,0,0,0.50)',
+        '--color-border': '#24422f',
+        '--color-surface-strong': '#183323',
+        '--color-toolbar': 'rgba(16,32,24,0.96)'
+      }
+    },
+    {
+      id: 'midnight-red',
+      name: 'midnight-red',
+      displayName: 'Полночь',
+      description: 'Контрастная темная тема с красным статусным акцентом',
+      isDark: true,
+      colors: {
+        primary: '#f43f5e',
+        secondary: '#a5b4fc',
+        accent: '#22d3ee',
+        warn: '#fb7185',
+        background: '#100f18',
+        surface: '#1b1927',
+        text: {
+          primary: '#f8fafc',
+          secondary: '#d8d7e5',
+          disabled: '#78758d',
+          hint: '#aaa6bc'
+        }
+      },
+      customProperties: {
+        '--sidebar-width': '292px',
+        '--header-height': '64px',
+        '--border-radius': '8px',
+        '--shadow-light': '0 16px 40px rgba(0,0,0,0.30)',
+        '--shadow-medium': '0 22px 58px rgba(0,0,0,0.40)',
+        '--shadow-heavy': '0 28px 72px rgba(0,0,0,0.50)',
+        '--color-border': '#353246',
+        '--color-surface-strong': '#262337',
+        '--color-toolbar': 'rgba(27,25,39,0.96)'
+      }
+    },
+    {
       id: 'high-contrast',
       name: 'high-contrast',
       displayName: 'Высокий контраст',
@@ -260,19 +496,124 @@ export class ThemeService {
     }
   ];
 
+  private interfaceStyles: InterfaceStyle[] = [
+    {
+      id: 'balanced',
+      name: 'interface-balanced',
+      displayName: 'Сбалансированный',
+      description: 'Средняя плотность, аккуратные формы, спокойные тени',
+      icon: 'dashboard_customize',
+      customProperties: {
+        '--content-padding': '24px',
+        '--section-gap': '20px',
+        '--card-radius': '8px',
+        '--control-radius': '8px',
+        '--button-radius': '12px',
+        '--icon-button-radius': '10px',
+        '--field-radius': '8px',
+        '--table-row-height': '52px'
+      }
+    },
+    {
+      id: 'compact',
+      name: 'interface-compact',
+      displayName: 'Компактный',
+      description: 'Больше данных на экране, плотные таблицы и формы',
+      icon: 'view_compact',
+      customProperties: {
+        '--content-padding': '18px',
+        '--section-gap': '14px',
+        '--card-radius': '6px',
+        '--control-radius': '6px',
+        '--button-radius': '8px',
+        '--icon-button-radius': '8px',
+        '--field-radius': '6px',
+        '--table-row-height': '44px'
+      }
+    },
+    {
+      id: 'comfortable',
+      name: 'interface-comfortable',
+      displayName: 'Комфортный',
+      description: 'Больше воздуха, крупнее зоны клика, мягкая подача',
+      icon: 'space_dashboard',
+      customProperties: {
+        '--content-padding': '32px',
+        '--section-gap': '26px',
+        '--card-radius': '8px',
+        '--control-radius': '8px',
+        '--button-radius': '14px',
+        '--icon-button-radius': '12px',
+        '--field-radius': '8px',
+        '--table-row-height': '58px'
+      }
+    },
+    {
+      id: 'sharp',
+      name: 'interface-sharp',
+      displayName: 'Строгий',
+      description: 'Плоские поверхности, четкие границы, минимум скруглений',
+      icon: 'crop_square',
+      customProperties: {
+        '--content-padding': '22px',
+        '--section-gap': '18px',
+        '--card-radius': '4px',
+        '--control-radius': '4px',
+        '--button-radius': '6px',
+        '--icon-button-radius': '6px',
+        '--field-radius': '4px',
+        '--table-row-height': '50px',
+        '--shadow-light': '0 1px 0 rgba(15,23,42,0.10)',
+        '--shadow-medium': '0 1px 0 rgba(15,23,42,0.14)'
+      }
+    },
+    {
+      id: 'focus',
+      name: 'interface-focus',
+      displayName: 'Фокус',
+      description: 'Выше контраст активных элементов и заметнее фокус',
+      icon: 'center_focus_strong',
+      customProperties: {
+        '--content-padding': '24px',
+        '--section-gap': '20px',
+        '--card-radius': '8px',
+        '--control-radius': '8px',
+        '--button-radius': '10px',
+        '--icon-button-radius': '10px',
+        '--field-radius': '8px',
+        '--table-row-height': '52px',
+        '--focus-ring-width': '4px'
+      }
+    }
+  ];
+
   constructor() {
     this.currentThemeSubject = new BehaviorSubject<Theme>(this.getDefaultTheme());
+    this.currentStyleSubject = new BehaviorSubject<InterfaceStyle>(
+      this.getDefaultStyle()
+    );
     this.currentTheme$ = this.currentThemeSubject.asObservable();
+    this.currentStyle$ = this.currentStyleSubject.asObservable();
     this.loadSavedTheme();
+    this.loadSavedStyle();
     this.applyTheme(this.currentThemeSubject.value);
+    this.applyInterfaceStyle(this.currentStyleSubject.value);
   }
 
   getAvailableThemes(): Theme[] {
     return [...this.themes];
   }
 
+  getAvailableStyles(): InterfaceStyle[] {
+    return [...this.interfaceStyles];
+  }
+
   getCurrentTheme(): Theme {
     return this.currentThemeSubject.value;
+  }
+
+  getCurrentStyle(): InterfaceStyle {
+    return this.currentStyleSubject.value;
   }
 
   setTheme(themeId: string): void {
@@ -280,12 +621,26 @@ export class ThemeService {
     if (theme) {
       this.currentThemeSubject.next(theme);
       this.applyTheme(theme);
+      this.applyInterfaceStyle(this.currentStyleSubject.value);
       this.saveTheme(theme.id);
+    }
+  }
+
+  setStyle(styleId: string): void {
+    const style = this.interfaceStyles.find(item => item.id === styleId);
+    if (style) {
+      this.currentStyleSubject.next(style);
+      this.applyInterfaceStyle(style);
+      this.saveStyle(style.id);
     }
   }
 
   private getDefaultTheme(): Theme {
     return this.themes[0]; // default-light
+  }
+
+  private getDefaultStyle(): InterfaceStyle {
+    return this.interfaceStyles[0];
   }
 
   private loadSavedTheme(): void {
@@ -298,8 +653,22 @@ export class ThemeService {
     }
   }
 
+  private loadSavedStyle(): void {
+    const savedStyleId = localStorage.getItem(this.STYLE_STORAGE_KEY);
+    if (savedStyleId) {
+      const style = this.interfaceStyles.find(item => item.id === savedStyleId);
+      if (style) {
+        this.currentStyleSubject.next(style);
+      }
+    }
+  }
+
   private saveTheme(themeId: string): void {
     localStorage.setItem(this.THEME_STORAGE_KEY, themeId);
+  }
+
+  private saveStyle(styleId: string): void {
+    localStorage.setItem(this.STYLE_STORAGE_KEY, styleId);
   }
 
   private applyTheme(theme: Theme): void {
@@ -328,7 +697,8 @@ export class ThemeService {
       '--color-success': theme.isDark ? '#86efac' : '#15803d',
       '--color-warning': theme.isDark ? '#fbbf24' : '#b45309',
       '--color-danger': theme.isDark ? '#fca5a5' : '#b91c1c',
-      '--color-toolbar': theme.isDark ? 'rgba(21, 27, 35, 0.96)' : 'rgba(255, 255, 255, 0.96)'
+      '--color-toolbar': theme.isDark ? 'rgba(21, 27, 35, 0.96)' : 'rgba(255, 255, 255, 0.96)',
+      '--focus-ring-width': '3px'
     };
     Object.entries(defaults).forEach(([property, value]) => {
       root.style.setProperty(property, theme.customProperties[property] ?? value);
@@ -338,6 +708,17 @@ export class ThemeService {
     document.body.classList.toggle('dark-theme', theme.isDark);
     document.body.classList.remove(...this.themes.map(t => t.name));
     document.body.classList.add(theme.name);
+  }
+
+  private applyInterfaceStyle(style: InterfaceStyle): void {
+    const root = document.documentElement;
+
+    Object.entries(style.customProperties).forEach(([property, value]) => {
+      root.style.setProperty(property, value);
+    });
+
+    document.body.classList.remove(...this.interfaceStyles.map(item => item.name));
+    document.body.classList.add(style.name);
   }
 
   // Дополнительные методы для кастомизации
