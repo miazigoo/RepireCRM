@@ -22,11 +22,11 @@
           <span>Текущая точка</span>
         </div>
 
-        <div class="workspace-name" *ngIf="currentShop; else noSidebarShop">
+        <div class="workspace-name" *ngIf="currentShop && !currentUser?.is_director; else noSidebarShop">
           {{ currentShop.name }}
         </div>
         <ng-template #noSidebarShop>
-          <div class="workspace-name">Рабочее пространство</div>
+          <div class="workspace-name" *ngIf="!currentUser?.is_director">Рабочее пространство</div>
         </ng-template>
 
         <div class="workspace-code" *ngIf="currentShop?.code">
@@ -76,7 +76,23 @@
                 </span>
               </a>
 
-              <button *ngIf="!item.route && isNavItemVisible(item)"
+              <button *ngIf="!item.route && item.action === 'notifications' && isNavItemVisible(item)"
+                      mat-list-item
+                      class="nav-item"
+                      type="button"
+                      [matMenuTriggerFor]="notificationsMenu">
+                <span class="nav-icon-frame" matListItemIcon>
+                  <mat-icon>{{ item.icon }}</mat-icon>
+                </span>
+                <span matListItemTitle class="nav-label">{{ item.label }}</span>
+                <span matListItemMeta
+                      class="nav-badge"
+                      *ngIf="getBadgeValue(item) > 0">
+                  {{ getBadgeValue(item) }}
+                </span>
+              </button>
+
+              <button *ngIf="!item.route && item.action !== 'notifications' && isNavItemVisible(item)"
                       mat-list-item
                       class="nav-item"
                       type="button"
@@ -85,6 +101,11 @@
                   <mat-icon>{{ item.icon }}</mat-icon>
                 </span>
                 <span matListItemTitle class="nav-label">{{ item.label }}</span>
+                <span matListItemMeta
+                      class="nav-badge"
+                      *ngIf="getBadgeValue(item) > 0">
+                  {{ getBadgeValue(item) }}
+                </span>
               </button>
             </ng-container>
           </div>
@@ -92,23 +113,28 @@
       </mat-nav-list>
 
       <div class="sidenav-footer">
-        <div class="status-pill">
-          <span class="status-dot"></span>
-          <span>Онлайн</span>
-        </div>
-        <button mat-icon-button
+        <button class="account-card"
                 type="button"
-                matTooltip="Справочник"
-                aria-label="Открыть справочник"
-                (click)="openHelp()">
-          <mat-icon>help_outline</mat-icon>
+                matTooltip="Профиль"
+                [matMenuTriggerFor]="userMenu">
+          <span class="profile-avatar">
+            {{ currentUser?.first_name?.charAt(0) || currentUser?.username?.charAt(0) || 'U' }}
+          </span>
+          <span class="profile-copy">
+            <strong>{{ currentUser?.first_name || currentUser?.username }}</strong>
+            <small>
+              <span class="profile-status-dot"></span>
+              {{ currentUser?.role?.name || 'Пользователь' }}
+            </small>
+          </span>
+          <mat-icon>expand_more</mat-icon>
         </button>
       </div>
     </div>
   </mat-sidenav>
 
   <mat-sidenav-content>
-    <mat-toolbar class="repair-toolbar">
+    <div class="mobile-appbar" *ngIf="isHandset$ | async">
       <button type="button"
               aria-label="Toggle sidenav"
               mat-icon-button
@@ -118,56 +144,23 @@
         <mat-icon aria-label="Side nav toggle icon">menu</mat-icon>
       </button>
 
-      <div class="toolbar-title">
-        <span class="toolbar-eyebrow">Repair CRM</span>
-        <span class="current-shop-name">{{ currentRouteTitle }}</span>
+      <div class="mobile-title">
+        <span>Repair CRM</span>
+        <strong>{{ currentRouteTitle }}</strong>
       </div>
 
-      <div class="toolbar-context" *ngIf="currentShop">
-        <mat-icon>store</mat-icon>
-        <span>{{ currentShop.name }}</span>
-      </div>
-
-      <span class="spacer"></span>
-
-      <div class="toolbar-actions">
-        <button class="toolbar-action"
-                mat-icon-button
-                type="button"
-                matTooltip="Справочник"
-                aria-label="Открыть справочник"
-                (click)="openHelp()">
-          <mat-icon>help_outline</mat-icon>
-        </button>
-
-        <button class="toolbar-action"
-                mat-icon-button
-                matTooltip="Уведомления"
-                [matMenuTriggerFor]="notificationsMenu">
-          <mat-icon [matBadge]="notificationsCount"
-                    matBadgeColor="warn"
-                    [matBadgeHidden]="notificationsCount === 0"
-                    aria-hidden="false">
-            notifications
-          </mat-icon>
-        </button>
-
-        <button class="profile-button"
-                mat-button
-                type="button"
-                matTooltip="Профиль"
-                [matMenuTriggerFor]="userMenu">
-          <span class="profile-avatar">
-            {{ currentUser?.first_name?.charAt(0) || currentUser?.username?.charAt(0) || 'U' }}
-          </span>
-          <span class="profile-copy">
-            <strong>{{ currentUser?.first_name || currentUser?.username }}</strong>
-            <small>{{ currentUser?.role?.name || 'Пользователь' }}</small>
-          </span>
-          <mat-icon>expand_more</mat-icon>
-        </button>
-      </div>
-    </mat-toolbar>
+      <button class="mobile-notifications"
+              mat-icon-button
+              matTooltip="Уведомления"
+              [matMenuTriggerFor]="notificationsMenu">
+        <mat-icon [matBadge]="notificationsCount"
+                  matBadgeColor="warn"
+                  [matBadgeHidden]="notificationsCount === 0"
+                  aria-hidden="false">
+          notifications
+        </mat-icon>
+      </button>
+    </div>
 
 
     <mat-menu #notificationsMenu="matMenu">

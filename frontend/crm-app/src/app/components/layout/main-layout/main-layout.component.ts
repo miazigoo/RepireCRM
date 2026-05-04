@@ -2,7 +2,6 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatSidenavModule, MatSidenav } from '@angular/material/sidenav';
-import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -27,8 +26,8 @@ interface NavigationItem {
   label: string;
   icon: string;
   route?: string;
-  badge?: 'pendingOrdersCount';
-  action?: 'help';
+  badge?: 'pendingOrdersCount' | 'notificationsCount';
+  action?: 'help' | 'notifications';
   directorOnly?: boolean;
 }
 
@@ -46,7 +45,6 @@ interface NavigationGroup {
     RouterLinkActive,
     RouterOutlet,
     MatSidenavModule,
-    MatToolbarModule,
     MatButtonModule,
     MatIconModule,
     MatMenuModule,
@@ -90,6 +88,7 @@ export class MainLayoutComponent implements OnInit {
     {
       label: 'Контроль',
       items: [
+        { label: 'Уведомления', icon: 'notifications', action: 'notifications', badge: 'notificationsCount' },
         { label: 'Отчеты', icon: 'query_stats', route: '/reports' },
         { label: 'Справочник', icon: 'help_center', action: 'help' }
       ]
@@ -185,6 +184,10 @@ export class MainLayoutComponent implements OnInit {
   getBadgeValue(item: NavigationItem): number {
     if (item.badge === 'pendingOrdersCount') {
       return this.pendingOrdersCount;
+    }
+
+    if (item.badge === 'notificationsCount') {
+      return this.notificationsCount;
     }
 
     return 0;
