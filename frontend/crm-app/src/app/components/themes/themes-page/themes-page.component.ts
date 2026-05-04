@@ -5,7 +5,6 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
-  AppearancePreset,
   InterfaceStyle,
   Theme,
   ThemeService,
@@ -31,7 +30,6 @@ export class ThemesPageComponent implements OnInit {
   themes: Theme[] = [];
   styles: InterfaceStyle[] = [];
   skins: VisualSkin[] = [];
-  presets: AppearancePreset[] = [];
   currentTheme!: Theme;
   currentStyle!: InterfaceStyle;
   currentSkin!: VisualSkin;
@@ -43,7 +41,6 @@ export class ThemesPageComponent implements OnInit {
     this.themes = this.themeService.getAvailableThemes();
     this.styles = this.themeService.getAvailableStyles();
     this.skins = this.themeService.getAvailableSkins();
-    this.presets = this.themeService.getAppearancePresets();
     this.currentTheme = this.themeService.getCurrentTheme();
     this.currentStyle = this.themeService.getCurrentStyle();
     this.currentSkin = this.themeService.getCurrentSkin();
@@ -89,11 +86,7 @@ export class ThemesPageComponent implements OnInit {
     this.themeService.setSkin(skinId);
   }
 
-  applyPreset(presetId: string): void {
-    this.themeService.applyAppearancePreset(presetId);
-  }
-
-  trackById(_: number, item: Theme | InterfaceStyle | VisualSkin | AppearancePreset): string {
+  trackById(_: number, item: Theme | InterfaceStyle | VisualSkin): string {
     return item.id;
   }
 
@@ -123,16 +116,4 @@ export class ThemesPageComponent implements OnInit {
     ];
   }
 
-  getPresetPreviewStyles(preset: AppearancePreset): Record<string, string> {
-    const theme = this.themes.find(item => item.id === preset.themeId) ?? this.currentTheme;
-    return this.getThemePreviewStyles(theme);
-  }
-
-  isPresetActive(preset: AppearancePreset): boolean {
-    return (
-      preset.themeId === this.currentTheme.id &&
-      preset.styleId === this.currentStyle.id &&
-      preset.skinId === this.currentSkin.id
-    );
-  }
 }

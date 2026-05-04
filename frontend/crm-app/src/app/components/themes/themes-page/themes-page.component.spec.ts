@@ -28,11 +28,12 @@ describe('ThemesPageComponent', () => {
     const element: HTMLElement = fixture.nativeElement;
 
     expect(element.textContent).toContain('Темы');
-    expect(element.textContent).toContain('Готовые образы');
+    expect(element.textContent).not.toContain('Готовые образы');
     expect(element.textContent).toContain('Палитры');
     expect(element.textContent).toContain('Облик');
     expect(element.textContent).toContain('Детали');
-    expect(element.querySelectorAll('.preset-card').length).toBeGreaterThan(5);
+    expect(element.querySelector('.preset-section')).toBeNull();
+    expect(element.querySelectorAll('.preset-card').length).toBe(0);
     expect(element.querySelectorAll('.theme-card').length).toBeGreaterThan(9);
     expect(element.querySelectorAll('.skin-card').length).toBeGreaterThan(5);
     expect(element.querySelectorAll('.style-card').length).toBeGreaterThan(4);
@@ -54,14 +55,4 @@ describe('ThemesPageComponent', () => {
     expect(document.body.classList).toContain('interface-sharp');
   });
 
-  it('applies appearance presets from the page', () => {
-    const component = fixture.componentInstance;
-
-    component.applyPreset('cash-desk');
-    fixture.detectChanges();
-
-    expect(component.currentTheme.id).toBe('mono-light');
-    expect(component.currentSkin.id).toBe('ledger-console');
-    expect(component.currentStyle.id).toBe('compact');
-  });
 });

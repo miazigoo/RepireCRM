@@ -15,38 +15,6 @@
     </div>
   </header>
 
-  <section class="preset-section">
-    <div class="section-toolbar">
-      <div>
-        <h2>Готовые образы</h2>
-        <span>Меняют палитру, облик и детали интерфейса одним нажатием</span>
-      </div>
-    </div>
-
-    <div class="preset-grid">
-      <button
-        type="button"
-        class="preset-card"
-        *ngFor="let preset of presets; trackBy: trackById"
-        [class.selected]="isPresetActive(preset)"
-        [attr.aria-pressed]="isPresetActive(preset)"
-        [ngStyle]="getPresetPreviewStyles(preset)"
-        (click)="applyPreset(preset.id)">
-        <div class="preset-topline">
-          <mat-icon>{{ preset.icon }}</mat-icon>
-          <mat-icon *ngIf="isPresetActive(preset)">check_circle</mat-icon>
-        </div>
-        <div class="preset-preview">
-          <span class="preset-nav"></span>
-          <span class="preset-panel"></span>
-          <span class="preset-panel short"></span>
-        </div>
-        <h3>{{ preset.displayName }}</h3>
-        <p>{{ preset.description }}</p>
-      </button>
-    </div>
-  </section>
-
   <section class="theme-workspace">
     <div class="themes-catalog">
       <div class="section-toolbar">
