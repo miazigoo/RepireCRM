@@ -82,6 +82,7 @@ describe('DashboardComponent', () => {
     expect(text).toContain('42 000 ₽');
     expect(text).toContain('Apple iPhone 15 Pro');
     expect(text).toContain('Заказ поставщику');
+    expect(fixture.nativeElement.querySelectorAll('.metric-icon svg').length).toBe(4);
 
     const targets = fixture.debugElement
       .queryAll(By.directive(RouterLink))
@@ -113,6 +114,7 @@ describe('DashboardComponent', () => {
     expect(text).toContain('Статусов пока нет');
     expect(text).toContain('Заказов пока нет');
     expect(text).toContain('Создать заказ');
+    expect(fixture.nativeElement.querySelectorAll('.empty-icon svg').length).toBe(2);
   });
 
   it('surfaces load errors without breaking the dashboard shell', () => {

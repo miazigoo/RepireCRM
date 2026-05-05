@@ -99,12 +99,28 @@ h1 {
     font-weight: 800;
   }
 
-  mat-icon {
+  .pulse-svg {
     width: 18px;
     height: 18px;
     color: var(--color-accent);
-    font-size: 18px;
   }
+}
+
+.pulse-svg,
+.metric-svg,
+.empty-svg,
+.order-svg,
+.action-svg,
+.action-arrow {
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pulse-svg {
+  stroke-width: 2.2;
 }
 
 .hero-actions {
@@ -216,12 +232,12 @@ h1 {
   border-radius: 8px;
   background: color-mix(in srgb, var(--metric-color) 14%, var(--panel-background));
   color: var(--metric-color);
+}
 
-  mat-icon {
-    width: 25px;
-    height: 25px;
-    font-size: 25px;
-  }
+.metric-svg {
+  width: 27px;
+  height: 27px;
+  stroke-width: 2.2;
 }
 
 .insight-grid {
@@ -442,12 +458,12 @@ h1 {
   border-radius: 8px;
   background: color-mix(in srgb, var(--status-color) 14%, var(--panel-background));
   color: var(--status-color);
+}
 
-  mat-icon {
-    width: 22px;
-    height: 22px;
-    font-size: 22px;
-  }
+.order-svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 2.2;
 }
 
 .order-body {
@@ -576,12 +592,12 @@ h1 {
   border-radius: 8px;
   background: color-mix(in srgb, var(--color-primary) 12%, var(--panel-background));
   color: var(--color-primary);
+}
 
-  mat-icon {
-    width: 34px;
-    height: 34px;
-    font-size: 34px;
-  }
+.empty-svg {
+  width: 42px;
+  height: 42px;
+  stroke-width: 3.2;
 }
 
 .quick-panel {
@@ -665,7 +681,16 @@ h1 {
 }
 
 .action-arrow {
+  width: 22px;
+  height: 22px;
   color: var(--action-color);
+  stroke-width: 2.4;
+}
+
+.action-svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 2.3;
 }
 
 @media (max-width: 1220px) {
