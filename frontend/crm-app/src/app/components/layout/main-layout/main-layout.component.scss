@@ -244,8 +244,18 @@ $mobile-breakpoint: 768px;
       background: var(--sidenav-active-background);
       color: var(--side-active-text);
       box-shadow: var(--sidenav-active-shadow);
+
+      .nav-label,
+      .nav-icon-frame,
+      .nav-icon-frame mat-icon {
+        color: var(--side-active-text);
+      }
     }
   }
+}
+
+:host ::ng-deep .sidenav .nav-item.active .mdc-list-item__primary-text {
+  color: var(--side-active-text) !important;
 }
 
 .nav-icon-frame {
