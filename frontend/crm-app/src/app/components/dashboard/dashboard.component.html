@@ -1,185 +1,246 @@
-<div class="dashboard-container">
-    <div class="page-header">
-    <div>
-        <span class="eyebrow">Рабочая сводка</span>
-        <h1>Панель управления</h1>
+<div class="dashboard-shell">
+  <section class="dashboard-hero">
+    <div class="hero-copy">
+      <span class="eyebrow">Операционный центр</span>
+      <h1>Панель управления</h1>
+      <p>{{ dashboardSubtitle }}</p>
+      <div class="hero-pulse">
+        <span>
+          <mat-icon>build_circle</mat-icon>
+          В работе {{ activeOrdersCount }}
+        </span>
+        <span>
+          <mat-icon>verified</mat-icon>
+          К выдаче {{ readyOrdersCount }}
+        </span>
+        <span>
+          <mat-icon>payments</mat-icon>
+          {{ formatMoney(stats?.recent_revenue) }}
+        </span>
+      </div>
     </div>
-    <button mat-stroked-button routerLink="/orders/new">
+
+    <div class="hero-actions">
+      <a mat-flat-button class="hero-primary" routerLink="/orders/new">
         <mat-icon>add</mat-icon>
         Новый заказ
-    </button>
+      </a>
+      <a mat-stroked-button class="hero-secondary" routerLink="/reports">
+        <mat-icon>monitoring</mat-icon>
+        Отчеты
+      </a>
     </div>
+  </section>
 
-
-    <div class="stats-grid">
-    <mat-card class="stat-card orders-card">
-        <mat-card-content>
-        <div class="stat-content">
-            <div class="stat-icon">
-            <mat-icon>assignment</mat-icon>
-            </div>
-            <div class="stat-info">
-            <h3>{{ stats?.recent_orders || 0 }}</h3>
-            <p>Заказов за месяц</p>
-            <span class="stat-change neutral">{{ getRecentOrdersShare() }}</span>
-            </div>
-        </div>
-        </mat-card-content>
-    </mat-card>
-
-    <mat-card class="stat-card revenue-card">
-        <mat-card-content>
-        <div class="stat-content">
-            <div class="stat-icon">
-            <mat-icon>attach_money</mat-icon>
-            </div>
-            <div class="stat-info">
-            <h3>{{ (stats?.recent_revenue || 0) | currency:'RUB':'symbol':'1.0-0' }}</h3>
-            <p>Выручка за месяц</p>
-            <span class="stat-change neutral">По заказам периода</span>
-            </div>
-        </div>
-        </mat-card-content>
-    </mat-card>
-
-    <mat-card class="stat-card avg-card">
-        <mat-card-content>
-        <div class="stat-content">
-            <div class="stat-icon">
-            <mat-icon>trending_up</mat-icon>
-            </div>
-            <div class="stat-info">
-            <h3>{{ (stats?.avg_order_value || 0) | currency:'RUB':'symbol':'1.0-0' }}</h3>
-            <p>Средний чек</p>
-            <span class="stat-change neutral">Выручка / заказы</span>
-            </div>
-        </div>
-        </mat-card-content>
-    </mat-card>
-
-    <mat-card class="stat-card total-card">
-        <mat-card-content>
-        <div class="stat-content">
-            <div class="stat-icon">
-            <mat-icon>analytics</mat-icon>
-            </div>
-            <div class="stat-info">
-            <h3>{{ stats?.total_orders || 0 }}</h3>
-            <p>Всего заказов</p>
-            <span class="stat-change neutral">Общая статистика</span>
-            </div>
-        </div>
-        </mat-card-content>
-    </mat-card>
-    </div>
-
-    <section class="helpers-strip">
-    <article *ngFor="let helper of calculationHelpers">
-        <mat-icon>{{ helper.icon }}</mat-icon>
-        <div>
-        <h3>{{ helper.title }}</h3>
-        <p>{{ helper.text }}</p>
-        </div>
+  <section class="metrics-grid" aria-label="Ключевые показатели">
+    <article class="metric-card metric-primary">
+      <div class="metric-icon">
+        <mat-icon>assignment</mat-icon>
+      </div>
+      <div>
+        <span class="metric-label">За 30 дней</span>
+        <strong>{{ stats?.recent_orders || 0 }}</strong>
+        <p>{{ getRecentOrdersShare() }}</p>
+      </div>
     </article>
-    </section>
 
+    <article class="metric-card metric-money">
+      <div class="metric-icon">
+        <mat-icon>account_balance_wallet</mat-icon>
+      </div>
+      <div>
+        <span class="metric-label">Выручка</span>
+        <strong>{{ formatMoney(stats?.recent_revenue) }}</strong>
+        <p>по заказам периода</p>
+      </div>
+    </article>
 
-    <div class="content-row">
+    <article class="metric-card metric-average">
+      <div class="metric-icon">
+        <mat-icon>show_chart</mat-icon>
+      </div>
+      <div>
+        <span class="metric-label">Средний чек</span>
+        <strong>{{ formatMoney(stats?.avg_order_value) }}</strong>
+        <p>финальная стоимость</p>
+      </div>
+    </article>
 
-    <mat-card class="chart-card">
-        <mat-card-header>
-        <mat-card-title>Распределение по статусам</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-        <div class="chart-container" *ngIf="chartData">
+    <article class="metric-card metric-total">
+      <div class="metric-icon">
+        <mat-icon>stacked_bar_chart</mat-icon>
+      </div>
+      <div>
+        <span class="metric-label">Всего заказов</span>
+        <strong>{{ stats?.total_orders || 0 }}</strong>
+        <p>{{ completedOrdersCount }} выдано</p>
+      </div>
+    </article>
+  </section>
+
+  <section class="insight-grid">
+    <article class="panel status-panel">
+      <header class="panel-header">
+        <div>
+          <span class="panel-kicker">Статусы</span>
+          <h2>Операционная воронка</h2>
+        </div>
+        <span class="panel-counter">{{ stats?.total_orders || 0 }} всего</span>
+      </header>
+
+      <div class="panel-alert" *ngIf="statsError">
+        <mat-icon>warning</mat-icon>
+        {{ statsError }}
+      </div>
+
+      <div class="status-content" *ngIf="!isLoadingStats; else statsLoading">
+        <ng-container *ngIf="chartData as data; else emptyStatuses">
+          <div class="chart-frame">
             <canvas baseChart
-                    [data]="chartData"
+                    [data]="data"
                     [type]="chartType"
                     [options]="chartOptions">
             </canvas>
-        </div>
-        <div class="loading-container" *ngIf="!chartData">
-            <mat-spinner></mat-spinner>
-        </div>
-        </mat-card-content>
-    </mat-card>
+            <div class="chart-center">
+              <strong>{{ stats?.total_orders || 0 }}</strong>
+              <span>заказов</span>
+            </div>
+          </div>
 
+          <div class="status-list">
+            <div class="status-row"
+                 *ngFor="let row of statusRows"
+                 [style.--status-color]="row.color">
+              <div class="status-main">
+                <span class="status-dot"></span>
+                <span>{{ row.label }}</span>
+              </div>
+              <div class="status-value">
+                <strong>{{ row.count }}</strong>
+                <span>{{ row.percent }}%</span>
+              </div>
+              <div class="status-progress">
+                <span [style.width.%]="row.percent"></span>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+      </div>
 
-    <mat-card class="recent-orders-card">
-        <mat-card-header>
-        <mat-card-title>Последние заказы</mat-card-title>
-        <button mat-button color="primary" routerLink="/orders">
-            Все заказы
-        </button>
-        </mat-card-header>
-        <mat-card-content>
+      <ng-template #statsLoading>
+        <div class="loading-state">
+          <mat-spinner diameter="34"></mat-spinner>
+          <span>Загружаем статистику</span>
+        </div>
+      </ng-template>
+
+      <ng-template #emptyStatuses>
+        <div class="empty-state status-empty">
+          <div class="empty-icon">
+            <mat-icon>donut_large</mat-icon>
+          </div>
+          <h3>Статусов пока нет</h3>
+          <p>После первой приемки здесь появится распределение заказов.</p>
+          <a mat-flat-button routerLink="/orders/new">
+            <mat-icon>add</mat-icon>
+            Создать заказ
+          </a>
+        </div>
+      </ng-template>
+    </article>
+
+    <article class="panel orders-panel">
+      <header class="panel-header">
+        <div>
+          <span class="panel-kicker">Лента</span>
+          <h2>Последние заказы</h2>
+        </div>
+        <a mat-button routerLink="/orders">Все заказы</a>
+      </header>
+
+      <div class="panel-alert" *ngIf="ordersError">
+        <mat-icon>warning</mat-icon>
+        {{ ordersError }}
+      </div>
+
+      <ng-container *ngIf="!isLoadingOrders; else ordersLoading">
         <div class="orders-list" *ngIf="recentOrders.length > 0; else noOrders">
-            <div class="order-item" *ngFor="let order of recentOrders">
-            <div class="order-info">
-                <div class="order-header">
-                <span class="order-number">{{ order.order_number }}</span>
-                <mat-chip [class]="'status-chip ' + order.status">
-                    {{ getStatusLabel(order.status) }}
-                </mat-chip>
-                </div>
-                <div class="order-details">
-                <span class="customer-name">
-                    {{ order.customer.last_name }} {{ order.customer.first_name }}
-                </span>
-                <span class="device-info">
-                    {{ order.device.model.brand.name }} {{ order.device.model.name }}
-                </span>
-                </div>
-                <div class="order-meta">
-                <span class="order-cost">
-                    {{ (order.final_cost || order.cost_estimate) | currency:'RUB':'symbol':'1.0-0' }}
-                </span>
-                <span class="order-date">
-                    {{ order.created_at | date:'dd.MM.yyyy HH:mm' }}
-                </span>
-                </div>
+          <article class="order-item"
+                   *ngFor="let order of recentOrders"
+                   [style.--status-color]="getStatusColor(order.status)">
+            <div class="order-mark">
+              <mat-icon>receipt_long</mat-icon>
             </div>
-            <button mat-icon-button
-                    color="primary"
-                    [routerLink]="['/orders', order.id]">
-                <mat-icon>arrow_forward</mat-icon>
-            </button>
+
+            <div class="order-body">
+              <div class="order-topline">
+                <strong>{{ order.order_number }}</strong>
+                <span class="status-chip">{{ getStatusLabel(order.status) }}</span>
+              </div>
+              <p>{{ getCustomerName(order) }}</p>
+              <span>{{ getDeviceName(order) }}</span>
             </div>
+
+            <div class="order-aside">
+              <strong>{{ formatMoney(getOrderAmount(order)) }}</strong>
+              <span>{{ order.created_at | date:'dd.MM HH:mm' }}</span>
+            </div>
+
+            <a mat-icon-button class="open-order"
+               [routerLink]="['/orders', order.id]"
+               aria-label="Открыть заказ">
+              <mat-icon>arrow_forward</mat-icon>
+            </a>
+          </article>
         </div>
-        <ng-template #noOrders>
-            <div class="no-data">
-            <mat-icon>assignment</mat-icon>
-            <p>Нет заказов</p>
-            </div>
-        </ng-template>
-        </mat-card-content>
-    </mat-card>
-    </div>
+      </ng-container>
 
+      <ng-template #ordersLoading>
+        <div class="loading-state">
+          <mat-spinner diameter="34"></mat-spinner>
+          <span>Загружаем заказы</span>
+        </div>
+      </ng-template>
 
-    <mat-card class="quick-actions-card">
-    <mat-card-header>
-        <mat-card-title>Быстрые действия</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
-        <div class="actions-grid">
-        <button mat-raised-button color="primary" routerLink="/orders/new">
+      <ng-template #noOrders>
+        <div class="empty-state orders-empty">
+          <div class="empty-icon">
+            <mat-icon>assignment_add</mat-icon>
+          </div>
+          <h3>Заказов пока нет</h3>
+          <p>Откройте первую приемку, чтобы лента стала рабочей.</p>
+          <a mat-flat-button routerLink="/orders/new">
             <mat-icon>add</mat-icon>
             Новый заказ
-        </button>
-        <button mat-raised-button color="accent" routerLink="/customers/new">
-            <mat-icon>person_add</mat-icon>
-            Новый клиент
-        </button>
-        <button mat-raised-button routerLink="/orders" [queryParams]="{status: 'ready'}">
-            <mat-icon>check_circle</mat-icon>
-            Готовые заказы
-        </button>
-        <button mat-raised-button routerLink="/reports">
-            <mat-icon>assessment</mat-icon>
-            Отчеты
-        </button>
+          </a>
         </div>
-    </mat-card-content>
-    </mat-card>
+      </ng-template>
+    </article>
+  </section>
+
+  <section class="quick-panel">
+    <header class="panel-header">
+      <div>
+        <span class="panel-kicker">Команды</span>
+        <h2>Быстрые действия</h2>
+      </div>
+    </header>
+
+    <div class="quick-grid">
+      <a class="action-tile"
+         *ngFor="let action of quickActions"
+         [ngClass]="'tone-' + action.tone"
+         [routerLink]="action.route"
+         [queryParams]="action.queryParams || null">
+        <span class="action-icon">
+          <mat-icon>{{ action.icon }}</mat-icon>
+        </span>
+        <span>
+          <strong>{{ action.title }}</strong>
+          <small>{{ action.caption }}</small>
+        </span>
+        <mat-icon class="action-arrow">arrow_forward</mat-icon>
+      </a>
+    </div>
+  </section>
 </div>
