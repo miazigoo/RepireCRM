@@ -1,103 +1,181 @@
+<div class="order-form-shell">
+  <section class="order-hero">
+    <div>
+      <span class="eyebrow">Приемка в сервис</span>
+      <h1>{{ isEditMode ? 'Редактирование заказа' : 'Новый заказ' }}</h1>
+      <p>Соберите клиента, устройство и условия ремонта в одну аккуратную карточку.</p>
+    </div>
 
-<div class="order-form-container">
-  <div class="header">
-    <h1>{{ isEditMode ? 'Редактирование заказа' : 'Новый заказ' }}</h1>
-    <button mat-button (click)="cancel()">
-      <mat-icon>arrow_back</mat-icon>
+    <button mat-stroked-button type="button" class="back-button" (click)="cancel()">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 6 9 12l6 6" />
+        <path d="M10 12h10" />
+      </svg>
       Назад
     </button>
-  </div>
+  </section>
 
-  <mat-card class="form-card">
-    <mat-card-content>
-      <mat-stepper #stepper orientation="horizontal" linear>
-
-
+  <div class="order-workspace">
+    <main class="form-workbench">
+      <mat-stepper #stepper orientation="horizontal" linear class="intake-stepper">
         <mat-step [stepControl]="customerForm" [completed]="customerStepCompleted">
           <form [formGroup]="customerForm">
             <ng-template matStepLabel>Клиент</ng-template>
 
-            <div class="step-content">
-              <h3>Клиент</h3>
+            <section class="step-content">
+              <header class="step-header">
+                <span class="step-index">01</span>
+                <div>
+                  <h2>Клиент</h2>
+                  <p>Найдите существующего клиента или создайте нового без выхода из приемки.</p>
+                </div>
+              </header>
 
               <div class="customer-layout">
-                <section class="customer-panel">
-                  <h4>Выбрать существующего</h4>
-                  <mat-form-field class="full-width">
+                <section class="choice-panel search-panel">
+                  <div class="panel-title">
+                    <span class="panel-icon">
+                      <svg viewBox="0 0 32 32" aria-hidden="true">
+                        <path d="M14 16.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Z" />
+                        <path d="M4.5 28a9.5 9.5 0 0 1 19 0" />
+                        <path d="m23 22 4.5 4.5" />
+                        <path d="M24.5 17.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+                      </svg>
+                    </span>
+                    <div>
+                      <h3>Выбрать существующего</h3>
+                      <p>По имени, фамилии или телефону.</p>
+                    </div>
+                  </div>
+
+                  <mat-form-field class="full-width" appearance="outline">
                     <mat-label>Поиск клиента</mat-label>
                     <input matInput
                            formControlName="customer"
                            [matAutocomplete]="customerAuto"
-                           placeholder="Введите имя, фамилию или телефон">
+                           placeholder="Например, Иванов или +7999">
                     <mat-autocomplete #customerAuto="matAutocomplete" [displayWith]="displayCustomer">
-                      <mat-option *ngFor="let customer of filteredCustomers | async" [value]="customer">
+                      <mat-option *ngFor="let customer of filteredCustomers | async; trackBy: trackById"
+                                  [value]="customer">
                         <div class="customer-option">
-                          <div class="customer-name">{{ customer.last_name }} {{ customer.first_name }}</div>
-                          <div class="customer-phone">{{ customer.phone }}</div>
+                          <span class="option-avatar">{{ getCustomerInitials(customer) }}</span>
+                          <div>
+                            <div class="customer-name">{{ customer.last_name }} {{ customer.first_name }}</div>
+                            <div class="customer-phone">{{ customer.phone }}</div>
+                          </div>
                         </div>
                       </mat-option>
                     </mat-autocomplete>
+                    <mat-hint>Выбранный клиент сразу попадет в сводку справа.</mat-hint>
                   </mat-form-field>
+
+                  <div class="selected-preview" *ngIf="selectedCustomer as customer">
+                    <span>{{ getCustomerInitials(customer) }}</span>
+                    <div>
+                      <strong>{{ selectedCustomerName }}</strong>
+                      <small>{{ selectedCustomerPhone }}</small>
+                    </div>
+                  </div>
                 </section>
 
-                <section class="customer-panel" formGroupName="newCustomer">
-                  <h4>Быстро добавить</h4>
+                <section class="choice-panel quick-client-panel" formGroupName="newCustomer">
+                  <div class="panel-title">
+                    <span class="panel-icon accent">
+                      <svg viewBox="0 0 32 32" aria-hidden="true">
+                        <path d="M13 15.5a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" />
+                        <path d="M4.5 26.5a8.5 8.5 0 0 1 17 0" />
+                        <path d="M25 10v8" />
+                        <path d="M21 14h8" />
+                      </svg>
+                    </span>
+                    <div>
+                      <h3>Быстро добавить</h3>
+                      <p>После добавления сразу перейдем к устройству.</p>
+                    </div>
+                  </div>
+
                   <div class="form-row compact-row">
-                    <mat-form-field>
+                    <mat-form-field appearance="outline">
                       <mat-label>Имя</mat-label>
                       <input matInput formControlName="first_name" autocomplete="off">
                     </mat-form-field>
 
-                    <mat-form-field>
+                    <mat-form-field appearance="outline">
                       <mat-label>Фамилия</mat-label>
                       <input matInput formControlName="last_name" autocomplete="off">
                     </mat-form-field>
                   </div>
 
                   <div class="form-row compact-row">
-                    <mat-form-field>
+                    <mat-form-field appearance="outline">
                       <mat-label>Телефон</mat-label>
                       <input matInput formControlName="phone" autocomplete="tel">
                     </mat-form-field>
 
-                    <mat-form-field>
+                    <mat-form-field appearance="outline">
                       <mat-label>Email</mat-label>
                       <input matInput formControlName="email" autocomplete="email">
                     </mat-form-field>
                   </div>
 
                   <button
-                    mat-stroked-button
-                    color="primary"
+                    mat-flat-button
+                    class="panel-action"
                     type="button"
                     (click)="createCustomerAndContinue(stepper)"
                     [disabled]="creatingCustomer">
                     <mat-spinner *ngIf="creatingCustomer" diameter="18"></mat-spinner>
-                    <mat-icon *ngIf="!creatingCustomer">person_add</mat-icon>
+                    <svg *ngIf="!creatingCustomer" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 5v14" />
+                      <path d="M5 12h14" />
+                    </svg>
                     <span>{{ creatingCustomer ? 'Добавление' : 'Добавить и далее' }}</span>
                   </button>
                 </section>
               </div>
 
               <div class="step-actions">
-                <button mat-raised-button color="primary" type="button" (click)="onCustomerStepNext(stepper)">
+                <button mat-flat-button type="button" class="next-button" (click)="onCustomerStepNext(stepper)">
                   Далее
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 12h13" />
+                    <path d="m13 6 6 6-6 6" />
+                  </svg>
                 </button>
               </div>
-            </div>
+            </section>
           </form>
         </mat-step>
-
 
         <mat-step [stepControl]="deviceForm" [completed]="deviceStepCompleted">
           <form [formGroup]="deviceForm">
             <ng-template matStepLabel>Устройство</ng-template>
 
-            <div class="step-content">
-              <h3>Информация об устройстве</h3>
+            <section class="step-content">
+              <header class="step-header">
+                <span class="step-index">02</span>
+                <div>
+                  <h2>Устройство</h2>
+                  <p>Выберите модель из справочника или введите новую, она добавится при переходе дальше.</p>
+                </div>
+              </header>
 
-              <div class="form-row">
-                <mat-form-field>
+              <section class="choice-panel device-search-panel">
+                <div class="panel-title">
+                  <span class="panel-icon warning">
+                    <svg viewBox="0 0 32 32" aria-hidden="true">
+                      <path d="M10 4.5h12a2.5 2.5 0 0 1 2.5 2.5v18a2.5 2.5 0 0 1-2.5 2.5H10A2.5 2.5 0 0 1 7.5 25V7A2.5 2.5 0 0 1 10 4.5Z" />
+                      <path d="M13.5 7.5h5" />
+                      <path d="M15 24.5h2" />
+                    </svg>
+                  </span>
+                  <div>
+                    <h3>Модель и идентификаторы</h3>
+                    <p>Главное поле - модель. Остальные данные можно заполнить по факту приемки.</p>
+                  </div>
+                </div>
+
+                <mat-form-field class="full-width model-field" appearance="outline">
                   <mat-label>Модель устройства</mat-label>
                   <input
                     matInput
@@ -109,7 +187,8 @@
                     #deviceModelAuto="matAutocomplete"
                     [displayWith]="displayDeviceModel"
                     (optionSelected)="onDeviceModelSelected($event.option.value)">
-                    <mat-option *ngFor="let model of filteredDeviceModels | async" [value]="model">
+                    <mat-option *ngFor="let model of filteredDeviceModels | async; trackBy: trackById"
+                                [value]="model">
                       <div class="device-option">
                         <div class="device-name">{{ model.brand.name }} {{ model.name }}</div>
                         <div class="device-meta">
@@ -120,178 +199,304 @@
                     </mat-option>
                   </mat-autocomplete>
                   <mat-hint *ngIf="deviceModels.length === 0">
-                    Модели устройств не найдены в справочнике
+                    Модели устройств не найдены в справочнике.
                   </mat-hint>
                   <mat-hint *ngIf="deviceModels.length > 0">
-                    Если модели нет в списке, она добавится при переходе далее
+                    Если модели нет в списке, она добавится при переходе далее.
                   </mat-hint>
                 </mat-form-field>
 
-                <mat-form-field>
-                  <mat-label>Серийный номер</mat-label>
-                  <input matInput formControlName="serial_number">
-                </mat-form-field>
-              </div>
+                <div class="popular-models" *ngIf="popularDeviceModels.length > 0">
+                  <span>Частые модели</span>
+                  <div>
+                    <button type="button"
+                            *ngFor="let model of popularDeviceModels; trackBy: trackById"
+                            (click)="selectPopularDeviceModel(model)">
+                      {{ model.brand.name }} {{ model.name }}
+                    </button>
+                  </div>
+                </div>
 
-              <div class="form-row">
-                <mat-form-field>
-                  <mat-label>IMEI</mat-label>
-                  <input matInput formControlName="imei">
-                </mat-form-field>
+                <div class="device-fields-grid">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Серийный номер</mat-label>
+                    <input matInput formControlName="serial_number">
+                  </mat-form-field>
 
-                <mat-form-field>
-                  <mat-label>Цвет</mat-label>
-                  <input matInput formControlName="color">
-                </mat-form-field>
-              </div>
+                  <mat-form-field appearance="outline">
+                    <mat-label>IMEI</mat-label>
+                    <input matInput formControlName="imei">
+                  </mat-form-field>
 
-              <mat-form-field class="full-width">
-                <mat-label>Объем памяти</mat-label>
-                <input matInput formControlName="storage_capacity" placeholder="например, 128GB">
-              </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Цвет</mat-label>
+                    <input matInput formControlName="color">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Объем памяти</mat-label>
+                    <input matInput formControlName="storage_capacity" placeholder="например, 128GB">
+                  </mat-form-field>
+                </div>
+              </section>
 
               <div class="step-actions">
-                <button mat-button matStepperPrevious>Назад</button>
-                <button mat-raised-button color="primary" type="button" (click)="onDeviceStepNext(stepper)">
-                  Далее
+                <button mat-stroked-button type="button" matStepperPrevious>Назад</button>
+                <button mat-flat-button type="button" class="next-button" (click)="onDeviceStepNext(stepper)" [disabled]="loading">
+                  <mat-spinner *ngIf="loading" diameter="18"></mat-spinner>
+                  <span>{{ loading ? 'Добавляем модель' : 'Далее' }}</span>
+                  <svg *ngIf="!loading" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 12h13" />
+                    <path d="m13 6 6 6-6 6" />
+                  </svg>
                 </button>
               </div>
-            </div>
+            </section>
           </form>
         </mat-step>
 
-
         <mat-step [stepControl]="orderForm">
           <form [formGroup]="orderForm">
-            <ng-template matStepLabel>Детали заказа</ng-template>
+            <ng-template matStepLabel>Детали</ng-template>
 
-            <div class="step-content">
-              <h3>Описание проблемы и условия ремонта</h3>
+            <section class="step-content">
+              <header class="step-header">
+                <span class="step-index">03</span>
+                <div>
+                  <h2>Условия ремонта</h2>
+                  <p>Опишите проблему, оценку стоимости, сроки и дополнительные услуги.</p>
+                </div>
+              </header>
 
-              <mat-form-field class="full-width">
-                <mat-label>Описание проблемы</mat-label>
-                <textarea matInput
-                          formControlName="problem_description"
-                          rows="3"
-                          required
-                          placeholder="Опишите проблему с устройством"></textarea>
-              </mat-form-field>
+              <div class="details-layout">
+                <section class="choice-panel problem-panel">
+                  <div class="panel-title">
+                    <span class="panel-icon danger">
+                      <svg viewBox="0 0 32 32" aria-hidden="true">
+                        <path d="M16 4.5 28 26H4Z" />
+                        <path d="M16 12v6" />
+                        <path d="M16 22.5h.1" />
+                      </svg>
+                    </span>
+                    <div>
+                      <h3>Проблема и состояние</h3>
+                      <p>Эта информация будет основой для диагностики и согласования.</p>
+                    </div>
+                  </div>
 
-              <div class="form-row">
-                <mat-form-field>
-                  <mat-label>Комплектация</mat-label>
-                  <textarea matInput
-                            formControlName="accessories"
-                            rows="2"
-                            placeholder="Что принес клиент вместе с устройством"></textarea>
-                </mat-form-field>
+                  <mat-form-field class="full-width" appearance="outline">
+                    <mat-label>Описание проблемы</mat-label>
+                    <textarea matInput
+                              formControlName="problem_description"
+                              rows="4"
+                              required
+                              placeholder="Например: не заряжается, разъем шатается, после воды"></textarea>
+                  </mat-form-field>
 
-                <mat-form-field>
-                  <mat-label>Состояние устройства</mat-label>
-                  <textarea matInput
-                            formControlName="device_condition"
-                            rows="2"
-                            placeholder="Внешнее состояние, повреждения"></textarea>
-                </mat-form-field>
+                  <div class="form-row">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Комплектация</mat-label>
+                      <textarea matInput
+                                formControlName="accessories"
+                                rows="3"
+                                placeholder="Коробка, зарядка, SIM-лоток"></textarea>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>Состояние устройства</mat-label>
+                      <textarea matInput
+                                formControlName="device_condition"
+                                rows="3"
+                                placeholder="Сколы, царапины, следы вскрытия"></textarea>
+                    </mat-form-field>
+                  </div>
+                </section>
+
+                <section class="choice-panel finance-panel">
+                  <div class="panel-title">
+                    <span class="panel-icon success">
+                      <svg viewBox="0 0 32 32" aria-hidden="true">
+                        <path d="M5 9.5h22v16H5Z" />
+                        <path d="M9 15h8.5a2.5 2.5 0 0 1 0 5H11.5" />
+                        <path d="M11.5 13.5v10M9 20h11" />
+                      </svg>
+                    </span>
+                    <div>
+                      <h3>Стоимость и сроки</h3>
+                      <p>Расчет обновляется в сводке заказа справа.</p>
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Предварительная стоимость</mat-label>
+                      <input matInput
+                             type="number"
+                             formControlName="cost_estimate"
+                             required
+                             min="0">
+                      <span matSuffix>₽</span>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>Приоритет</mat-label>
+                      <mat-select formControlName="priority">
+                        <mat-option value="low">Низкий</mat-option>
+                        <mat-option value="normal">Обычный</mat-option>
+                        <mat-option value="high">Высокий</mat-option>
+                        <mat-option value="urgent">Срочный</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                  </div>
+
+                  <mat-form-field class="full-width" appearance="outline">
+                    <mat-label>Планируемая дата готовности</mat-label>
+                    <input matInput
+                           [matDatepicker]="picker"
+                           formControlName="estimated_completion">
+                    <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+                    <mat-datepicker #picker></mat-datepicker>
+                  </mat-form-field>
+                </section>
               </div>
 
-              <div class="form-row">
-                <mat-form-field>
-                  <mat-label>Предварительная стоимость</mat-label>
-                  <input matInput
-                         type="number"
-                         formControlName="cost_estimate"
-                         required
-                         min="0">
-                  <span matSuffix>₽</span>
-                </mat-form-field>
-
-                <mat-form-field>
-                  <mat-label>Приоритет</mat-label>
-                  <mat-select formControlName="priority">
-                    <mat-option value="low">Низкий</mat-option>
-                    <mat-option value="normal">Обычный</mat-option>
-                    <mat-option value="high">Высокий</mat-option>
-                    <mat-option value="urgent">Срочный</mat-option>
-                  </mat-select>
-                </mat-form-field>
-              </div>
-
-              <mat-form-field class="full-width">
-                <mat-label>Планируемая дата готовности</mat-label>
-                <input matInput
-                       [matDatepicker]="picker"
-                       formControlName="estimated_completion">
-                <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
-                <mat-datepicker #picker></mat-datepicker>
-              </mat-form-field>
-
-
-              <div class="additional-services-section">
-                <h4>Дополнительные услуги</h4>
-
-                <div class="services-grid">
-                  <mat-card *ngFor="let service of additionalServices"
-                            class="service-card"
-                            [class.selected]="selectedServices.includes(service)">
-                    <mat-card-content>
-                      <div class="service-info">
-                        <h5>{{ service.name }}</h5>
-                        <p class="service-description">{{ service.description }}</p>
-                        <div class="service-price">{{ service.price | currency:'RUB':'symbol':'1.0-0' }}</div>
-                      </div>
-                      <div class="service-actions">
-                        <button mat-icon-button
-                                *ngIf="!selectedServices.includes(service)"
-                                (click)="addService(service)"
-                                color="primary">
-                          <mat-icon>add</mat-icon>
-                        </button>
-                        <button mat-icon-button
-                                *ngIf="selectedServices.includes(service)"
-                                (click)="removeService(service)"
-                                color="warn">
-                          <mat-icon>remove</mat-icon>
-                        </button>
-                      </div>
-                    </mat-card-content>
-                  </mat-card>
+              <section class="choice-panel services-panel">
+                <div class="panel-title">
+                  <span class="panel-icon">
+                    <svg viewBox="0 0 32 32" aria-hidden="true">
+                      <path d="M7 9h18" />
+                      <path d="M7 16h18" />
+                      <path d="M7 23h10" />
+                      <path d="M22 21v8" />
+                      <path d="M18 25h8" />
+                    </svg>
+                  </span>
+                  <div>
+                    <h3>Дополнительные услуги</h3>
+                    <p>Добавьте работы, которые должны попасть в заказ.</p>
+                  </div>
                 </div>
 
+                <div class="services-grid" *ngIf="additionalServices.length > 0; else noServices">
+                  <article *ngFor="let service of additionalServices; trackBy: trackById"
+                           class="service-card"
+                           [class.selected]="selectedServices.includes(service)">
+                    <button type="button"
+                            class="service-toggle"
+                            (click)="selectedServices.includes(service) ? removeService(service) : addService(service)"
+                            [attr.aria-pressed]="selectedServices.includes(service)">
+                      <span class="service-copy">
+                        <strong>{{ service.name }}</strong>
+                        <small>{{ service.description || service.category }}</small>
+                        <b>{{ formatMoney(service.price) }}</b>
+                      </span>
+                      <span class="service-action">
+                        {{ selectedServices.includes(service) ? '−' : '+' }}
+                      </span>
+                    </button>
+                  </article>
+                </div>
+
+                <ng-template #noServices>
+                  <div class="empty-services">Дополнительные услуги пока не заведены в справочнике.</div>
+                </ng-template>
+
                 <div class="selected-services" *ngIf="selectedServices.length > 0">
-                  <h5>Выбранные услуги:</h5>
+                  <span>Выбрано:</span>
                   <mat-chip-set>
-                    <mat-chip *ngFor="let service of selectedServices"
+                    <mat-chip *ngFor="let service of selectedServices; trackBy: trackById"
                               (removed)="removeService(service)">
-                      {{ service.name }} - {{ service.price | currency:'RUB':'symbol':'1.0-0' }}
-                      <mat-icon matChipRemove>cancel</mat-icon>
+                      {{ service.name }} · {{ formatMoney(service.price) }}
+                      <button matChipRemove class="chip-remove" type="button" aria-label="Удалить услугу">×</button>
                     </mat-chip>
                   </mat-chip-set>
                 </div>
-              </div>
+              </section>
 
-              <mat-form-field class="full-width">
-                <mat-label>Внутренние заметки</mat-label>
-                <textarea matInput
-                          formControlName="notes"
-                          rows="2"
-                          placeholder="Заметки для внутреннего использования"></textarea>
-              </mat-form-field>
+              <section class="choice-panel notes-panel">
+                <mat-form-field class="full-width" appearance="outline">
+                  <mat-label>Внутренние заметки</mat-label>
+                  <textarea matInput
+                            formControlName="notes"
+                            rows="3"
+                            placeholder="То, что видит только команда сервиса"></textarea>
+                </mat-form-field>
+              </section>
 
               <div class="step-actions">
-                <button mat-button matStepperPrevious>Назад</button>
-                <button mat-raised-button
-                        color="primary"
+                <button mat-stroked-button type="button" matStepperPrevious>Назад</button>
+                <button mat-flat-button
+                        class="submit-button"
+                        type="button"
                         (click)="onSubmit()"
                         [disabled]="loading">
                   <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
                   <span *ngIf="!loading">{{ isEditMode ? 'Обновить заказ' : 'Создать заказ' }}</span>
                 </button>
               </div>
-            </div>
+            </section>
           </form>
         </mat-step>
       </mat-stepper>
-    </mat-card-content>
-  </mat-card>
+    </main>
+
+    <aside class="order-summary" aria-label="Сводка заказа">
+      <div class="summary-card">
+        <span class="summary-kicker">Сводка</span>
+        <h2>Карточка приемки</h2>
+
+        <div class="summary-status-grid">
+          <div [class.ready]="isCustomerReady">
+            <span>1</span>
+            Клиент
+          </div>
+          <div [class.ready]="isDeviceReady">
+            <span>2</span>
+            Устройство
+          </div>
+          <div [class.ready]="isOrderReady">
+            <span>3</span>
+            Детали
+          </div>
+        </div>
+
+        <div class="summary-block">
+          <small>Клиент</small>
+          <strong>{{ selectedCustomerName }}</strong>
+          <span>{{ selectedCustomerPhone }}</span>
+        </div>
+
+        <div class="summary-block">
+          <small>Устройство</small>
+          <strong>{{ selectedDeviceName }}</strong>
+          <span>{{ deviceForm.get('color')?.value || 'Цвет не указан' }}</span>
+        </div>
+
+        <div class="summary-block problem-preview">
+          <small>Проблема</small>
+          <p>{{ orderProblemPreview }}</p>
+        </div>
+
+        <div class="summary-totals">
+          <div>
+            <span>Оценка</span>
+            <strong>{{ formatMoney(estimatedBaseCost) }}</strong>
+          </div>
+          <div>
+            <span>Услуги</span>
+            <strong>{{ formatMoney(servicesTotal) }}</strong>
+          </div>
+          <div class="total">
+            <span>Итого</span>
+            <strong>{{ formatMoney(estimatedTotal) }}</strong>
+          </div>
+        </div>
+
+        <div class="summary-meta">
+          <span>{{ getPriorityLabel(orderForm.get('priority')?.value) }}</span>
+          <span>{{ selectedServices.length }} услуг</span>
+        </div>
+      </div>
+    </aside>
+  </div>
 </div>

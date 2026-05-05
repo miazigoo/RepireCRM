@@ -1,14 +1,12 @@
 // frontend/crm-app/src/app/features/orders/order-form/order-form.component.ts
 import { Component, OnInit } from '@angular/core';
-import { NgIf, NgFor, AsyncPipe, CurrencyPipe } from '@angular/common';
+import { NgIf, NgFor, AsyncPipe } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
+import { MAT_FORM_FIELD_DEFAULT_OPTIONS, MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { MatStepper, MatStepperModule } from '@angular/material/stepper';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatChipsModule } from '@angular/material/chips';
@@ -25,14 +23,23 @@ import { Customer, DeviceModel, AdditionalService } from '../../../core/models/m
   selector: 'app-order-form',
   standalone: true,
   imports: [
-    NgIf, NgFor, AsyncPipe, CurrencyPipe, ReactiveFormsModule,
-    MatCardModule, MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatButtonModule, MatIconModule, MatStepperModule, MatAutocompleteModule,
+    NgIf, NgFor, AsyncPipe, ReactiveFormsModule,
+    MatFormFieldModule, MatInputModule, MatSelectModule,
+    MatButtonModule, MatStepperModule, MatAutocompleteModule,
     MatChipsModule, MatDatepickerModule, MatProgressSpinnerModule, MatSnackBarModule
   ],
-  providers: [provideNativeDateAdapter()],
+  providers: [
+    provideNativeDateAdapter(),
+    {
+      provide: MAT_FORM_FIELD_DEFAULT_OPTIONS,
+      useValue: {
+        appearance: 'outline',
+        floatLabel: 'always'
+      }
+    }
+  ],
   templateUrl: './order-form.component.html',
-  styleUrl: './order-form.component.css'
+  styleUrl: './order-form.component.scss'
 })
 export class OrderFormComponent implements OnInit {
   orderForm!: FormGroup;
@@ -55,6 +62,10 @@ export class OrderFormComponent implements OnInit {
   // Form steps
   customerStepCompleted = false;
   deviceStepCompleted = false;
+
+  private readonly moneyFormatter = new Intl.NumberFormat('ru-RU', {
+    maximumFractionDigits: 0
+  });
 
   constructor(
     private fb: FormBuilder,
@@ -214,11 +225,111 @@ export class OrderFormComponent implements OnInit {
     return `${model.brand.name} ${model.name}`;
   }
 
+  get selectedCustomer(): Customer | null {
+    return this.getSelectedCustomer();
+  }
+
+  get selectedDeviceModel(): DeviceModel | null {
+    return this.getSelectedDeviceModel();
+  }
+
+  get selectedDeviceName(): string {
+    const selectedModel = this.getSelectedDeviceModel();
+    if (selectedModel) {
+      return this.displayDeviceModel(selectedModel);
+    }
+
+    const modelValue = this.deviceForm?.get('model')?.value;
+    if (typeof modelValue === 'string' && modelValue.trim()) {
+      return modelValue.trim();
+    }
+
+    return 'Устройство не выбрано';
+  }
+
+  get selectedCustomerName(): string {
+    const customer = this.getSelectedCustomer();
+    if (!customer) {
+      return 'Клиент не выбран';
+    }
+
+    return `${customer.last_name} ${customer.first_name}`.trim();
+  }
+
+  get selectedCustomerPhone(): string {
+    return this.getSelectedCustomer()?.phone || 'Телефон не указан';
+  }
+
+  get popularDeviceModels(): DeviceModel[] {
+    return this.deviceModels.slice(0, 8);
+  }
+
+  get servicesTotal(): number {
+    return this.selectedServices.reduce((sum, service) => sum + Number(service.price || 0), 0);
+  }
+
+  get estimatedBaseCost(): number {
+    return Number(this.orderForm?.get('cost_estimate')?.value || 0);
+  }
+
+  get estimatedTotal(): number {
+    return this.estimatedBaseCost + this.servicesTotal;
+  }
+
+  get orderProblemPreview(): string {
+    const value = String(this.orderForm?.get('problem_description')?.value || '').trim();
+    return value || 'Описание проблемы появится здесь';
+  }
+
+  get isCustomerReady(): boolean {
+    return Boolean(this.getSelectedCustomer());
+  }
+
+  get isDeviceReady(): boolean {
+    return Boolean(this.getSelectedDeviceModel());
+  }
+
+  get isOrderReady(): boolean {
+    return this.orderForm?.valid || false;
+  }
+
+  getCustomerInitials(customer: Customer | null): string {
+    if (!customer) {
+      return 'К';
+    }
+
+    const first = customer.first_name?.charAt(0) || '';
+    const last = customer.last_name?.charAt(0) || '';
+    return `${last}${first}`.toUpperCase() || 'К';
+  }
+
+  getPriorityLabel(priority: string | null | undefined): string {
+    const labels: Record<string, string> = {
+      low: 'Низкий',
+      normal: 'Обычный',
+      high: 'Высокий',
+      urgent: 'Срочный'
+    };
+    return labels[priority || 'normal'] || 'Обычный';
+  }
+
+  formatMoney(value: number | null | undefined): string {
+    return `${this.moneyFormatter.format(Number(value || 0))} ₽`;
+  }
+
+  trackById(_: number, item: { id: number }): number {
+    return item.id;
+  }
+
   onDeviceModelSelected(model: DeviceModel): void {
     this.deviceForm.patchValue({
       model,
       model_id: model.id
     });
+  }
+
+  selectPopularDeviceModel(model: DeviceModel): void {
+    this.onDeviceModelSelected(model);
   }
 
   onCustomerStepNext(stepper: MatStepper): void {
@@ -364,7 +475,13 @@ export class OrderFormComponent implements OnInit {
           this.loading = false;
         }
       });
+      return;
     }
+
+    this.customerForm.markAllAsTouched();
+    this.deviceForm.markAllAsTouched();
+    this.orderForm.markAllAsTouched();
+    this.snackBar.open('Заполните обязательные поля заказа', 'Закрыть', { duration: 3000 });
   }
 
   private isFormValid(): boolean {
