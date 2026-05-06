@@ -84,14 +84,10 @@ export class AuthEffects {
       ofType(AuthActions.switchShop),
       mergeMap(({ shopId }) =>
         this.authService.switchShop(shopId).pipe(
-          mergeMap(() =>
-            this.authService.getCurrentUser().pipe(
-              map(user =>
-                AuthActions.switchShopSuccess({
-                  shop: user.current_shop!
-                })
-              )
-            )
+          map(user =>
+            AuthActions.switchShopSuccess({
+              shop: user.current_shop!
+            })
           ),
           catchError(error =>
             of(

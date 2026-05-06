@@ -52,6 +52,8 @@ export class OrderDetailComponent implements OnInit {
   stageSaving = false;
   approvalSaving = false;
   statusSaving = false;
+  handoverSaving = false;
+  handoverNeedsAttention = false;
   orderId: number;
 
   statusHistory: OrderStatusHistory[] = [];
@@ -61,6 +63,7 @@ export class OrderDetailComponent implements OnInit {
   orderDocuments: any[] = [];
   stageForm: FormGroup;
   approvalForm: FormGroup;
+  handoverForm: FormGroup;
   selectedStagePhoto: File | null = null;
 
   readonly statusOptions: Array<{ value: OrderStatus; label: string; icon: string }> = [
@@ -96,6 +99,11 @@ export class OrderDetailComponent implements OnInit {
       description: [''],
       amount: [0, [Validators.required, Validators.min(0)]]
     });
+    this.handoverForm = this.fb.group({
+      final_cost: [0, [Validators.required, Validators.min(0)]],
+      prepayment: [0, [Validators.required, Validators.min(0)]],
+      status_comment: ['Заказ выдан клиенту', [Validators.maxLength(255)]]
+    });
   }
 
   ngOnInit(): void {
@@ -112,6 +120,7 @@ export class OrderDetailComponent implements OnInit {
     this.ordersService.getOrder(this.orderId).subscribe({
       next: (order) => {
         this.order = order;
+        this.syncHandoverForm(order);
         this.loading = false;
       },
       error: (error) => {
@@ -248,6 +257,15 @@ export class OrderDetailComponent implements OnInit {
       return;
     }
 
+    if (status === 'completed') {
+      this.syncHandoverForm(this.order);
+      this.handoverNeedsAttention = true;
+      this.snackBar.open('Укажите итоговую стоимость в блоке выдачи заказа', 'Закрыть', {
+        duration: 3500
+      });
+      return;
+    }
+
     const previousStatus = this.order.status;
     this.statusSaving = true;
     this.ordersService.updateOrder(this.orderId, {
@@ -267,6 +285,48 @@ export class OrderDetailComponent implements OnInit {
           if (this.order) {
             this.order = { ...this.order, status: previousStatus };
           }
+        }
+      });
+  }
+
+  completeOrder(): void {
+    if (!this.order || this.handoverSaving) {
+      return;
+    }
+
+    if (this.handoverForm.invalid) {
+      this.handoverForm.markAllAsTouched();
+      this.handoverNeedsAttention = true;
+      this.snackBar.open('Проверьте итоговую стоимость и предоплату', 'Закрыть', {
+        duration: 3000
+      });
+      return;
+    }
+
+    const value = this.handoverForm.getRawValue();
+    const finalCost = Number(value.final_cost || 0);
+    const prepayment = Number(value.prepayment || 0);
+    const statusComment = String(value.status_comment || '').trim() || 'Заказ выдан клиенту';
+
+    this.handoverSaving = true;
+    this.ordersService.updateOrder(this.orderId, {
+      status: 'completed',
+      final_cost: finalCost,
+      prepayment,
+      status_comment: statusComment
+    }).pipe(finalize(() => this.handoverSaving = false))
+      .subscribe({
+        next: (order) => {
+          this.order = order;
+          this.syncHandoverForm(order);
+          this.handoverNeedsAttention = false;
+          this.snackBar.open('Заказ выдан клиенту', 'Закрыть', { duration: 2500 });
+          this.loadStatusHistory();
+          this.loadAuditLog();
+        },
+        error: (error) => {
+          const message = error.error?.error || 'Не удалось выдать заказ';
+          this.snackBar.open(message, 'Закрыть', { duration: 3500 });
         }
       });
   }
@@ -338,6 +398,23 @@ export class OrderDetailComponent implements OnInit {
     return Number(order.final_cost ?? order.total_cost ?? order.cost_estimate ?? 0);
   }
 
+  get handoverServicesTotal(): number {
+    return this.order?.additional_services?.reduce(
+      (sum, service) => sum + Number(service.total_price || 0),
+      0
+    ) || 0;
+  }
+
+  get handoverTotal(): number {
+    const finalCost = Number(this.handoverForm.get('final_cost')?.value || 0);
+    return finalCost + this.handoverServicesTotal;
+  }
+
+  get handoverRemaining(): number {
+    const prepayment = Number(this.handoverForm.get('prepayment')?.value || 0);
+    return Math.max(0, this.handoverTotal - prepayment);
+  }
+
   getWorkSummary(order: Order): string {
     return order.diagnosis || order.work_description || order.problem_description || 'Описание пока не заполнено';
   }
@@ -381,5 +458,16 @@ export class OrderDetailComponent implements OnInit {
 
   openDocument(url: string): void {
     window.open(url, '_blank');
+  }
+
+  private syncHandoverForm(order: Order): void {
+    const finalCost = Number(order.final_cost ?? order.cost_estimate ?? 0);
+    const prepayment = Number(order.prepayment || 0);
+
+    this.handoverForm.patchValue({
+      final_cost: finalCost,
+      prepayment,
+      status_comment: 'Заказ выдан клиенту'
+    }, { emitEvent: false });
   }
 }

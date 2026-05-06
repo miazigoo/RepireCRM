@@ -91,6 +91,31 @@ describe('CustomerFormComponent', () => {
     expect(navigate).toHaveBeenCalledWith(['/customers', 9]);
   });
 
+  it('updates an existing customer and allows clearing birth date', () => {
+    const navigate = spyOn(router, 'navigate');
+    customersService.updateCustomer.and.returnValue(of(createdCustomer));
+    component.isEditMode = true;
+    component.customerId = 9;
+    component.customerForm.patchValue({
+      first_name: ' Анна ',
+      last_name: ' Иванова ',
+      phone: '+7 999 000-00-00',
+      email: '',
+      birth_date: null,
+      marketing_consent: false,
+    });
+
+    component.onSubmit();
+
+    expect(customersService.updateCustomer).toHaveBeenCalledWith(9, jasmine.objectContaining({
+      first_name: 'Анна',
+      last_name: 'Иванова',
+      birth_date: null,
+      marketing_consent: false,
+    }));
+    expect(navigate).toHaveBeenCalledWith(['/customers', 9]);
+  });
+
   function normalizeText(element: HTMLElement): string {
     return element.textContent?.replace(/\s+/g, ' ').trim() || '';
   }

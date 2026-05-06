@@ -59,6 +59,8 @@ export class OrderFormComponent implements OnInit {
   additionalServices: AdditionalService[] = [];
   selectedServices: AdditionalService[] = [];
 
+  readonly quickServiceLabels = ['Чехол', 'Защитное стекло', 'Диагностика'];
+
   // Form steps
   customerStepCompleted = false;
   deviceStepCompleted = false;
@@ -198,7 +200,9 @@ export class OrderFormComponent implements OnInit {
       notes: order.notes
     });
 
-    this.selectedServices = order.additional_services.map((os: any) => os.service);
+    this.selectedServices = order.additional_services
+      .map((os: any) => os.service)
+      .filter((service: AdditionalService | null | undefined): service is AdditionalService => Boolean(service));
   }
 
   private filterCustomers(value: any): Customer[] {
@@ -266,6 +270,17 @@ export class OrderFormComponent implements OnInit {
 
   get servicesTotal(): number {
     return this.selectedServices.reduce((sum, service) => sum + Number(service.price || 0), 0);
+  }
+
+  get quickServices(): Array<{ label: string; service: AdditionalService | null; selected: boolean }> {
+    return this.quickServiceLabels.map(label => {
+      const service = this.findServiceByLabel(label);
+      return {
+        label,
+        service,
+        selected: service ? this.isServiceSelected(service) : false
+      };
+    });
   }
 
   get estimatedBaseCost(): number {
@@ -437,7 +452,7 @@ export class OrderFormComponent implements OnInit {
   }
 
   addService(service: AdditionalService): void {
-    if (!this.selectedServices.find(s => s.id === service.id)) {
+    if (!this.isServiceSelected(service)) {
       this.selectedServices.push(service);
       this.updateTotalCost();
     }
@@ -446,6 +461,41 @@ export class OrderFormComponent implements OnInit {
   removeService(service: AdditionalService): void {
     this.selectedServices = this.selectedServices.filter(s => s.id !== service.id);
     this.updateTotalCost();
+  }
+
+  toggleService(service: AdditionalService): void {
+    if (this.isServiceSelected(service)) {
+      this.removeService(service);
+      return;
+    }
+
+    this.addService(service);
+  }
+
+  addQuickService(label: string): void {
+    const service = this.findServiceByLabel(label);
+    if (!service) {
+      this.snackBar.open(`Услуга "${label}" не найдена в справочнике`, 'Закрыть', {
+        duration: 3000
+      });
+      return;
+    }
+
+    if (this.isServiceSelected(service)) {
+      this.snackBar.open(`${service.name} уже добавлен в заказ`, 'Закрыть', {
+        duration: 2200
+      });
+      return;
+    }
+
+    this.addService(service);
+    this.snackBar.open(`${service.name} добавлен в заказ`, 'Закрыть', {
+      duration: 2200
+    });
+  }
+
+  isServiceSelected(service: AdditionalService): boolean {
+    return this.selectedServices.some(selected => selected.id === service.id);
   }
 
   private updateTotalCost(): void {
@@ -471,7 +521,10 @@ export class OrderFormComponent implements OnInit {
           this.router.navigate(['/orders', order.id]);
         },
         error: (error) => {
-          this.snackBar.open('Ошибка сохранения заказа', 'Закрыть', { duration: 3000 });
+          const message = error?.error?.error ||
+            error?.error?.detail?.[0]?.msg ||
+            'Ошибка сохранения заказа';
+          this.snackBar.open(message, 'Закрыть', { duration: 4000 });
           this.loading = false;
         }
       });
@@ -498,8 +551,9 @@ export class OrderFormComponent implements OnInit {
       storage_capacity: this.deviceForm.get('storage_capacity')?.value
     };
     const order = this.orderForm.value;
+    const estimatedCompletion = this.normalizeDateTime(order.estimated_completion);
 
-    return {
+    const payload: any = {
       customer_id: customer!.id,
       device: device,
       problem_description: order.problem_description,
@@ -507,12 +561,17 @@ export class OrderFormComponent implements OnInit {
       device_condition: order.device_condition,
       cost_estimate: order.cost_estimate,
       priority: order.priority,
-      estimated_completion: order.estimated_completion,
       additional_services: this.selectedServices.map(service => ({
         service_id: service.id,
         quantity: 1
       }))
     };
+
+    if (estimatedCompletion) {
+      payload.estimated_completion = estimatedCompletion;
+    }
+
+    return payload;
   }
 
   cancel(): void {
@@ -551,6 +610,29 @@ export class OrderFormComponent implements OnInit {
     return this.deviceModels.find(candidate =>
       `${candidate.brand.name} ${candidate.name}`.toLowerCase() === query
     ) || null;
+  }
+
+  private findServiceByLabel(label: string): AdditionalService | null {
+    const normalizedLabel = label.toLowerCase();
+    return this.additionalServices.find(service =>
+      service.name.toLowerCase() === normalizedLabel
+    ) || this.additionalServices.find(service => {
+      const serviceName = service.name.toLowerCase();
+      return serviceName.includes(normalizedLabel) || normalizedLabel.includes(serviceName);
+    }) || null;
+  }
+
+  private normalizeDateTime(value: Date | string | null | undefined): string | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+
+    const trimmed = String(value).trim();
+    return trimmed || undefined;
   }
 
   private parseDeviceModel(value: string): {

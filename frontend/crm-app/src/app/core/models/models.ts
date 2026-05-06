@@ -79,12 +79,16 @@ export interface Customer {
   birth_date?: string;
   notes?: string;
   preferred_channel?: string;
-  marketing_consent?: boolean;
+  marketing_consent: boolean;  // Обязательно в backend
   orders_count: number;
   total_spent: number;
   created_at: string;
   updated_at: string;
 }
+
+export type CustomerPayload = Partial<Omit<Customer, 'birth_date'>> & {
+  birth_date?: string | null;
+};
 
 export interface DeviceBrand {
   id: number;
@@ -145,9 +149,9 @@ export interface Order {
   device_condition?: string;
   cost_estimate: number;
   final_cost?: number;
-  prepayment: number;
-  total_cost: number;
-  remaining_payment: number;
+  prepayment: number;  // Обязательно в backend
+  total_cost: number;  // Обязательно в backend
+  remaining_payment: number;  // Обязательно в backend
   created_at: string;
   updated_at: string;
   estimated_completion?: string;

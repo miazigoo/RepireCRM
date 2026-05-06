@@ -414,6 +414,62 @@
         <p>{{ getDeviceMeta(order) }}</p>
       </section>
 
+      <section class="sidebar-panel handover-panel"
+               [class.needs-attention]="handoverNeedsAttention"
+               *ngIf="order.status !== 'completed'; else completedHandover">
+        <form [formGroup]="handoverForm" (ngSubmit)="completeOrder()">
+          <span class="eyebrow">Выдача</span>
+          <h2>Финальная стоимость</h2>
+          <p>Перед выдачей зафиксируйте итоговую сумму ремонта и оплату клиента.</p>
+
+          <mat-form-field>
+            <mat-label>Итоговая стоимость ремонта</mat-label>
+            <input matInput type="number" min="0" formControlName="final_cost">
+            <span matSuffix>₽</span>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Предоплата</mat-label>
+            <input matInput type="number" min="0" formControlName="prepayment">
+            <span matSuffix>₽</span>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Комментарий выдачи</mat-label>
+            <textarea matInput rows="2" formControlName="status_comment"></textarea>
+          </mat-form-field>
+
+          <div class="info-list handover-total">
+            <div>
+              <span>Услуги</span>
+              <strong>{{ formatMoney(handoverServicesTotal) }}</strong>
+            </div>
+            <div>
+              <span>Итого к оплате</span>
+              <strong>{{ formatMoney(handoverTotal) }}</strong>
+            </div>
+            <div class="remaining">
+              <span>Остаток</span>
+              <strong>{{ formatMoney(handoverRemaining) }}</strong>
+            </div>
+          </div>
+
+          <button mat-flat-button class="primary-action handover-action" type="submit" [disabled]="handoverForm.invalid || handoverSaving">
+            <mat-spinner *ngIf="handoverSaving" diameter="18"></mat-spinner>
+            <mat-icon *ngIf="!handoverSaving">done_all</mat-icon>
+            Выдать заказ
+          </button>
+        </form>
+      </section>
+
+      <ng-template #completedHandover>
+        <section class="sidebar-panel handover-panel completed">
+          <span class="eyebrow">Выдача</span>
+          <h2>Заказ выдан</h2>
+          <p>Итоговая стоимость зафиксирована в карточке заказа.</p>
+        </section>
+      </ng-template>
+
       <section class="sidebar-panel">
         <span class="eyebrow">Финансы</span>
         <h2>{{ formatMoney(getOrderAmount(order)) }}</h2>

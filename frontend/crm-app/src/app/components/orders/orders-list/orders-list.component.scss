@@ -137,8 +137,9 @@
   color: var(--metric-color);
 
   svg {
-    width: 24px;
-    height: 24px;
+    display: block;
+    width: 32px;
+    height: 32px;
     fill: none;
     stroke: currentColor;
     stroke-linecap: round;

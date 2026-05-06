@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiService } from './api.service';
-import { Customer, CustomerFilters, PaginatedResponse } from '../core/models/models';
+import { Customer, CustomerFilters, CustomerPayload, PaginatedResponse } from '../core/models/models';
 
 type CustomerListResponse = Customer[] | PaginatedResponse<Customer>;
 
@@ -33,11 +33,11 @@ export class CustomersService {
     return this.apiService.get<Customer>(`${this.endpoint}/${id}`);
   }
 
-  createCustomer(customer: Partial<Customer>): Observable<Customer> {
+  createCustomer(customer: CustomerPayload): Observable<Customer> {
     return this.apiService.post<Customer>(`${this.endpoint}/`, customer);
   }
 
-  updateCustomer(id: number, customer: Partial<Customer>): Observable<Customer> {
+  updateCustomer(id: number, customer: CustomerPayload): Observable<Customer> {
     return this.apiService.put<Customer>(`${this.endpoint}/${id}`, customer);
   }
 

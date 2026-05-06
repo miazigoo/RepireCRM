@@ -111,3 +111,46 @@ class CustomersApiTestCase(TestCase):
 
         self.assertEqual(detail_response.status_code, 404)
         self.assertEqual(orders_response.status_code, 404)
+
+    def test_create_customer_accepts_minimal_payload(self):
+        response = self.client.post(
+            "/api/customers/",
+            data={
+                "first_name": "Анна",
+                "last_name": "Смирнова",
+                "phone": "+79990000003",
+            },
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 201, response.content)
+        payload = response.json()
+        self.assertEqual(payload["middle_name"], "")
+        self.assertEqual(payload["email"], "")
+        self.assertFalse(payload["marketing_consent"])
+
+    def test_update_customer_clears_optional_text_fields(self):
+        self.customer.email = "ivan@example.com"
+        self.customer.middle_name = "Петрович"
+        self.customer.save(update_fields=["email", "middle_name"])
+
+        response = self.client.put(
+            f"/api/customers/{self.customer.id}",
+            data={
+                "first_name": "Иван",
+                "last_name": "Иванов",
+                "phone": "+79990000001",
+                "email": None,
+                "middle_name": None,
+                "birth_date": None,
+            },
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.email, "")
+        self.assertEqual(self.customer.middle_name, "")
+        self.assertIsNone(self.customer.birth_date)

@@ -377,21 +377,36 @@
                   </div>
                 </div>
 
+                <div class="popular-models quick-services" *ngIf="quickServices.length > 0">
+                  <span>Быстро добавить</span>
+                  <div>
+                    <button
+                      type="button"
+                      *ngFor="let item of quickServices"
+                      [class.selected]="item.selected"
+                      [class.missing]="!item.service"
+                      (click)="addQuickService(item.label)">
+                      {{ item.label }}
+                      <strong *ngIf="item.service as service">{{ formatMoney(service.price) }}</strong>
+                    </button>
+                  </div>
+                </div>
+
                 <div class="services-grid" *ngIf="additionalServices.length > 0; else noServices">
                   <article *ngFor="let service of additionalServices; trackBy: trackById"
                            class="service-card"
-                           [class.selected]="selectedServices.includes(service)">
+                           [class.selected]="isServiceSelected(service)">
                     <button type="button"
                             class="service-toggle"
-                            (click)="selectedServices.includes(service) ? removeService(service) : addService(service)"
-                            [attr.aria-pressed]="selectedServices.includes(service)">
+                            (click)="toggleService(service)"
+                            [attr.aria-pressed]="isServiceSelected(service)">
                       <span class="service-copy">
                         <strong>{{ service.name }}</strong>
                         <small>{{ service.description || service.category }}</small>
                         <b>{{ formatMoney(service.price) }}</b>
                       </span>
                       <span class="service-action">
-                        {{ selectedServices.includes(service) ? '−' : '+' }}
+                        {{ isServiceSelected(service) ? '−' : '+' }}
                       </span>
                     </button>
                   </article>

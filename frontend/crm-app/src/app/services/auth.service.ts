@@ -65,12 +65,15 @@ export class AuthService {
       );
   }
 
-  switchShop(shopId: number): Observable<any> {
-    return this.apiService.post(`/auth/switch-shop/${shopId}`, {})
+  switchShop(shopId: number): Observable<User> {
+    return this.apiService.post<User>(`/auth/switch-shop/${shopId}`, {})
       .pipe(
-        tap(() => {
-          localStorage.setItem('current_shop_id', shopId.toString());
-          this.getCurrentUser().subscribe();
+        tap(user => {
+          this.currentUserSubject.next(user);
+          if (user.current_shop) {
+            this.currentShopSubject.next(user.current_shop);
+            localStorage.setItem('current_shop_id', user.current_shop.id.toString());
+          }
         })
       );
   }

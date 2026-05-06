@@ -80,7 +80,9 @@ describe('OrderDetailComponent', () => {
     ordersService.getRepairStages.and.returnValue(of([]));
     ordersService.getApprovals.and.returnValue(of([]));
     ordersService.getAuditLog.and.returnValue(of([]));
-    ordersService.updateOrder.and.returnValue(of({ ...order, status: 'ready' } as Order));
+    ordersService.updateOrder.and.callFake((_: number, payload: any) =>
+      of({ ...order, ...payload } as Order)
+    );
 
     await TestBed.configureTestingModule({
       imports: [OrderDetailComponent],
@@ -119,6 +121,32 @@ describe('OrderDetailComponent', () => {
     });
     expect(component.order?.status).toBe('ready');
     expect(ordersService.getStatusHistory).toHaveBeenCalledTimes(2);
+  });
+
+  it('requires the handover form before completing an order', () => {
+    component.setOrderStatus('completed');
+
+    expect(component.handoverNeedsAttention).toBeTrue();
+    expect(ordersService.updateOrder).not.toHaveBeenCalled();
+  });
+
+  it('completes an order with final cost and prepayment from handover form', () => {
+    component.handoverForm.patchValue({
+      final_cost: 1200,
+      prepayment: 200,
+      status_comment: 'Оплата на кассе',
+    });
+
+    component.completeOrder();
+
+    expect(ordersService.updateOrder).toHaveBeenCalledWith(2, {
+      status: 'completed',
+      final_cost: 1200,
+      prepayment: 200,
+      status_comment: 'Оплата на кассе',
+    });
+    expect(component.order?.status).toBe('completed');
+    expect(component.handoverNeedsAttention).toBeFalse();
   });
 
   function normalizeText(element: HTMLElement): string {

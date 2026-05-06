@@ -13,7 +13,7 @@ import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { CustomersService } from '../../../services/customers.service';
-import { Customer } from '../../../core/models/models';
+import { Customer, CustomerPayload } from '../../../core/models/models';
 
 @Component({
   selector: 'app-customer-form',
@@ -169,7 +169,7 @@ export class CustomerFormComponent implements OnInit {
     });
   }
 
-  private buildPayload(): Partial<Customer> {
+  private buildPayload(): CustomerPayload {
     const value = this.customerForm.getRawValue();
     const birthDate = value.birth_date instanceof Date
       ? value.birth_date.toISOString().slice(0, 10)
@@ -183,7 +183,7 @@ export class CustomerFormComponent implements OnInit {
       email: (value.email || '').trim(),
       source: value.source || '',
       source_details: (value.source_details || '').trim(),
-      birth_date: birthDate || undefined,
+      birth_date: birthDate,
       preferred_channel: value.preferred_channel || '',
       marketing_consent: Boolean(value.marketing_consent),
       notes: (value.notes || '').trim()

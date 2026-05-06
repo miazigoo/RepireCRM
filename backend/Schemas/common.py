@@ -47,6 +47,7 @@ class UserSchema(Schema):
     middle_name: Optional[str] = None
     email: str
     phone: Optional[str] = None
+    is_active: bool
     is_director: bool
     current_shop: Optional[ShopSchema] = None
     avatar: Optional[str] = None

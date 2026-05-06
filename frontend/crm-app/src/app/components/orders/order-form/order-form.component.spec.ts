@@ -15,6 +15,7 @@ describe('OrderFormComponent', () => {
   let ordersService: jasmine.SpyObj<OrdersService>;
   let customersService: jasmine.SpyObj<CustomersService>;
   let snackBar: jasmine.SpyObj<MatSnackBar>;
+  let router: Router;
 
   const customer = {
     id: 1,
@@ -29,6 +30,12 @@ describe('OrderFormComponent', () => {
     brand: { id: 1, name: 'Apple' },
     device_type: { id: 1, name: 'Смартфон' },
   } as DeviceModel;
+  const caseService = {
+    id: 11,
+    name: 'Чехол',
+    category: 'Аксессуары',
+    price: 1500,
+  } as any;
 
   beforeEach(async () => {
     ordersService = jasmine.createSpyObj<OrdersService>('OrdersService', [
@@ -54,6 +61,7 @@ describe('OrderFormComponent', () => {
           category: 'Базовые',
           price: 1000,
         } as any,
+        caseService,
       ])
     );
     customersService.getCustomers.and.returnValue(of([customer]));
@@ -72,6 +80,7 @@ describe('OrderFormComponent', () => {
 
     fixture = TestBed.createComponent(OrderFormComponent);
     component = fixture.componentInstance;
+    router = TestBed.inject(Router);
     fixture.detectChanges();
   });
 
@@ -127,6 +136,36 @@ describe('OrderFormComponent', () => {
     });
     expect(component.selectedDeviceModel).toEqual(createdModel);
     expect(stepper.next).toHaveBeenCalled();
+  });
+
+  it('adds a quick case service once during order creation', () => {
+    component.addQuickService('Чехол');
+    component.addQuickService('Чехол');
+
+    expect(component.selectedServices).toEqual([caseService]);
+    expect(component.servicesTotal).toBe(1500);
+    expect(component.isServiceSelected(caseService)).toBeTrue();
+  });
+
+  it('creates an order payload without an empty estimated completion date', () => {
+    const navigate = spyOn(router, 'navigate');
+    const createdOrder = { id: 55 } as any;
+    ordersService.createOrder.and.returnValue(of(createdOrder));
+    component.customerForm.patchValue({ customer });
+    component.deviceForm.patchValue({ model: deviceModel, model_id: deviceModel.id });
+    component.orderForm.patchValue({
+      problem_description: 'Проверка payload',
+      cost_estimate: 1900,
+      estimated_completion: '',
+    });
+    component.addQuickService('Чехол');
+
+    component.onSubmit();
+
+    const payload = ordersService.createOrder.calls.mostRecent().args[0];
+    expect(payload.estimated_completion).toBeUndefined();
+    expect(payload.additional_services).toEqual([{ service_id: 11, quantity: 1 }]);
+    expect(navigate).toHaveBeenCalledWith(['/orders', 55]);
   });
 
   function normalizeText(element: HTMLElement): string {

@@ -18,6 +18,15 @@ from .utils import normalize_phone
 
 router = Router(tags=["Клиенты"])
 
+BLANK_STRING_FIELDS = {
+    "middle_name",
+    "email",
+    "source",
+    "source_details",
+    "notes",
+    "preferred_channel",
+}
+
 
 class CustomerPagination(PageNumberPagination):
     page_size = 20
@@ -105,7 +114,7 @@ def create_customer(request, data: CustomerCreateSchema):
         ):
             return 400, {"error": "Клиент с таким email уже существует"}
 
-        payload = data.dict()
+        payload = data.dict(exclude_none=True)
         payload["phone"] = phone_e164
 
         customer = Customer.objects.create(**payload, created_by=request.auth)
@@ -147,6 +156,9 @@ def update_customer(request, customer_id: int, data: CustomerUpdateSchema):
         )
 
         incoming = data.dict(exclude_unset=True)
+        for field in BLANK_STRING_FIELDS:
+            if incoming.get(field) is None:
+                incoming[field] = ""
 
         # Проверяем телефон
         if "phone" in incoming and incoming["phone"]:

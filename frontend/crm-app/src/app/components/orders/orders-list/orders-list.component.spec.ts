@@ -32,6 +32,7 @@ describe('OrdersListComponent', () => {
       phone: '+79161234567',
       orders_count: 3,
       total_spent: 3300,
+      marketing_consent: true,
       created_at: '2026-05-01T10:00:00Z',
       updated_at: '2026-05-01T10:00:00Z',
     },

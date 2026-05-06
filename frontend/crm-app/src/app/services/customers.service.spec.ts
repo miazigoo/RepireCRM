@@ -8,7 +8,7 @@ describe('CustomersService', () => {
   let apiService: jasmine.SpyObj<ApiService>;
 
   beforeEach(() => {
-    apiService = jasmine.createSpyObj<ApiService>('ApiService', ['get', 'post']);
+    apiService = jasmine.createSpyObj<ApiService>('ApiService', ['get', 'post', 'put']);
 
     TestBed.configureTestingModule({
       providers: [
@@ -65,5 +65,22 @@ describe('CustomersService', () => {
     });
 
     expect(apiService.post).toHaveBeenCalledOnceWith('/customers/', payload);
+  });
+
+  it('updates customers through the detail endpoint', () => {
+    const payload = {
+      first_name: 'Анна',
+      last_name: 'Иванова',
+      phone: '+79990000000',
+      birth_date: null,
+    };
+    const customer = { id: 2, ...payload } as any;
+    apiService.put.and.returnValue(of(customer));
+
+    service.updateCustomer(2, payload).subscribe((result) => {
+      expect(result).toEqual(customer);
+    });
+
+    expect(apiService.put).toHaveBeenCalledOnceWith('/customers/2', payload);
   });
 });
