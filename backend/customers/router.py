@@ -31,7 +31,15 @@ def list_customers(request, filters: CustomerFilterSchema = Query(...)):
     if not request.auth.has_permission("customers.view_customer"):
         raise PermissionError("Нет прав для просмотра клиентов")
 
-    queryset = Customer.objects.select_related("created_by").all()
+    # Фильтруем по текущему магазину
+    if not hasattr(request, "current_shop") or not request.current_shop:
+        raise PermissionError("Магазин не выбран")
+
+    queryset = (
+        Customer.objects.select_related("created_by")
+        .filter(shop_history__shop=request.current_shop)
+        .distinct()
+    )
 
     # Применяем фильтры
     if filters.search:
@@ -66,7 +74,14 @@ def get_customer(request, customer_id: int):
     if not request.auth.has_permission("customers.view_customer"):
         raise PermissionError("Нет прав для просмотра клиентов")
 
-    customer = get_object_or_404(Customer, id=customer_id)
+    if not hasattr(request, "current_shop") or not request.current_shop:
+        raise PermissionError("Магазин не выбран")
+
+    # Проверяем доступ к клиенту через текущий магазин
+    customer = get_object_or_404(
+        Customer.objects.filter(shop_history__shop=request.current_shop),
+        id=customer_id,
+    )
     return customer
 
 
@@ -109,15 +124,27 @@ def create_customer(request, data: CustomerCreateSchema):
 
 
 @router.put(
-    "/{customer_id}", response={200: CustomerSchema, 400: ErrorSchema, 404: ErrorSchema}
+    "/{customer_id}",
+    response={
+        200: CustomerSchema,
+        400: ErrorSchema,
+        403: ErrorSchema,
+        404: ErrorSchema,
+    },
 )
 def update_customer(request, customer_id: int, data: CustomerUpdateSchema):
     """Обновление клиента"""
     if not request.auth.has_permission("customers.change_customer"):
         raise PermissionError("Нет прав для изменения клиентов")
 
+    if not hasattr(request, "current_shop") or not request.current_shop:
+        return 403, {"error": "Магазин не выбран"}
+
     try:
-        customer = get_object_or_404(Customer, id=customer_id)
+        customer = get_object_or_404(
+            Customer.objects.filter(shop_history__shop=request.current_shop),
+            id=customer_id,
+        )
 
         incoming = data.dict(exclude_unset=True)
 
@@ -164,8 +191,14 @@ def delete_customer(request, customer_id: int):
     if not request.auth.has_permission("customers.delete_customer"):
         raise PermissionError("Нет прав для удаления клиентов")
 
+    if not hasattr(request, "current_shop") or not request.current_shop:
+        return 403, {"error": "Магазин не выбран"}
+
     try:
-        customer = get_object_or_404(Customer, id=customer_id)
+        customer = get_object_or_404(
+            Customer.objects.filter(shop_history__shop=request.current_shop),
+            id=customer_id,
+        )
 
         # Проверяем, есть ли у клиента заказы
         if customer.orders_count > 0:
@@ -184,7 +217,13 @@ def get_customer_orders(request, customer_id: int):
     if not request.auth.has_permission("customers.view_customer"):
         raise PermissionError("Нет прав для просмотра клиентов")
 
-    customer = get_object_or_404(Customer, id=customer_id)
+    if not hasattr(request, "current_shop") or not request.current_shop:
+        raise PermissionError("Магазин не выбран")
+
+    customer = get_object_or_404(
+        Customer.objects.filter(shop_history__shop=request.current_shop),
+        id=customer_id,
+    )
 
     # Получаем заказы клиента с учетом прав доступа к магазинам
     from orders.models import Order

@@ -2,12 +2,14 @@ from datetime import datetime, timedelta
 
 import jwt
 from django.conf import settings
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model
 from django_ratelimit.decorators import ratelimit
 from ninja import Router
 
 from Schemas.auth.auth import ChangePasswordSchema, LoginSchema, TokenSchema
 from Schemas.common import ErrorSchema, MessageSchema, UserSchema
+
+User = get_user_model()
 
 router = Router(tags=["Аутентификация"])
 
@@ -34,6 +36,9 @@ def login(request, credentials: LoginSchema):
 
     token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
+    # Загружаем полные данные пользователя с relational fields
+    user = User.objects.select_related("role", "current_shop").get(id=user.id)
+
     return {
         "access_token": token,
         "token_type": "Bearer",
@@ -45,7 +50,8 @@ def login(request, credentials: LoginSchema):
 @router.get("/me", response=UserSchema)
 def get_current_user(request):
     """Получение информации о текущем пользователе"""
-    return request.auth
+    user = User.objects.select_related("role", "current_shop").get(id=request.auth.id)
+    return user
 
 
 @router.post("/change-password", response={200: MessageSchema, 400: ErrorSchema})
@@ -66,7 +72,7 @@ def change_password(request, data: ChangePasswordSchema):
     return {"message": "Пароль успешно изменен"}
 
 
-@router.post("/switch-shop/{shop_id}", response={200: MessageSchema, 403: ErrorSchema})
+@router.post("/switch-shop/{shop_id}", response={200: UserSchema, 403: ErrorSchema})
 def switch_shop(request, shop_id: int):
     """Переключение между магазинами"""
     user = request.auth
@@ -86,7 +92,9 @@ def switch_shop(request, shop_id: int):
         # Обновляем сессию
         request.session["current_shop_id"] = shop.id
 
-        return {"message": f"Переключено на магазин: {shop.name}"}
+        # Возвращаем обновленного пользователя с relational fields
+        user = User.objects.select_related("role", "current_shop").get(id=user.id)
+        return user
 
     except Shop.DoesNotExist:
         return 403, {"error": "Магазин не найден"}

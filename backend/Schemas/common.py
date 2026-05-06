@@ -32,6 +32,13 @@ class ShopSchema(Schema):
     currency: str
 
 
+class RoleSchema(Schema):
+    id: int
+    name: str
+    code: str
+    description: Optional[str] = None
+
+
 class UserSchema(Schema):
     id: int
     username: str
@@ -43,13 +50,7 @@ class UserSchema(Schema):
     is_director: bool
     current_shop: Optional[ShopSchema] = None
     avatar: Optional[str] = None
-
-
-class RoleSchema(Schema):
-    id: int
-    name: str
-    code: str
-    description: Optional[str] = None
+    role: Optional[RoleSchema] = None
 
 
 class PermissionSchema(Schema):

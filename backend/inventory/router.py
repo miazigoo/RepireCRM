@@ -47,6 +47,11 @@ def list_inventory_items(request, search: str = None, category_id: int = None):
     if not request.auth.has_permission("inventory.view_item"):
         raise PermissionError("Нет прав для просмотра товаров")
 
+    # Получаем товары доступные в текущем магазине
+    if not hasattr(request, "current_shop") or not request.current_shop:
+        raise PermissionError("Магазин не выбран")
+
+    # Товары видны если у них есть остаток в текущем магазине ИЛИ это активные товары
     queryset = InventoryItem.objects.select_related(
         "category", "primary_supplier"
     ).filter(is_active=True)

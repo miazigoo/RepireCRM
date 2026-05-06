@@ -35,7 +35,12 @@ def list_loyalty_programs(request):
 @router.get("/customer/{customer_id}", response=CustomerLoyaltySchema)
 def get_customer_loyalty(request, customer_id: int):
     """Получить информацию о программе лояльности клиента"""
-    customer = get_object_or_404(Customer, id=customer_id)
+    if not hasattr(request, "current_shop") or not request.current_shop:
+        raise PermissionError("Магазин не выбран")
+
+    customer = get_object_or_404(
+        Customer.objects.filter(shop_history__shop=request.current_shop), id=customer_id
+    )
     customer_loyalty = LoyaltyService.get_or_create_customer_loyalty(customer)
 
     if not customer_loyalty:
@@ -50,7 +55,12 @@ def get_customer_loyalty(request, customer_id: int):
 @paginate
 def get_customer_transactions(request, customer_id: int):
     """Получить историю транзакций баллов клиента"""
-    customer = get_object_or_404(Customer, id=customer_id)
+    if not hasattr(request, "current_shop") or not request.current_shop:
+        raise PermissionError("Магазин не выбран")
+
+    customer = get_object_or_404(
+        Customer.objects.filter(shop_history__shop=request.current_shop), id=customer_id
+    )
     customer_loyalty = CustomerLoyalty.objects.filter(customer=customer).first()
 
     if not customer_loyalty:
@@ -63,8 +73,19 @@ def get_customer_transactions(request, customer_id: int):
 def redeem_points(request, data: RedeemPointsSchema):
     """Списать баллы клиента"""
     try:
-        customer = get_object_or_404(Customer, id=data.customer_id)
+        if not hasattr(request, "current_shop") or not request.current_shop:
+            return 400, {"error": "Магазин не выбран"}
+
+        customer = get_object_or_404(
+            Customer.objects.filter(shop_history__shop=request.current_shop),
+            id=data.customer_id,
+        )
         order = get_object_or_404(Order, id=data.order_id)
+
+        # Проверяем что order принадлежит текущему магазину
+        if order.shop.id != request.current_shop.id:
+            return 400, {"error": "Заказ не принадлежит текущему магазину"}
+
         customer_loyalty = CustomerLoyalty.objects.filter(customer=customer).first()
 
         if not customer_loyalty:

@@ -1,8 +1,9 @@
 from decimal import Decimal
+from typing import Optional
 
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from ninja import Router
+from ninja import Router, Schema
 
 from inventory.models import RetailSale
 from orders.models import Order
@@ -12,6 +13,14 @@ from .models import CashRegister, Payment, PaymentMethod
 router = Router(tags=["Финансы"])
 
 
+class OrderPaymentCreateSchema(Schema):
+    amount: Decimal
+    payment_method_id: int
+    cash_register_id: Optional[int] = None
+    fee_amount: Decimal = Decimal("0")
+    description: str = ""
+
+
 def _check_perm(request, codename: str):
     return request.auth.has_permission(codename) or request.auth.has_permission(
         codename.replace("finance.", "payments.")
@@ -19,7 +28,11 @@ def _check_perm(request, codename: str):
 
 
 @router.post("/order/{order_id}/create", response=dict)
-def create_payment_for_order(request, order_id: int, data: dict):
+def create_payment_for_order(
+    request,
+    order_id: int,
+    data: OrderPaymentCreateSchema,
+):
     """
     Создать платеж по заказу
     """
@@ -27,13 +40,17 @@ def create_payment_for_order(request, order_id: int, data: dict):
         raise PermissionError("Нет прав для создания платежей")
 
     order = get_object_or_404(Order, id=order_id)
-    pm = get_object_or_404(PaymentMethod, id=data["payment_method_id"])
+
+    # Проверяем доступ к магазину
+    if not request.auth.can_access_shop(order.shop):
+        raise PermissionError("Нет доступа к заказу в этом магазине")
+    pm = get_object_or_404(PaymentMethod, id=data.payment_method_id)
     cr = None
     if pm.is_cash:
-        cr = get_object_or_404(CashRegister, id=data.get("cash_register_id"))
+        cr = get_object_or_404(CashRegister, id=data.cash_register_id)
 
-    amount = Decimal(str(data["amount"]))
-    fee_amount = Decimal(str(data.get("fee_amount", "0")))
+    amount = data.amount
+    fee_amount = data.fee_amount
     if amount <= 0:
         return {"error": "Сумма должна быть > 0"}
 
@@ -51,7 +68,7 @@ def create_payment_for_order(request, order_id: int, data: dict):
         payment_method=pm,
         cash_register=cr,
         order=order,
-        description=data.get("description", ""),
+        description=data.description,
         payment_date=timezone.now(),
         created_by=request.auth,
     )
