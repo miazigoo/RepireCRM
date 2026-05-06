@@ -1,184 +1,346 @@
+<div class="customers-page">
+  <header class="customers-hero">
+    <div>
+      <span class="eyebrow">Клиентская база</span>
+      <h1>Клиенты</h1>
+      <p>Контакты, история заказов, источники и быстрые действия в одном рабочем списке.</p>
+    </div>
 
-<div class="customers-container">
-  <div class="header">
-    <h1>Клиенты</h1>
-    <button mat-raised-button color="primary" routerLink="/customers/new">
+    <a mat-flat-button class="primary-action" routerLink="/customers/new">
       <mat-icon>person_add</mat-icon>
       Новый клиент
-    </button>
-  </div>
+    </a>
+  </header>
 
-
-  <mat-card class="filters-card">
-    <mat-card-content>
-      <form [formGroup]="filtersForm" class="filters-form">
-        <mat-form-field class="search-field">
-          <mat-label>Поиск</mat-label>
-          <input matInput
-                 formControlName="search"
-                 placeholder="Имя, фамилия, телефон...">
-          <mat-icon matSuffix>search</mat-icon>
-        </mat-form-field>
-
-        <mat-form-field>
-          <mat-label>Источник</mat-label>
-          <mat-select formControlName="source">
-            <mat-option value="">Все источники</mat-option>
-            <mat-option *ngFor="let option of sourceOptions" [value]="option.value">
-              {{ option.label }}
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
-
-        <mat-form-field>
-          <mat-label>Наличие заказов</mat-label>
-          <mat-select formControlName="has_orders">
-            <mat-option value="">Все</mat-option>
-            <mat-option [value]="true">С заказами</mat-option>
-            <mat-option [value]="false">Без заказов</mat-option>
-          </mat-select>
-        </mat-form-field>
-
-        <button mat-button (click)="clearFilters()">
-          <mat-icon>clear</mat-icon>
-          Очистить
-        </button>
-      </form>
-    </mat-card-content>
-  </mat-card>
-
-
-  <mat-card class="table-card">
-    <mat-card-content>
-      <div class="table-container">
-        <table mat-table [dataSource]="dataSource" matSort class="customers-table">
-
-
-          <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Имя</th>
-            <td mat-cell *matCellDef="let customer">
-              <a [routerLink]="['/customers', customer.id]" class="customer-link">
-                <div class="customer-name">
-                  {{ customer.last_name }} {{ customer.first_name }}
-                </div>
-                <div class="customer-middle-name" *ngIf="customer.middle_name">
-                  {{ customer.middle_name }}
-                </div>
-              </a>
-            </td>
-          </ng-container>
-
-
-          <ng-container matColumnDef="phone">
-            <th mat-header-cell *matHeaderCellDef>Телефон</th>
-            <td mat-cell *matCellDef="let customer">
-              <a href="tel:{{ customer.phone }}" class="phone-link">
-                {{ customer.phone }}
-              </a>
-            </td>
-          </ng-container>
-
-
-          <ng-container matColumnDef="email">
-            <th mat-header-cell *matHeaderCellDef>Email</th>
-            <td mat-cell *matCellDef="let customer">
-              <a href="mailto:{{ customer.email }}"
-                 class="email-link"
-                 *ngIf="customer.email; else noEmail">
-                {{ customer.email }}
-              </a>
-              <ng-template #noEmail>
-                <span class="no-data">—</span>
-              </ng-template>
-            </td>
-          </ng-container>
-
-
-          <ng-container matColumnDef="orders_count">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Заказов</th>
-            <td mat-cell *matCellDef="let customer">
-              <mat-chip class="orders-chip" *ngIf="customer.orders_count > 0">
-                {{ customer.orders_count }}
-              </mat-chip>
-              <span class="no-orders" *ngIf="customer.orders_count === 0">0</span>
-            </td>
-          </ng-container>
-
-
-          <ng-container matColumnDef="total_spent">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Потрачено</th>
-            <td mat-cell *matCellDef="let customer">
-              <span class="total-spent" *ngIf="customer.total_spent > 0">
-                {{ customer.total_spent | currency:'RUB':'symbol':'1.0-0' }}
-              </span>
-              <span class="no-spent" *ngIf="customer.total_spent === 0">—</span>
-            </td>
-          </ng-container>
-
-
-          <ng-container matColumnDef="source">
-            <th mat-header-cell *matHeaderCellDef>Источник</th>
-            <td mat-cell *matCellDef="let customer">
-              <mat-chip class="source-chip" *ngIf="customer.source">
-                {{ getSourceLabel(customer.source) }}
-              </mat-chip>
-              <span class="no-source" *ngIf="!customer.source">—</span>
-            </td>
-          </ng-container>
-
-
-          <ng-container matColumnDef="created_at">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Дата создания</th>
-            <td mat-cell *matCellDef="let customer">
-              {{ customer.created_at | date:'dd.MM.yyyy HH:mm' }}
-            </td>
-          </ng-container>
-
-
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Действия</th>
-            <td mat-cell *matCellDef="let customer">
-              <button mat-icon-button [matMenuTriggerFor]="actionsMenu">
-                <mat-icon>more_vert</mat-icon>
-              </button>
-              <mat-menu #actionsMenu="matMenu">
-                <button mat-menu-item [routerLink]="['/customers', customer.id]">
-                  <mat-icon>visibility</mat-icon>
-                  <span>Просмотр</span>
-                </button>
-                <button mat-menu-item [routerLink]="['/customers', customer.id, 'edit']">
-                  <mat-icon>edit</mat-icon>
-                  <span>Редактировать</span>
-                </button>
-                <button mat-menu-item [routerLink]="['/orders/new']" [queryParams]="{customer_id: customer.id}">
-                  <mat-icon>add</mat-icon>
-                  <span>Новый заказ</span>
-                </button>
-                <mat-divider></mat-divider>
-                <button mat-menu-item
-                        (click)="deleteCustomer(customer)"
-                        [disabled]="customer.orders_count > 0">
-                  <mat-icon>delete</mat-icon>
-                  <span>Удалить</span>
-                </button>
-              </mat-menu>
-            </td>
-          </ng-container>
-
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-        </table>
-
-        <div class="loading-shade" *ngIf="loading">
-          <mat-spinner></mat-spinner>
-        </div>
+  <section class="metrics-grid" aria-label="Показатели клиентской базы">
+    <article class="metric-card">
+      <span class="metric-icon primary">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M12.5 15.5a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" />
+          <path d="M4 27a8.5 8.5 0 0 1 17 0" />
+          <path d="M22.5 16a4 4 0 1 0 0-8" />
+          <path d="M24 26.5a7 7 0 0 0-3.5-6" />
+        </svg>
+      </span>
+      <div>
+        <small>Всего клиентов</small>
+        <strong>{{ totalCustomers }}</strong>
+        <span>{{ newCustomersThisMonth }} новых за месяц</span>
       </div>
+    </article>
 
-      <mat-paginator
-        [pageSizeOptions]="[10, 20, 50, 100]"
-        [pageSize]="20"
-        showFirstLastButtons>
-      </mat-paginator>
-    </mat-card-content>
-  </mat-card>
+    <article class="metric-card">
+      <span class="metric-icon success">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M9 5.5h14a3 3 0 0 1 3 3v17a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-17a3 3 0 0 1 3-3Z" />
+          <path d="M11 13h10" />
+          <path d="M11 19.5h5" />
+          <path d="m18 22 2.4 2.4L26 18.8" />
+        </svg>
+      </span>
+      <div>
+        <small>С заказами</small>
+        <strong>{{ customersWithOrders }}</strong>
+        <span>{{ ordersTotal }} заказов в базе</span>
+      </div>
+    </article>
+
+    <article class="metric-card">
+      <span class="metric-icon warning">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M5 9.5h22v15H5Z" />
+          <path d="M9 15h8.5a2.5 2.5 0 0 1 0 5H11.5" />
+          <path d="M11.5 13.5v10" />
+          <path d="M9 20h11" />
+        </svg>
+      </span>
+      <div>
+        <small>Выручка по клиентам</small>
+        <strong>{{ formatMoney(revenueTotal) }}</strong>
+        <span>Средний чек {{ formatMoney(averageSpent) }}</span>
+      </div>
+    </article>
+
+    <article class="metric-card">
+      <span class="metric-icon accent">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M16 16 8.5 8.5" />
+          <path d="M16 16h10" />
+          <path d="M16 16 9.5 24" />
+          <path d="M6.5 11a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Z" />
+          <path d="M26 20.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Z" />
+          <path d="M7.5 30a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Z" />
+        </svg>
+      </span>
+      <div>
+        <small>Главный источник</small>
+        <strong>{{ topSourceLabel }}</strong>
+        <span>По текущей выборке</span>
+      </div>
+    </article>
+  </section>
+
+  <section class="customers-workspace">
+    <main class="customers-main">
+      <section class="filters-panel">
+        <form [formGroup]="filtersForm" class="filters-form">
+          <mat-form-field class="search-field">
+            <mat-label>Поиск клиента</mat-label>
+            <input
+              matInput
+              formControlName="search"
+              placeholder="ФИО, телефон, email">
+            <mat-icon matSuffix>search</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Источник</mat-label>
+            <mat-select formControlName="source">
+              <mat-option value="">Все источники</mat-option>
+              <mat-option *ngFor="let option of sourceOptions" [value]="option.value">
+                {{ option.label }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Наличие заказов</mat-label>
+            <mat-select formControlName="has_orders">
+              <mat-option value="">Все клиенты</mat-option>
+              <mat-option [value]="true">С заказами</mat-option>
+              <mat-option [value]="false">Без заказов</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <button
+            mat-stroked-button
+            class="clear-filters"
+            type="button"
+            (click)="clearFilters()"
+            [disabled]="!hasActiveFilters">
+            <mat-icon>filter_alt_off</mat-icon>
+            Очистить
+          </button>
+        </form>
+      </section>
+
+      <section class="customers-panel">
+        <header class="panel-header">
+          <div>
+            <span class="eyebrow">Список</span>
+            <h2>База клиентов</h2>
+          </div>
+          <div class="panel-meta">
+            <span>{{ totalCustomers }} клиентов</span>
+            <span *ngIf="lastUpdatedAt">Обновлено {{ lastUpdatedAt | date:'HH:mm' }}</span>
+          </div>
+        </header>
+
+        <div class="table-shell" [class.loading]="loading">
+          <table mat-table [dataSource]="dataSource" matSort class="customers-table">
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Клиент</th>
+              <td mat-cell *matCellDef="let customer">
+                <a [routerLink]="['/customers', customer.id]" class="client-cell">
+                  <span class="client-avatar">{{ getCustomerInitials(customer) }}</span>
+                  <span>
+                    <strong>{{ getCustomerFullName(customer) }}</strong>
+                    <small>ID {{ customer.id }}</small>
+                  </span>
+                </a>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="phone">
+              <th mat-header-cell *matHeaderCellDef>Телефон</th>
+              <td mat-cell *matCellDef="let customer">
+                <a href="tel:{{ customer.phone }}" class="contact-link">{{ customer.phone }}</a>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="email">
+              <th mat-header-cell *matHeaderCellDef>Email</th>
+              <td mat-cell *matCellDef="let customer">
+                <a
+                  href="mailto:{{ customer.email }}"
+                  class="contact-link"
+                  *ngIf="customer.email; else noEmail">
+                  {{ customer.email }}
+                </a>
+                <ng-template #noEmail>
+                  <span class="muted">Не указан</span>
+                </ng-template>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="orders_count">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Заказы</th>
+              <td mat-cell *matCellDef="let customer">
+                <span class="orders-pill" [class.empty]="customer.orders_count === 0">
+                  {{ customer.orders_count }}
+                </span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="total_spent">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Потрачено</th>
+              <td mat-cell *matCellDef="let customer">
+                <strong class="money" *ngIf="customer.total_spent > 0; else noSpent">
+                  {{ formatMoney(customer.total_spent) }}
+                </strong>
+                <ng-template #noSpent>
+                  <span class="muted">Нет оплат</span>
+                </ng-template>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="source">
+              <th mat-header-cell *matHeaderCellDef>Источник</th>
+              <td mat-cell *matCellDef="let customer">
+                <span class="source-chip" *ngIf="customer.source; else noSource">
+                  {{ getSourceLabel(customer.source) }}
+                </span>
+                <ng-template #noSource>
+                  <span class="muted">Не указан</span>
+                </ng-template>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="created_at">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Создан</th>
+              <td mat-cell *matCellDef="let customer">
+                <span class="date-cell">{{ customer.created_at | date:'dd.MM.yyyy' }}</span>
+                <small class="time-cell">{{ customer.created_at | date:'HH:mm' }}</small>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Действия</th>
+              <td mat-cell *matCellDef="let customer">
+                <button mat-icon-button class="row-menu-button" [matMenuTriggerFor]="actionsMenu">
+                  <mat-icon>more_horiz</mat-icon>
+                </button>
+                <mat-menu #actionsMenu="matMenu">
+                  <button mat-menu-item [routerLink]="['/customers', customer.id]">
+                    <mat-icon>visibility</mat-icon>
+                    <span>Карточка клиента</span>
+                  </button>
+                  <button mat-menu-item [routerLink]="['/customers', customer.id, 'edit']">
+                    <mat-icon>edit</mat-icon>
+                    <span>Редактировать</span>
+                  </button>
+                  <button mat-menu-item [routerLink]="['/orders/new']" [queryParams]="{customer_id: customer.id}">
+                    <mat-icon>add_circle</mat-icon>
+                    <span>Новый заказ</span>
+                  </button>
+                  <mat-divider></mat-divider>
+                  <button
+                    mat-menu-item
+                    (click)="deleteCustomer(customer)"
+                    [disabled]="customer.orders_count > 0">
+                    <mat-icon>delete</mat-icon>
+                    <span>Удалить</span>
+                  </button>
+                </mat-menu>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+          </table>
+
+          <div class="mobile-list">
+            <article class="customer-card" *ngFor="let customer of customers; trackBy: trackById">
+              <div class="card-topline">
+                <a [routerLink]="['/customers', customer.id]" class="client-cell">
+                  <span class="client-avatar">{{ getCustomerInitials(customer) }}</span>
+                  <span>
+                    <strong>{{ getCustomerFullName(customer) }}</strong>
+                    <small>{{ getCustomerTier(customer) }}</small>
+                  </span>
+                </a>
+                <button mat-icon-button class="row-menu-button" [matMenuTriggerFor]="mobileActionsMenu">
+                  <mat-icon>more_horiz</mat-icon>
+                </button>
+                <mat-menu #mobileActionsMenu="matMenu">
+                  <button mat-menu-item [routerLink]="['/customers', customer.id]">
+                    <mat-icon>visibility</mat-icon>
+                    <span>Карточка клиента</span>
+                  </button>
+                  <button mat-menu-item [routerLink]="['/customers', customer.id, 'edit']">
+                    <mat-icon>edit</mat-icon>
+                    <span>Редактировать</span>
+                  </button>
+                  <button mat-menu-item [routerLink]="['/orders/new']" [queryParams]="{customer_id: customer.id}">
+                    <mat-icon>add_circle</mat-icon>
+                    <span>Новый заказ</span>
+                  </button>
+                </mat-menu>
+              </div>
+
+              <div class="card-contacts">
+                <a href="tel:{{ customer.phone }}">{{ customer.phone }}</a>
+                <a *ngIf="customer.email" href="mailto:{{ customer.email }}">{{ customer.email }}</a>
+              </div>
+
+              <div class="card-stats">
+                <span>{{ customer.orders_count }} заказов</span>
+                <strong>{{ formatMoney(customer.total_spent) }}</strong>
+                <span>{{ customer.source ? getSourceLabel(customer.source) : 'Источник не указан' }}</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="empty-state" *ngIf="!loading && totalCustomers === 0">
+            <mat-icon>person_search</mat-icon>
+            <h3>Клиенты не найдены</h3>
+            <p>Измените фильтры или добавьте первого клиента вручную.</p>
+            <a mat-flat-button class="primary-action" routerLink="/customers/new">Добавить клиента</a>
+          </div>
+
+          <div class="loading-shade" *ngIf="loading">
+            <mat-spinner diameter="42"></mat-spinner>
+          </div>
+        </div>
+
+        <mat-paginator
+          [pageSizeOptions]="[10, 20, 50, 100]"
+          [pageSize]="20"
+          showFirstLastButtons>
+        </mat-paginator>
+      </section>
+    </main>
+
+    <aside class="customers-sidebar">
+      <section class="sidebar-panel">
+        <span class="eyebrow">Сегменты</span>
+        <h2>Статус базы</h2>
+
+        <div class="segment-list">
+          <div>
+            <span>Активные</span>
+            <strong>{{ customersWithOrders }}</strong>
+          </div>
+          <div>
+            <span>Без заказов</span>
+            <strong>{{ totalCustomers - customersWithOrders }}</strong>
+          </div>
+          <div>
+            <span>Новые за месяц</span>
+            <strong>{{ newCustomersThisMonth }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="sidebar-panel quick-panel">
+        <span class="eyebrow">Быстрый старт</span>
+        <h2>Следующее действие</h2>
+        <p>Откройте карточку клиента, создайте заказ или пополните базу новым контактом.</p>
+        <a mat-stroked-button routerLink="/customers/new">
+          <mat-icon>person_add</mat-icon>
+          Новый клиент
+        </a>
+      </section>
+    </aside>
+  </section>
 </div>
