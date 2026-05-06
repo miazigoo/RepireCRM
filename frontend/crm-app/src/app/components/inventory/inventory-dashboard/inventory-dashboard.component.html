@@ -1,274 +1,415 @@
-
-<div class="inventory-dashboard">
-
-  <div class="dashboard-header">
-    <div class="header-content">
-      <h1>Складской учет</h1>
-      <p class="subtitle">Управление товарами и остатками</p>
+<div class="inventory-page">
+  <header class="inventory-hero">
+    <div>
+      <span class="eyebrow">Складской контур</span>
+      <h1>Склад</h1>
+      <p>Остатки, стоимость, дефицит и закупки в одном рабочем экране без лишних переходов.</p>
     </div>
 
-    <div class="header-actions">
-      <button mat-raised-button color="primary" routerLink="/inventory/items/new">
+    <div class="hero-actions">
+      <a mat-flat-button class="primary-action" routerLink="/inventory/items/new">
         <mat-icon>add</mat-icon>
         Добавить товар
-      </button>
+      </a>
 
-      <button mat-raised-button color="accent" (click)="createPurchaseOrder()">
+      <button mat-stroked-button class="secondary-action" type="button" (click)="createPurchaseOrder()">
         <mat-icon>shopping_cart</mat-icon>
         Заказ поставщику
       </button>
     </div>
-  </div>
+  </header>
 
+  <section class="metrics-grid" aria-label="Показатели склада">
+    <article class="metric-card">
+      <span class="metric-icon primary">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M5.5 10 16 4.5 26.5 10v12L16 27.5 5.5 22Z" />
+          <path d="M5.5 10 16 15.5 26.5 10" />
+          <path d="M16 15.5v12" />
+          <path d="M10.5 7.3 21 12.8" />
+        </svg>
+      </span>
+      <div>
+        <small>Номенклатура</small>
+        <strong>{{ inventoryStats.total_items || totalItems }}</strong>
+        <span>{{ totalUnits }} единиц на остатках</span>
+      </div>
+    </article>
 
-  <div class="stats-grid">
-    <mat-card class="stat-card">
-      <mat-card-content>
-        <div class="stat-content">
-          <div class="stat-icon">
-            <mat-icon>inventory_2</mat-icon>
-          </div>
-          <div class="stat-info">
-            <h3>{{ inventoryStats.total_items }}</h3>
-            <p>Всего товаров</p>
-          </div>
-        </div>
-      </mat-card-content>
-    </mat-card>
+    <article class="metric-card">
+      <span class="metric-icon warning">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M16 4 28 26H4Z" />
+          <path d="M16 11v7" />
+          <path d="M16 22.5h.1" />
+        </svg>
+      </span>
+      <div>
+        <small>Низкий остаток</small>
+        <strong>{{ inventoryStats.low_stock_items || lowStockVisible }}</strong>
+        <span>{{ warningAlerts.length }} предупреждений в ленте</span>
+      </div>
+    </article>
 
-    <mat-card class="stat-card low-stock-card">
-      <mat-card-content>
-        <div class="stat-content">
-          <div class="stat-icon">
-            <mat-icon [matBadge]="inventoryStats.low_stock_items"
-                     matBadgeColor="warn"
-                     [matBadgeHidden]="inventoryStats.low_stock_items === 0"
-                     aria-hidden="false">
-              warning
-            </mat-icon>
-          </div>
-          <div class="stat-info">
-            <h3>{{ inventoryStats.low_stock_items }}</h3>
-            <p>Товаров с низким остатком</p>
-          </div>
-        </div>
-      </mat-card-content>
-    </mat-card>
+    <article class="metric-card">
+      <span class="metric-icon danger">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M7.5 7.5h17v17h-17Z" />
+          <path d="m11.5 11.5 9 9" />
+          <path d="m20.5 11.5-9 9" />
+        </svg>
+      </span>
+      <div>
+        <small>Закончилось</small>
+        <strong>{{ inventoryStats.out_of_stock_items || outOfStockVisible }}</strong>
+        <span>{{ criticalAlerts.length }} критических позиций</span>
+      </div>
+    </article>
 
-    <mat-card class="stat-card out-stock-card">
-      <mat-card-content>
-        <div class="stat-content">
-          <div class="stat-icon">
-            <mat-icon [matBadge]="inventoryStats.out_of_stock_items"
-                     matBadgeColor="warn"
-                     [matBadgeHidden]="inventoryStats.out_of_stock_items === 0"
-                     aria-hidden="false">
-              error
-            </mat-icon>
-          </div>
-          <div class="stat-info">
-            <h3>{{ inventoryStats.out_of_stock_items }}</h3>
-            <p>Товаров закончилось</p>
-          </div>
-        </div>
-      </mat-card-content>
-    </mat-card>
+    <article class="metric-card">
+      <span class="metric-icon success">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M5 10h22v16H5Z" />
+          <path d="M9 16h8.5a2.5 2.5 0 1 1 0 5H11.5" />
+          <path d="M11.5 14.5v10" />
+          <path d="M9 21h11.5" />
+          <path d="M22.5 7v6" />
+        </svg>
+      </span>
+      <div>
+        <small>Стоимость склада</small>
+        <strong>{{ formatCurrency(inventoryStats.total_value || visibleStockValue) }}</strong>
+        <span>Маржа {{ formatCurrency(potentialMargin) }}</span>
+      </div>
+    </article>
+  </section>
 
-    <mat-card class="stat-card value-card">
-      <mat-card-content>
-        <div class="stat-content">
-          <div class="stat-icon">
-            <mat-icon>attach_money</mat-icon>
-          </div>
-          <div class="stat-info">
-            <h3>{{ formatCurrency(inventoryStats.total_value) }}</h3>
-            <p>Стоимость остатков</p>
-          </div>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  </div>
+  <section class="inventory-workspace">
+    <main class="inventory-main">
+      <section class="filters-panel">
+        <form [formGroup]="filtersForm" class="filters-form">
+          <mat-form-field class="search-field">
+            <mat-label>Поиск товара</mat-label>
+            <input matInput formControlName="search" placeholder="Название, артикул, поставщик">
+            <mat-icon matSuffix>search</mat-icon>
+          </mat-form-field>
 
+          <mat-form-field>
+            <mat-label>Статус остатка</mat-label>
+            <mat-select formControlName="stock_status">
+              <mat-option value="">Все статусы</mat-option>
+              <mat-option value="in_stock">В наличии</mat-option>
+              <mat-option value="low_stock">Мало</mat-option>
+              <mat-option value="out_of_stock">Нет в наличии</mat-option>
+            </mat-select>
+          </mat-form-field>
 
-  <mat-card class="alerts-card" *ngIf="stockAlerts.length > 0">
-    <mat-card-header>
-      <mat-card-title>
-        <mat-icon>notification_important</mat-icon>
-        Уведомления об остатках
-      </mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
-      <div class="alerts-list">
-        <div class="alert-item" *ngFor="let alert of stockAlerts.slice(0, 5)">
-          <div class="alert-icon">
-            <mat-icon [color]="getAlertColor(alert.alert_type)">
-              {{ getAlertIcon(alert.alert_type) }}
-            </mat-icon>
-          </div>
-          <div class="alert-content">
-            <div class="alert-title">{{ alert.item_name }}</div>
-            <div class="alert-details">
-              {{ alert.shop_name }} • Остаток: {{ alert.current_stock }}
-              <span *ngIf="alert.alert_type === 'low_stock'">(мин: {{ alert.min_quantity }})</span>
-            </div>
-          </div>
-          <div class="alert-actions">
-            <button mat-icon-button matTooltip="Заказать товар">
-              <mat-icon>shopping_cart</mat-icon>
+          <mat-form-field>
+            <mat-label>Категория</mat-label>
+            <mat-select formControlName="category">
+              <mat-option value="">Все категории</mat-option>
+              <mat-option *ngFor="let category of categoryOptions" [value]="category">
+                {{ category }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <div class="filter-actions">
+            <button mat-stroked-button class="refresh-button" type="button" (click)="refreshInventory()">
+              <mat-icon>refresh</mat-icon>
+              Обновить
+            </button>
+            <button
+              mat-stroked-button
+              class="clear-filters"
+              type="button"
+              (click)="clearFilters()"
+              [disabled]="!hasActiveFilters">
+              <mat-icon>filter_alt_off</mat-icon>
+              Очистить
             </button>
           </div>
+        </form>
+      </section>
+
+      <section class="inventory-panel">
+        <header class="panel-header">
+          <div>
+            <span class="eyebrow">Остатки</span>
+            <h2>Товары на складе</h2>
+          </div>
+          <div class="panel-meta">
+            <span>{{ totalItems }} позиций</span>
+            <span *ngIf="lastUpdatedAt">Обновлено {{ lastUpdatedAt | date:'HH:mm' }}</span>
+          </div>
+        </header>
+
+        <div class="table-shell" [class.loading]="loading">
+          <table mat-table [dataSource]="dataSource" matSort class="inventory-table">
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Товар</th>
+              <td mat-cell *matCellDef="let item">
+                <div class="item-cell">
+                  <span class="item-mark">
+                    <svg viewBox="0 0 32 32" aria-hidden="true">
+                      <path d="M7 11 16 6l9 5v10l-9 5-9-5Z" />
+                      <path d="M7 11 16 16l9-5" />
+                      <path d="M16 16v10" />
+                    </svg>
+                  </span>
+                  <span>
+                    <strong>{{ item.name }}</strong>
+                    <small *ngIf="item.primary_supplier_name; else noSupplier">
+                      {{ item.primary_supplier_name }}
+                    </small>
+                    <ng-template #noSupplier>
+                      <small>Поставщик не указан</small>
+                    </ng-template>
+                  </span>
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="sku">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Артикул</th>
+              <td mat-cell *matCellDef="let item">
+                <span class="sku-code">{{ item.sku || 'Без артикула' }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="category">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Категория</th>
+              <td mat-cell *matCellDef="let item">
+                <span class="category-chip">{{ getCategoryLabel(item) }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="stock_status">
+              <th mat-header-cell *matHeaderCellDef>Статус</th>
+              <td mat-cell *matCellDef="let item">
+                <span class="status-chip" [ngClass]="getStockStatusClass(item.stock_status)">
+                  {{ getStockStatusLabel(item.stock_status) }}
+                </span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="stock_level">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Остаток</th>
+              <td mat-cell *matCellDef="let item">
+                <div class="stock-cell">
+                  <div>
+                    <strong>{{ item.total_stock }} шт</strong>
+                    <small>мин {{ item.min_quantity }}</small>
+                  </div>
+                  <span class="stock-track" [ngClass]="getStockStatusClass(item.stock_status)">
+                    <span [style.width]="getStockLevelStyle(item)"></span>
+                  </span>
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="price">
+              <th mat-header-cell *matHeaderCellDef>Цена</th>
+              <td mat-cell *matCellDef="let item">
+                <div class="price-cell">
+                  <strong>{{ formatCurrency(item.selling_price) }}</strong>
+                  <small>закуп {{ formatCurrency(item.purchase_price) }}</small>
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Действия</th>
+              <td mat-cell *matCellDef="let item">
+                <button
+                  mat-icon-button
+                  class="row-menu-button"
+                  [matMenuTriggerFor]="actionsMenu"
+                  aria-label="Действия с товаром">
+                  <mat-icon>more_horiz</mat-icon>
+                </button>
+
+                <mat-menu #actionsMenu="matMenu">
+                  <button mat-menu-item (click)="createPurchaseOrderFor(item)">
+                    <mat-icon>shopping_cart</mat-icon>
+                    <span>Заказать у поставщика</span>
+                  </button>
+                  <button mat-menu-item (click)="refreshInventory()">
+                    <mat-icon>refresh</mat-icon>
+                    <span>Обновить остатки</span>
+                  </button>
+                </mat-menu>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+          </table>
+
+          <div class="mobile-list">
+            <article class="inventory-card" *ngFor="let item of items; trackBy: trackById">
+              <div class="card-topline">
+                <div class="item-cell">
+                  <span class="item-mark">
+                    <svg viewBox="0 0 32 32" aria-hidden="true">
+                      <path d="M7 11 16 6l9 5v10l-9 5-9-5Z" />
+                      <path d="M7 11 16 16l9-5" />
+                      <path d="M16 16v10" />
+                    </svg>
+                  </span>
+                  <span>
+                    <strong>{{ item.name }}</strong>
+                    <small>{{ item.sku || 'Без артикула' }}</small>
+                  </span>
+                </div>
+
+                <button
+                  mat-icon-button
+                  class="row-menu-button"
+                  [matMenuTriggerFor]="mobileActionsMenu"
+                  aria-label="Действия с товаром">
+                  <mat-icon>more_horiz</mat-icon>
+                </button>
+                <mat-menu #mobileActionsMenu="matMenu">
+                  <button mat-menu-item (click)="createPurchaseOrderFor(item)">
+                    <mat-icon>shopping_cart</mat-icon>
+                    <span>Заказать у поставщика</span>
+                  </button>
+                  <button mat-menu-item (click)="refreshInventory()">
+                    <mat-icon>refresh</mat-icon>
+                    <span>Обновить остатки</span>
+                  </button>
+                </mat-menu>
+              </div>
+
+              <div class="card-tags">
+                <span class="category-chip">{{ getCategoryLabel(item) }}</span>
+                <span class="status-chip" [ngClass]="getStockStatusClass(item.stock_status)">
+                  {{ getStockStatusLabel(item.stock_status) }}
+                </span>
+              </div>
+
+              <div class="card-stock">
+                <div>
+                  <strong>{{ getStockText(item) }}</strong>
+                  <span>{{ formatCurrency(item.selling_price) }}</span>
+                </div>
+                <span class="stock-track" [ngClass]="getStockStatusClass(item.stock_status)">
+                  <span [style.width]="getStockLevelStyle(item)"></span>
+                </span>
+              </div>
+            </article>
+          </div>
+
+          <div class="empty-state" *ngIf="!loading && totalItems === 0">
+            <span class="empty-icon">
+              <svg viewBox="0 0 64 64" aria-hidden="true">
+                <path d="M13 21 32 11l19 10v22L32 53 13 43Z" />
+                <path d="M13 21 32 31l19-10" />
+                <path d="M32 31v22" />
+                <path d="M21.5 16.5 41 26.5" />
+              </svg>
+            </span>
+            <h3>Позиции не найдены</h3>
+            <p>Измените фильтры или добавьте товар в номенклатуру.</p>
+            <a mat-flat-button class="primary-action" routerLink="/inventory/items/new">Добавить товар</a>
+          </div>
+
+          <div class="loading-shade" *ngIf="loading">
+            <mat-spinner diameter="42"></mat-spinner>
+          </div>
         </div>
-      </div>
 
-      <div class="alerts-footer" *ngIf="stockAlerts.length > 5">
-        <button mat-button routerLink="/inventory/alerts">
-          Показать все ({{ stockAlerts.length }})
+        <mat-paginator
+          [pageSizeOptions]="[10, 20, 50, 100]"
+          [pageSize]="20"
+          showFirstLastButtons>
+        </mat-paginator>
+      </section>
+    </main>
+
+    <aside class="inventory-sidebar">
+      <section class="sidebar-panel alerts-panel">
+        <header class="panel-header compact">
+          <div>
+            <span class="eyebrow">Контроль</span>
+            <h2>Остатки под вниманием</h2>
+          </div>
+          <span class="alert-counter">{{ stockAlerts.length }}</span>
+        </header>
+
+        <div class="alerts-list" *ngIf="stockAlerts.length > 0; else stockHealthy">
+          <article
+            class="alert-item"
+            *ngFor="let alert of stockAlerts.slice(0, 6)"
+            [ngClass]="alert.alert_type">
+            <span class="alert-dot"></span>
+            <div>
+              <strong>{{ alert.item_name }}</strong>
+              <small>{{ alert.shop_name }} · остаток {{ alert.current_stock }} / мин {{ alert.min_quantity }}</small>
+            </div>
+            <button
+              mat-icon-button
+              class="alert-action"
+              type="button"
+              (click)="createPurchaseOrder()"
+              aria-label="Создать заказ поставщику">
+              <mat-icon>add_shopping_cart</mat-icon>
+            </button>
+          </article>
+        </div>
+
+        <ng-template #stockHealthy>
+          <div class="healthy-state">
+            <span>
+              <svg viewBox="0 0 48 48" aria-hidden="true">
+                <path d="M24 6 39 11.5v12.2c0 9.2-5.8 15.6-15 19.3C14.8 39.3 9 32.9 9 23.7V11.5Z" />
+                <path d="m17 24 4.5 4.5L31.5 18" />
+              </svg>
+            </span>
+            <h3>Критичных остатков нет</h3>
+            <p>Как только позиция уйдет ниже минимума, она появится в этой ленте.</p>
+          </div>
+        </ng-template>
+      </section>
+
+      <section class="sidebar-panel segment-panel">
+        <span class="eyebrow">Сегменты</span>
+        <h2>Статус склада</h2>
+
+        <div class="segment-list">
+          <div>
+            <span>В наличии</span>
+            <strong>{{ healthyVisible }}</strong>
+          </div>
+          <div>
+            <span>Низкий остаток</span>
+            <strong>{{ lowStockVisible }}</strong>
+          </div>
+          <div>
+            <span>Нет в наличии</span>
+            <strong>{{ outOfStockVisible }}</strong>
+          </div>
+          <div>
+            <span>Закупочная стоимость</span>
+            <strong>{{ formatCurrency(visibleStockValue) }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="sidebar-panel quick-panel">
+        <span class="eyebrow">Операции</span>
+        <h2>Быстрые действия</h2>
+        <p>Пополните номенклатуру, создайте поставку или обновите данные перед приемкой.</p>
+        <a mat-stroked-button routerLink="/inventory/items/new">
+          <mat-icon>add</mat-icon>
+          Добавить товар
+        </a>
+        <button mat-stroked-button type="button" (click)="createPurchaseOrder()">
+          <mat-icon>shopping_cart</mat-icon>
+          Заказ поставщику
         </button>
-      </div>
-    </mat-card-content>
-  </mat-card>
-
-
-  <mat-card class="inventory-table-card">
-    <mat-card-header>
-      <mat-card-title>Товары на складе</mat-card-title>
-      <div class="table-actions">
-        <button mat-icon-button matTooltip="Обновить">
-          <mat-icon>refresh</mat-icon>
-        </button>
-
-        <button mat-icon-button [matMenuTriggerFor]="viewMenu" matTooltip="Настройки отображения">
-          <mat-icon>view_column</mat-icon>
-        </button>
-
-        <mat-menu #viewMenu="matMenu">
-          <button mat-menu-item>
-            <mat-icon>filter_list</mat-icon>
-            <span>Фильтры</span>
-          </button>
-          <button mat-menu-item>
-            <mat-icon>file_download</mat-icon>
-            <span>Экспорт</span>
-          </button>
-        </mat-menu>
-      </div>
-    </mat-card-header>
-
-    <mat-card-content>
-      <div class="table-container">
-        <table mat-table [dataSource]="dataSource" matSort class="inventory-table">
-
-
-          <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Товар</th>
-            <td mat-cell *matCellDef="let item">
-              <div class="item-info">
-                <div class="item-name">{{ item.name }}</div>
-                <div class="item-sku">{{ item.sku }}</div>
-              </div>
-            </td>
-          </ng-container>
-
-
-          <ng-container matColumnDef="sku">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Артикул</th>
-            <td mat-cell *matCellDef="let item">
-              {{ item.sku }}
-            </td>
-          </ng-container>
-
-
-          <ng-container matColumnDef="category">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Категория</th>
-            <td mat-cell *matCellDef="let item">
-              <mat-chip class="category-chip">{{ item.category || item.category_name }}</mat-chip>
-            </td>
-          </ng-container>
-
-
-          <ng-container matColumnDef="stock_status">
-            <th mat-header-cell *matHeaderCellDef>Статус</th>
-            <td mat-cell *matCellDef="let item">
-              <mat-chip [class]="getStockStatusClass(item.stock_status)">
-                {{ getStockStatusLabel(item.stock_status) }}
-              </mat-chip>
-            </td>
-          </ng-container>
-
-
-          <ng-container matColumnDef="stock_level">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Остаток</th>
-            <td mat-cell *matCellDef="let item">
-              <div class="stock-info">
-                <div class="stock-quantity">{{ item.total_stock }} шт</div>
-                <mat-progress-bar
-                  [value]="getStockLevel(item)"
-                  [color]="item.stock_status === 'in_stock' ? 'primary' : 'warn'"
-                  class="stock-progress">
-                </mat-progress-bar>
-                <div class="stock-min">мин: {{ item.min_quantity }}</div>
-              </div>
-            </td>
-          </ng-container>
-
-
-          <ng-container matColumnDef="price">
-            <th mat-header-cell *matHeaderCellDef>Цена</th>
-            <td mat-cell *matCellDef="let item">
-              <div class="price-info">
-                <div class="selling-price">{{ formatCurrency(item.selling_price) }}</div>
-                <div class="purchase-price">закуп: {{ formatCurrency(item.purchase_price) }}</div>
-              </div>
-            </td>
-          </ng-container>
-
-
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Действия</th>
-            <td mat-cell *matCellDef="let item">
-              <button mat-icon-button [matMenuTriggerFor]="actionsMenu">
-                <mat-icon>more_vert</mat-icon>
-              </button>
-
-              <mat-menu #actionsMenu="matMenu">
-                <button mat-menu-item (click)="viewItemDetails(item)">
-                  <mat-icon>visibility</mat-icon>
-                  <span>Подробности</span>
-                </button>
-
-                <button mat-menu-item (click)="adjustStock(item)">
-                  <mat-icon>edit</mat-icon>
-                  <span>Корректировка</span>
-                </button>
-
-                <button mat-menu-item>
-                  <mat-icon>history</mat-icon>
-                  <span>История движений</span>
-                </button>
-
-                <mat-divider></mat-divider>
-
-                <button mat-menu-item>
-                  <mat-icon>shopping_cart</mat-icon>
-                  <span>Заказать у поставщика</span>
-                </button>
-              </mat-menu>
-            </td>
-          </ng-container>
-
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-              [class.low-stock-row]="row.stock_status === 'low_stock'"
-              [class.out-stock-row]="row.stock_status === 'out_of_stock'">
-          </tr>
-        </table>
-      </div>
-
-      <mat-paginator
-        [pageSizeOptions]="[10, 25, 50, 100]"
-        [pageSize]="25"
-        showFirstLastButtons>
-      </mat-paginator>
-    </mat-card-content>
-  </mat-card>
+      </section>
+    </aside>
+  </section>
 </div>

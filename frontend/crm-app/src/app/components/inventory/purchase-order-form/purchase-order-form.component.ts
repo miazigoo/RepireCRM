@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -38,12 +38,14 @@ export class PurchaseOrderFormComponent implements OnInit {
   loading = false;
   suppliers: Supplier[] = [];
   items: InventoryItem[] = [];
+  private preselectedItemId: number | null = null;
 
   form: FormGroup;
 
   constructor(
     private fb: FormBuilder,
     private inventoryService: InventoryService,
+    private route: ActivatedRoute,
     private router: Router,
     private snackBar: MatSnackBar
   ) {
@@ -58,13 +60,27 @@ export class PurchaseOrderFormComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    const itemId = Number(this.route.snapshot.queryParamMap.get('item_id'));
+    this.preselectedItemId = Number.isFinite(itemId) && itemId > 0 ? itemId : null;
+
     this.inventoryService.getSuppliers().subscribe((suppliers) => {
       this.suppliers = suppliers;
     });
 
     this.inventoryService.getInventoryItems().subscribe((items) => {
       this.items = items;
+      this.applyPreselectedItem();
     });
+  }
+
+  private applyPreselectedItem(): void {
+    if (!this.preselectedItemId || !this.items.some(item => item.id === this.preselectedItemId)) {
+      return;
+    }
+
+    this.form.patchValue({ item_id: this.preselectedItemId });
+    this.onItemSelected(this.preselectedItemId);
+    this.preselectedItemId = null;
   }
 
   onItemSelected(itemId: number): void {

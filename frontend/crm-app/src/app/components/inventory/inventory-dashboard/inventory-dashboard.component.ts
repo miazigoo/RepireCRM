@@ -1,43 +1,19 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
+import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { MAT_FORM_FIELD_DEFAULT_OPTIONS, MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
 import { MatSortModule, MatSort } from '@angular/material/sort';
-import { MatTabsModule } from '@angular/material/tabs';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatBadgeModule } from '@angular/material/badge';
-import { MatDividerModule } from '@angular/material/divider';
-import { InventoryService } from '../../../services/inventory.service';
-
-interface InventoryItem {
-  id: number;
-  name: string;
-  sku: string;
-  category: string;
-  category_name?: string;
-  total_stock: number;
-  min_quantity: number;
-  selling_price: number;
-  purchase_price: number;
-  stock_status: 'in_stock' | 'low_stock' | 'out_of_stock';
-  last_movement_date: string;
-}
-
-interface StockAlert {
-  id: number;
-  item_name: string;
-  current_stock: number;
-  min_quantity: number;
-  shop_name: string;
-  alert_type: 'low_stock' | 'out_of_stock' | 'overstock';
-}
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { InventoryItem, InventoryService, StockAlert } from '../../../services/inventory.service';
 
 @Component({
   selector: 'app-inventory-dashboard',
@@ -45,32 +21,42 @@ interface StockAlert {
   imports: [
     CommonModule,
     RouterModule,
-    MatCardModule,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
     MatButtonModule,
     MatIconModule,
     MatTableModule,
     MatPaginatorModule,
     MatSortModule,
-    MatTabsModule,
-    MatChipsModule,
     MatMenuModule,
-    MatProgressBarModule,
-    MatTooltipModule,
-    MatBadgeModule,
-    MatDividerModule
+    MatProgressSpinnerModule
   ],
   templateUrl: './inventory-dashboard.component.html',
-  styleUrl: './inventory-dashboard.component.css'
+  styleUrl: './inventory-dashboard.component.scss',
+  providers: [
+    {
+      provide: MAT_FORM_FIELD_DEFAULT_OPTIONS,
+      useValue: {
+        appearance: 'outline',
+        floatLabel: 'always'
+      }
+    }
+  ]
 })
-export class InventoryDashboardComponent implements OnInit {
+export class InventoryDashboardComponent implements OnInit, AfterViewInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
   displayedColumns: string[] = ['name', 'sku', 'category', 'stock_status', 'stock_level', 'price', 'actions'];
   dataSource = new MatTableDataSource<InventoryItem>();
+  allItems: InventoryItem[] = [];
+  filtersForm: FormGroup;
 
   stockAlerts: StockAlert[] = [];
   loading = false;
+  lastUpdatedAt: Date | null = null;
 
   inventoryStats = {
     total_items: 0,
@@ -80,15 +66,27 @@ export class InventoryDashboardComponent implements OnInit {
     turnover_rate: 0
   };
 
+  private readonly moneyFormatter = new Intl.NumberFormat('ru-RU', {
+    maximumFractionDigits: 0
+  });
+
   constructor(
     private inventoryService: InventoryService,
-    private router: Router
-  ) {}
+    private router: Router,
+    private fb: FormBuilder
+  ) {
+    this.filtersForm = this.fb.group({
+      search: [''],
+      stock_status: [''],
+      category: ['']
+    });
+  }
 
   ngOnInit(): void {
     this.loadInventoryData();
     this.loadStockAlerts();
     this.loadInventoryStats();
+    this.setupFilters();
   }
 
   ngAfterViewInit(): void {
@@ -101,7 +99,9 @@ export class InventoryDashboardComponent implements OnInit {
 
     this.inventoryService.getInventoryItems().subscribe({
       next: (items) => {
-        this.dataSource.data = items;
+        this.allItems = items;
+        this.applyFilters();
+        this.lastUpdatedAt = new Date();
         this.loading = false;
       },
       error: (error) => {
@@ -109,6 +109,40 @@ export class InventoryDashboardComponent implements OnInit {
         this.loading = false;
       }
     });
+  }
+
+  private setupFilters(): void {
+    this.filtersForm.valueChanges
+      .pipe(
+        debounceTime(250),
+        distinctUntilChanged()
+      )
+      .subscribe(() => this.applyFilters());
+  }
+
+  private applyFilters(): void {
+    const { search, stock_status, category } = this.filtersForm.getRawValue();
+    const query = String(search || '').trim().toLowerCase();
+
+    this.dataSource.data = this.allItems.filter(item => {
+      const searchable = [
+        item.name,
+        item.sku,
+        item.category,
+        item.category_name,
+        item.primary_supplier_name
+      ].filter(Boolean).join(' ').toLowerCase();
+
+      const matchesSearch = !query || searchable.includes(query);
+      const matchesStatus = !stock_status || item.stock_status === stock_status;
+      const matchesCategory = !category || this.getCategoryLabel(item) === category;
+
+      return matchesSearch && matchesStatus && matchesCategory;
+    });
+
+    if (this.paginator) {
+      this.paginator.firstPage();
+    }
   }
 
   private loadStockAlerts(): void {
@@ -131,6 +165,62 @@ export class InventoryDashboardComponent implements OnInit {
         console.error('Error loading inventory stats:', error);
       }
     });
+  }
+
+  get items(): InventoryItem[] {
+    return this.dataSource.data;
+  }
+
+  get totalItems(): number {
+    return this.items.length;
+  }
+
+  get totalUnits(): number {
+    return this.items.reduce((sum, item) => sum + Number(item.total_stock || 0), 0);
+  }
+
+  get visibleStockValue(): number {
+    return this.items.reduce((sum, item) =>
+      sum + Number(item.total_stock || 0) * Number(item.purchase_price || 0), 0);
+  }
+
+  get visibleRetailValue(): number {
+    return this.items.reduce((sum, item) =>
+      sum + Number(item.total_stock || 0) * Number(item.selling_price || 0), 0);
+  }
+
+  get potentialMargin(): number {
+    return this.visibleRetailValue - this.visibleStockValue;
+  }
+
+  get lowStockVisible(): number {
+    return this.items.filter(item => item.stock_status === 'low_stock').length;
+  }
+
+  get outOfStockVisible(): number {
+    return this.items.filter(item => item.stock_status === 'out_of_stock').length;
+  }
+
+  get healthyVisible(): number {
+    return this.items.filter(item => item.stock_status === 'in_stock').length;
+  }
+
+  get categoryOptions(): string[] {
+    return Array.from(new Set(this.allItems.map(item => this.getCategoryLabel(item)).filter(Boolean))).sort();
+  }
+
+  get hasActiveFilters(): boolean {
+    return Object.values(this.filtersForm.getRawValue()).some(value =>
+      value !== '' && value !== null && value !== undefined
+    );
+  }
+
+  get criticalAlerts(): StockAlert[] {
+    return this.stockAlerts.filter(alert => alert.alert_type === 'out_of_stock');
+  }
+
+  get warningAlerts(): StockAlert[] {
+    return this.stockAlerts.filter(alert => alert.alert_type === 'low_stock');
   }
 
   getStockStatusClass(status: string): string {
@@ -156,6 +246,20 @@ export class InventoryDashboardComponent implements OnInit {
     return Math.min(100, (item.total_stock / (item.min_quantity * 2)) * 100);
   }
 
+  getStockLevelStyle(item: InventoryItem): string {
+    return `${this.getStockLevel(item)}%`;
+  }
+
+  getCategoryLabel(item: InventoryItem): string {
+    return item.category_name || item.category || 'Без категории';
+  }
+
+  getStockText(item: InventoryItem): string {
+    const total = Number(item.total_stock || 0);
+    const min = Number(item.min_quantity || 0);
+    return `${total} шт · мин ${min}`;
+  }
+
   getAlertIcon(alertType: string): string {
     switch (alertType) {
       case 'low_stock': return 'warning';
@@ -175,15 +279,33 @@ export class InventoryDashboardComponent implements OnInit {
   }
 
   formatCurrency(value: number): string {
-    return new Intl.NumberFormat('ru-RU', {
-      style: 'currency',
-      currency: 'RUB',
-      maximumFractionDigits: 0
-    }).format(value);
+    return `${this.moneyFormatter.format(Number(value || 0))} ₽`;
   }
 
   createPurchaseOrder(): void {
     this.router.navigate(['/inventory/purchase-orders/new']);
+  }
+
+  createPurchaseOrderFor(item: InventoryItem): void {
+    this.router.navigate(['/inventory/purchase-orders/new'], {
+      queryParams: {
+        item_id: item.id
+      }
+    });
+  }
+
+  clearFilters(): void {
+    this.filtersForm.reset({
+      search: '',
+      stock_status: '',
+      category: ''
+    });
+  }
+
+  refreshInventory(): void {
+    this.loadInventoryData();
+    this.loadStockAlerts();
+    this.loadInventoryStats();
   }
 
   adjustStock(item: InventoryItem): void {
@@ -192,5 +314,9 @@ export class InventoryDashboardComponent implements OnInit {
 
   viewItemDetails(item: InventoryItem): void {
     // Переход к детальной информации о товаре
+  }
+
+  trackById(_: number, item: InventoryItem): number {
+    return item.id;
   }
 }
