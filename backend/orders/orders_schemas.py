@@ -216,6 +216,10 @@ class OrderSchema(Schema):
     notes: Optional[str] = None
 
     @staticmethod
+    def resolve_additional_services(obj):
+        return obj.orderservice_set.all()
+
+    @staticmethod
     def resolve_cost_estimate(obj):
         return float(obj.cost_estimate)
 

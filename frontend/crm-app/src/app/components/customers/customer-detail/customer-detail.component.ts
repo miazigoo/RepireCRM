@@ -1,17 +1,12 @@
-// frontend/crm-app/src/app/features/customers/customer-detail/customer-detail.component.ts
 import { Component, OnInit } from '@angular/core';
-import { NgIf, NgFor, DatePipe, CurrencyPipe } from '@angular/common';
+import { NgClass, NgFor, NgIf, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTabsModule } from '@angular/material/tabs';
 import { CustomersService } from '../../../services/customers.service';
 import { Customer } from '../../../core/models/models';
 
@@ -19,19 +14,23 @@ import { Customer } from '../../../core/models/models';
   selector: 'app-customer-detail',
   standalone: true,
   imports: [
-    NgIf, NgFor, DatePipe, CurrencyPipe, RouterModule,
-    MatCardModule, MatButtonModule, MatIconModule, MatChipsModule,
-    MatDividerModule, MatMenuModule, MatProgressSpinnerModule,
-    MatSnackBarModule, MatTableModule, MatTabsModule
+    NgIf, NgFor, NgClass, DatePipe, RouterModule,
+    MatButtonModule, MatIconModule, MatDividerModule, MatMenuModule,
+    MatProgressSpinnerModule, MatSnackBarModule
   ],
   templateUrl: './customer-detail.component.html',
-  styleUrl: './customer-detail.component.css'
+  styleUrl: './customer-detail.component.scss'
 })
 export class CustomerDetailComponent implements OnInit {
   customer: Customer | null = null;
   customerOrders: any[] = [];
   loading = false;
   customerId: number;
+  lastUpdatedAt: Date | null = null;
+
+  private readonly moneyFormatter = new Intl.NumberFormat('ru-RU', {
+    maximumFractionDigits: 0
+  });
 
   constructor(
     private route: ActivatedRoute,
@@ -52,6 +51,7 @@ export class CustomerDetailComponent implements OnInit {
     this.customersService.getCustomer(this.customerId).subscribe({
       next: (customer) => {
         this.customer = customer;
+        this.lastUpdatedAt = new Date();
         this.loading = false;
       },
       error: (error) => {
@@ -113,6 +113,14 @@ export class CustomerDetailComponent implements OnInit {
     return sourceLabels[source] || source;
   }
 
+  getChannelLabel(channel?: string): string {
+    const channelLabels: {[key: string]: string} = {
+      'email': 'Email',
+      'sms': 'SMS'
+    };
+    return channel ? channelLabels[channel] || channel : 'Не выбран';
+  }
+
   getStatusLabel(status: string): string {
     const statusLabels: {[key: string]: string} = {
       'received': 'Принят',
@@ -125,5 +133,42 @@ export class CustomerDetailComponent implements OnInit {
       'cancelled': 'Отменен'
     };
     return statusLabels[status] || status;
+  }
+
+  getCustomerFullName(customer: Customer): string {
+    return [customer.last_name, customer.first_name, customer.middle_name].filter(Boolean).join(' ');
+  }
+
+  getCustomerInitials(customer: Customer): string {
+    const first = customer.first_name?.charAt(0) || '';
+    const last = customer.last_name?.charAt(0) || '';
+    return `${last}${first}`.toUpperCase() || 'К';
+  }
+
+  getCustomerTier(customer: Customer): string {
+    const spent = Number(customer.total_spent || 0);
+    const orders = Number(customer.orders_count || 0);
+
+    if (spent >= 50000 || orders >= 10) {
+      return 'VIP';
+    }
+
+    if (spent >= 15000 || orders >= 3) {
+      return 'Лояльный';
+    }
+
+    return orders > 0 ? 'Активный' : 'Новый';
+  }
+
+  getOrderAmount(order: any): number {
+    return Number(order.final_cost || order.cost_estimate || 0);
+  }
+
+  formatMoney(value: number | null | undefined): string {
+    return `${this.moneyFormatter.format(Number(value || 0))} ₽`;
+  }
+
+  trackById(_: number, item: { id: number }): number {
+    return item.id;
   }
 }

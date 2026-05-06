@@ -44,6 +44,17 @@ describe('OrdersService', () => {
     });
   });
 
+  it('omits empty filter values before calling the orders API', () => {
+    apiService.get.and.returnValue(of([]));
+
+    service.getOrders(1, 100, { search: '', status: '' as any, priority: '' as any }).subscribe();
+
+    expect(apiService.get).toHaveBeenCalledOnceWith('/orders', {
+      page: 1,
+      page_size: 100,
+    });
+  });
+
   it('unwraps backend paginated order responses', () => {
     const order = { id: 1, order_number: 'ORD-001', status: 'received' } as Order;
     apiService.get.and.returnValue(of({ items: [order], count: 1 }));

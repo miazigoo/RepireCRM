@@ -25,11 +25,15 @@ export class OrdersService {
   constructor(private apiService: ApiService) {}
 
   getOrders(page: number = 1, pageSize: number = 20, filters?: OrderFilters): Observable<Order[]> {
-    const params = {
+    const rawParams = {
       page,
       page_size: pageSize,
       ...filters
     };
+    const params = Object.fromEntries(
+      Object.entries(rawParams).filter(([, value]) => value !== '' && value !== null && value !== undefined)
+    );
+
     return this.apiService.get<OrderListResponse>(this.endpoint, params).pipe(
       map(response => Array.isArray(response) ? response : response.items)
     );

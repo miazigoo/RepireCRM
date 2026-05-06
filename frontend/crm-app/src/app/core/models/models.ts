@@ -78,6 +78,8 @@ export interface Customer {
   source_details?: string;
   birth_date?: string;
   notes?: string;
+  preferred_channel?: string;
+  marketing_consent?: boolean;
   orders_count: number;
   total_spent: number;
   created_at: string;

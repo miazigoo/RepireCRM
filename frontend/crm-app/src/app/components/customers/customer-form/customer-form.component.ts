@@ -1,10 +1,8 @@
-// frontend/crm-app/src/app/features/customers/customer-form/customer-form.component.ts
 import { Component, OnInit } from '@angular/core';
 import { NgIf, NgFor } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
+import { MAT_FORM_FIELD_DEFAULT_OPTIONS, MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,6 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { CustomersService } from '../../../services/customers.service';
 import { Customer } from '../../../core/models/models';
@@ -21,13 +20,22 @@ import { Customer } from '../../../core/models/models';
   standalone: true,
   imports: [
     NgIf, NgFor, ReactiveFormsModule,
-    MatCardModule, MatFormFieldModule, MatInputModule, MatSelectModule,
+    MatFormFieldModule, MatInputModule, MatSelectModule,
     MatButtonModule, MatIconModule, MatDatepickerModule,
-    MatProgressSpinnerModule, MatSnackBarModule
+    MatProgressSpinnerModule, MatSnackBarModule, MatCheckboxModule
   ],
-  providers: [provideNativeDateAdapter()],
+  providers: [
+    provideNativeDateAdapter(),
+    {
+      provide: MAT_FORM_FIELD_DEFAULT_OPTIONS,
+      useValue: {
+        appearance: 'outline',
+        floatLabel: 'always'
+      }
+    }
+  ],
   templateUrl: './customer-form.component.html',
-  styleUrl: './customer-form.component.css'
+  styleUrl: './customer-form.component.scss'
 })
 export class CustomerFormComponent implements OnInit {
   customerForm: FormGroup;
@@ -44,6 +52,14 @@ export class CustomerFormComponent implements OnInit {
     { value: 'other', label: 'Другое' }
   ];
 
+  channelOptions = [
+    { value: '', label: 'Не выбран' },
+    { value: 'sms', label: 'SMS' },
+    { value: 'email', label: 'Email' }
+  ];
+
+  private readonly phonePattern = /^(\+?\d[\d\s().-]{6,20})$/;
+
   constructor(
     private fb: FormBuilder,
     private route: ActivatedRoute,
@@ -55,11 +71,13 @@ export class CustomerFormComponent implements OnInit {
       first_name: ['', [Validators.required, Validators.maxLength(50)]],
       last_name: ['', [Validators.required, Validators.maxLength(50)]],
       middle_name: ['', Validators.maxLength(50)],
-      phone: ['', [Validators.required, Validators.pattern(/^\+?[1-9]\d{1,14}$/)]],
+      phone: ['', [Validators.required, Validators.pattern(this.phonePattern)]],
       email: ['', [Validators.email, Validators.maxLength(254)]],
       source: [''],
       source_details: ['', Validators.maxLength(200)],
       birth_date: [''],
+      preferred_channel: [''],
+      marketing_consent: [false],
       notes: ['', Validators.maxLength(1000)]
     });
   }
@@ -98,15 +116,19 @@ export class CustomerFormComponent implements OnInit {
       source: customer.source,
       source_details: customer.source_details,
       birth_date: customer.birth_date ? new Date(customer.birth_date) : null,
+      preferred_channel: customer.preferred_channel || '',
+      marketing_consent: customer.marketing_consent,
       notes: customer.notes
     });
   }
 
   onSubmit(): void {
+    this.trimTextControls();
+
     if (this.customerForm.valid) {
       this.loading = true;
 
-      const formData = this.customerForm.value;
+      const formData = this.buildPayload();
 
       const request = this.isEditMode
         ? this.customersService.updateCustomer(this.customerId!, formData)
@@ -127,6 +149,45 @@ export class CustomerFormComponent implements OnInit {
     } else {
       this.markFormGroupTouched();
     }
+  }
+
+  private trimTextControls(): void {
+    [
+      'first_name',
+      'last_name',
+      'middle_name',
+      'phone',
+      'email',
+      'source_details',
+      'notes'
+    ].forEach(field => {
+      const control = this.customerForm.get(field);
+      const value = control?.value;
+      if (typeof value === 'string') {
+        control?.setValue(value.trim(), { emitEvent: false });
+      }
+    });
+  }
+
+  private buildPayload(): Partial<Customer> {
+    const value = this.customerForm.getRawValue();
+    const birthDate = value.birth_date instanceof Date
+      ? value.birth_date.toISOString().slice(0, 10)
+      : value.birth_date || null;
+
+    return {
+      first_name: (value.first_name || '').trim(),
+      last_name: (value.last_name || '').trim(),
+      middle_name: (value.middle_name || '').trim(),
+      phone: (value.phone || '').trim(),
+      email: (value.email || '').trim(),
+      source: value.source || '',
+      source_details: (value.source_details || '').trim(),
+      birth_date: birthDate || undefined,
+      preferred_channel: value.preferred_channel || '',
+      marketing_consent: Boolean(value.marketing_consent),
+      notes: (value.notes || '').trim()
+    };
   }
 
   private markFormGroupTouched(): void {
@@ -161,5 +222,26 @@ export class CustomerFormComponent implements OnInit {
       }
     }
     return '';
+  }
+
+  get formTitle(): string {
+    return this.isEditMode ? 'Редактирование клиента' : 'Новый клиент';
+  }
+
+  get previewName(): string {
+    const value = this.customerForm.getRawValue();
+    return [value.last_name, value.first_name, value.middle_name].filter(Boolean).join(' ') || 'Клиент';
+  }
+
+  get previewInitials(): string {
+    const value = this.customerForm.getRawValue();
+    const first = value.first_name?.charAt(0) || '';
+    const last = value.last_name?.charAt(0) || '';
+    return `${last}${first}`.toUpperCase() || 'К';
+  }
+
+  get selectedSourceLabel(): string {
+    const source = this.customerForm.get('source')?.value;
+    return this.sourceOptions.find(option => option.value === source)?.label || 'Источник не указан';
   }
 }

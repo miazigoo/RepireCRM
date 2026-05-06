@@ -1,26 +1,24 @@
-
-<div class="customer-detail-container" *ngIf="!loading && customer">
-
-
-  <div class="header">
-    <div class="header-info">
-      <button mat-icon-button routerLink="/customers">
+<div class="customer-detail-page" *ngIf="!loading && customer as customer">
+  <header class="customer-hero">
+    <div class="hero-main">
+      <a mat-icon-button class="back-icon" routerLink="/customers" aria-label="Назад к клиентам">
         <mat-icon>arrow_back</mat-icon>
-      </button>
-      <div class="title-section">
-        <h1>{{ customer.last_name }} {{ customer.first_name }}</h1>
-        <div class="customer-meta">
-          <mat-chip class="source-chip" *ngIf="customer.source">
-            {{ getSourceLabel(customer.source) }}
-          </mat-chip>
-          <span class="customer-id">ID: {{ customer.id }}</span>
+      </a>
+      <span class="customer-avatar">{{ getCustomerInitials(customer) }}</span>
+      <div>
+        <span class="eyebrow">Карточка клиента</span>
+        <h1>{{ getCustomerFullName(customer) }}</h1>
+        <div class="hero-tags">
+          <span>{{ getCustomerTier(customer) }}</span>
+          <span *ngIf="customer.source">{{ getSourceLabel(customer.source) }}</span>
+          <span>ID {{ customer.id }}</span>
         </div>
       </div>
     </div>
 
-    <div class="header-actions">
-      <button mat-button [matMenuTriggerFor]="actionsMenu">
-        <mat-icon>more_vert</mat-icon>
+    <div class="hero-actions">
+      <button mat-stroked-button type="button" class="secondary-action" [matMenuTriggerFor]="actionsMenu">
+        <mat-icon>more_horiz</mat-icon>
         Действия
       </button>
       <mat-menu #actionsMenu="matMenu">
@@ -29,208 +27,211 @@
           <span>Редактировать</span>
         </button>
         <button mat-menu-item (click)="createOrder()">
-          <mat-icon>add</mat-icon>
+          <mat-icon>add_circle</mat-icon>
           <span>Новый заказ</span>
         </button>
         <mat-divider></mat-divider>
-        <button mat-menu-item
-                (click)="deleteCustomer()"
-                [disabled]="customer.orders_count > 0">
+        <button mat-menu-item (click)="deleteCustomer()" [disabled]="customer.orders_count > 0">
           <mat-icon>delete</mat-icon>
           <span>Удалить</span>
         </button>
       </mat-menu>
 
-      <button mat-raised-button color="primary" (click)="createOrder()">
+      <button mat-flat-button class="primary-action" type="button" (click)="createOrder()">
         <mat-icon>add</mat-icon>
         Новый заказ
       </button>
     </div>
-  </div>
+  </header>
 
+  <section class="metrics-grid" aria-label="Показатели клиента">
+    <article class="metric-card">
+      <span class="metric-icon primary">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M9 5.5h14a3 3 0 0 1 3 3v17a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-17a3 3 0 0 1 3-3Z" />
+          <path d="M11.5 13h9" />
+          <path d="M11.5 18h9" />
+          <path d="M11.5 23h5" />
+        </svg>
+      </span>
+      <div>
+        <small>Заказы</small>
+        <strong>{{ customer.orders_count }}</strong>
+        <span>{{ customerOrders.length }} в истории</span>
+      </div>
+    </article>
 
-  <div class="content-grid">
+    <article class="metric-card">
+      <span class="metric-icon success">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M5.5 10h21v15.5h-21Z" />
+          <path d="M10 16h8a2.5 2.5 0 1 1 0 5h-5.5" />
+          <path d="M12.5 14.5v10" />
+          <path d="M10 21h11" />
+        </svg>
+      </span>
+      <div>
+        <small>Потрачено</small>
+        <strong>{{ formatMoney(customer.total_spent) }}</strong>
+        <span>за все обращения</span>
+      </div>
+    </article>
 
+    <article class="metric-card">
+      <span class="metric-icon accent">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M6 9.5h20v14H6Z" />
+          <path d="m7 11 9 6.5 9-6.5" />
+          <path d="M23 5.5v6" />
+        </svg>
+      </span>
+      <div>
+        <small>Канал связи</small>
+        <strong>{{ getChannelLabel(customer.preferred_channel) }}</strong>
+        <span>{{ customer.marketing_consent ? 'Согласие получено' : 'Без согласия' }}</span>
+      </div>
+    </article>
 
-    <div class="left-column">
+    <article class="metric-card">
+      <span class="metric-icon warning">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M8 6.5h16v19H8Z" />
+          <path d="M12 12h8" />
+          <path d="M12 16.5h8" />
+          <path d="M12 21h4" />
+        </svg>
+      </span>
+      <div>
+        <small>Создан</small>
+        <strong>{{ customer.created_at | date:'dd.MM.yyyy' }}</strong>
+        <span *ngIf="lastUpdatedAt">обновлено {{ lastUpdatedAt | date:'HH:mm' }}</span>
+      </div>
+    </article>
+  </section>
 
-
-      <mat-card class="info-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>person</mat-icon>
-            Личная информация
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="info-row">
-            <span class="label">Полное имя:</span>
-            <span class="value">
-              {{ customer.last_name }} {{ customer.first_name }}
-              <span *ngIf="customer.middle_name">{{ customer.middle_name }}</span>
-            </span>
+  <section class="detail-workspace">
+    <main class="detail-main">
+      <section class="orders-panel">
+        <header class="panel-header">
+          <div>
+            <span class="eyebrow">История</span>
+            <h2>Заказы клиента</h2>
           </div>
-          <div class="info-row" *ngIf="customer.birth_date">
-            <span class="label">Дата рождения:</span>
-            <span class="value">{{ customer.birth_date | date:'dd.MM.yyyy' }}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">Дата регистрации:</span>
-            <span class="value">{{ customer.created_at | date:'dd.MM.yyyy HH:mm' }}</span>
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-
-      <mat-card class="info-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>contact_phone</mat-icon>
-            Контактная информация
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="info-row">
-            <span class="label">Телефон:</span>
-            <span class="value">
-              <a href="tel:{{ customer.phone }}" class="contact-link">
-                {{ customer.phone }}
-              </a>
-            </span>
-          </div>
-          <div class="info-row" *ngIf="customer.email">
-            <span class="label">Email:</span>
-            <span class="value">
-              <a href="mailto:{{ customer.email }}" class="contact-link">
-                {{ customer.email }}
-              </a>
-            </span>
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-
-      <mat-card class="info-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>analytics</mat-icon>
-            Статистика
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="stats-grid">
-            <div class="stat-item">
-              <div class="stat-value">{{ customer.orders_count }}</div>
-              <div class="stat-label">Заказов</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-value">{{ customer.total_spent | currency:'RUB':'symbol':'1.0-0' }}</div>
-              <div class="stat-label">Потрачено</div>
-            </div>
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-
-      <mat-card class="info-card" *ngIf="customer.source">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>source</mat-icon>
-            Источник
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="info-row">
-            <span class="label">Откуда узнали:</span>
-            <span class="value">{{ getSourceLabel(customer.source) }}</span>
-          </div>
-          <div class="info-row" *ngIf="customer.source_details">
-            <span class="label">Детали:</span>
-            <span class="value">{{ customer.source_details }}</span>
-          </div>
-        </mat-card-content>
-      </mat-card>
-    </div>
-
-
-    <div class="right-column">
-
-
-      <mat-card class="notes-card" *ngIf="customer.notes">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>note</mat-icon>
-            Заметки
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <p class="notes-content">{{ customer.notes }}</p>
-        </mat-card-content>
-      </mat-card>
-
-
-      <mat-card class="orders-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>assignment</mat-icon>
-            История заказов ({{ customerOrders.length }})
-          </mat-card-title>
-          <button mat-button color="primary" (click)="createOrder()">
+          <button mat-stroked-button type="button" class="secondary-action" (click)="createOrder()">
             <mat-icon>add</mat-icon>
             Новый заказ
           </button>
-        </mat-card-header>
-        <mat-card-content>
+        </header>
 
-          <div class="orders-list" *ngIf="customerOrders.length > 0; else noOrders">
-            <div class="order-item" *ngFor="let order of customerOrders">
-              <div class="order-header">
-                <a [routerLink]="['/orders', order.id]" class="order-number">
-                  {{ order.order_number }}
-                </a>
-                <mat-chip [class]="'status-chip ' + order.status">
+        <div class="orders-list" *ngIf="customerOrders.length > 0; else noOrders">
+          <article class="order-item" *ngFor="let order of customerOrders; trackBy: trackById">
+            <span class="order-mark">
+              <svg viewBox="0 0 32 32" aria-hidden="true">
+                <path d="M9 5.5h14v21l-3-2-2.5 2-2.5-2-2.5 2-3.5-2Z" />
+                <path d="M12.5 12h7" />
+                <path d="M12.5 16h7" />
+                <path d="M12.5 20h4" />
+              </svg>
+            </span>
+
+            <div class="order-body">
+              <div class="order-topline">
+                <a [routerLink]="['/orders', order.id]">{{ order.order_number }}</a>
+                <span class="status-chip" [ngClass]="order.status">
                   {{ getStatusLabel(order.status) }}
-                </mat-chip>
+                </span>
               </div>
-
-              <div class="order-details">
-                <div class="device-info">
-                  <mat-icon>smartphone</mat-icon>
-                  <span>{{ order.device }}</span>
-                </div>
-                <div class="order-cost">
-                  <mat-icon>attach_money</mat-icon>
-                  <span>{{ order.final_cost || order.cost_estimate | currency:'RUB':'symbol':'1.0-0' }}</span>
-                </div>
-                <div class="order-date">
-                  <mat-icon>event</mat-icon>
-                  <span>{{ order.created_at | date:'dd.MM.yyyy' }}</span>
-                </div>
-                <div class="order-shop">
-                  <mat-icon>store</mat-icon>
-                  <span>{{ order.shop }}</span>
-                </div>
+              <p>{{ order.device }}</p>
+              <div class="order-meta">
+                <span>{{ order.shop }}</span>
+                <span>{{ order.created_at | date:'dd.MM.yyyy' }}</span>
               </div>
             </div>
+
+            <div class="order-price">
+              <strong>{{ formatMoney(getOrderAmount(order)) }}</strong>
+              <a mat-icon-button [routerLink]="['/orders', order.id]" aria-label="Открыть заказ">
+                <mat-icon>arrow_forward</mat-icon>
+              </a>
+            </div>
+          </article>
+        </div>
+
+        <ng-template #noOrders>
+          <div class="empty-state">
+            <span class="empty-icon">
+              <svg viewBox="0 0 64 64" aria-hidden="true">
+                <path d="M18 10h28v44l-6-4-5 4-5-4-5 4-7-4Z" />
+                <path d="M25 24h14" />
+                <path d="M25 32h14" />
+                <path d="M25 40h8" />
+              </svg>
+            </span>
+            <h3>Заказов пока нет</h3>
+            <p>Создайте первый заказ прямо из карточки клиента.</p>
+            <button mat-flat-button class="primary-action" type="button" (click)="createOrder()">
+              Создать заказ
+            </button>
           </div>
+        </ng-template>
+      </section>
+    </main>
 
-          <ng-template #noOrders>
-            <div class="no-orders">
-              <mat-icon>assignment</mat-icon>
-              <p>У клиента пока нет заказов</p>
-              <button mat-raised-button color="primary" (click)="createOrder()">
-                Создать первый заказ
-              </button>
-            </div>
-          </ng-template>
-        </mat-card-content>
-      </mat-card>
-    </div>
-  </div>
+    <aside class="detail-sidebar">
+      <section class="sidebar-panel">
+        <span class="eyebrow">Контакты</span>
+        <h2>Связь с клиентом</h2>
+
+        <div class="contact-list">
+          <a href="tel:{{ customer.phone }}">
+            <mat-icon>phone</mat-icon>
+            <span>{{ customer.phone }}</span>
+          </a>
+          <a *ngIf="customer.email" href="mailto:{{ customer.email }}">
+            <mat-icon>mail</mat-icon>
+            <span>{{ customer.email }}</span>
+          </a>
+          <div *ngIf="!customer.email">
+            <mat-icon>mail_off</mat-icon>
+            <span>Email не указан</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="sidebar-panel">
+        <span class="eyebrow">Профиль</span>
+        <h2>Данные клиента</h2>
+
+        <div class="info-list">
+          <div>
+            <span>Полное имя</span>
+            <strong>{{ getCustomerFullName(customer) }}</strong>
+          </div>
+          <div *ngIf="customer.birth_date">
+            <span>Дата рождения</span>
+            <strong>{{ customer.birth_date | date:'dd.MM.yyyy' }}</strong>
+          </div>
+          <div>
+            <span>Источник</span>
+            <strong>{{ customer.source ? getSourceLabel(customer.source) : 'Не указан' }}</strong>
+          </div>
+          <div *ngIf="customer.source_details">
+            <span>Детали</span>
+            <strong>{{ customer.source_details }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="sidebar-panel notes-panel">
+        <span class="eyebrow">Заметки</span>
+        <h2>Внутренняя информация</h2>
+        <p>{{ customer.notes || 'Заметок по клиенту пока нет.' }}</p>
+      </section>
+    </aside>
+  </section>
 </div>
 
-
-<div class="loading-container" *ngIf="loading">
-  <mat-spinner></mat-spinner>
-  <p>Загрузка клиента...</p>
+<div class="loading-state" *ngIf="loading">
+  <mat-spinner diameter="44"></mat-spinner>
+  <span>Загрузка клиента</span>
 </div>

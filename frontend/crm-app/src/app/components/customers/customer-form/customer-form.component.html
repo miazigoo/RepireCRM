@@ -1,85 +1,134 @@
+<div class="customer-form-page">
+  <header class="customer-form-hero">
+    <div>
+      <span class="eyebrow">Клиентская база</span>
+      <h1>{{ formTitle }}</h1>
+      <p>Контакты, источник, согласие на коммуникации и заметки для дальнейшей работы сервиса.</p>
+    </div>
 
-<div class="customer-form-container">
-  <div class="header">
-    <h1>{{ isEditMode ? 'Редактирование клиента' : 'Новый клиент' }}</h1>
-    <button mat-button (click)="cancel()">
+    <button mat-stroked-button type="button" class="back-button" (click)="cancel()">
       <mat-icon>arrow_back</mat-icon>
       Назад
     </button>
-  </div>
+  </header>
 
-  <mat-card class="form-card">
-    <mat-card-content>
+  <section class="form-workspace">
+    <main class="form-panel">
       <form [formGroup]="customerForm" (ngSubmit)="onSubmit()">
+        <section class="form-section">
+          <header class="section-header">
+            <span class="section-icon">
+              <svg viewBox="0 0 32 32" aria-hidden="true">
+                <path d="M16 16.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Z" />
+                <path d="M6.5 28a9.5 9.5 0 0 1 19 0" />
+              </svg>
+            </span>
+            <div>
+              <span class="eyebrow">01</span>
+              <h2>Профиль</h2>
+            </div>
+          </header>
 
-
-        <div class="form-section">
-          <h3>Личная информация</h3>
-
-          <div class="form-row">
+          <div class="form-grid">
             <mat-form-field>
-              <mat-label>Фамилия *</mat-label>
-              <input matInput formControlName="last_name" required>
+              <mat-label>Фамилия</mat-label>
+              <input matInput formControlName="last_name" required autocomplete="family-name">
               <mat-error>{{ getFieldError('last_name') }}</mat-error>
             </mat-form-field>
 
             <mat-form-field>
-              <mat-label>Имя *</mat-label>
-              <input matInput formControlName="first_name" required>
+              <mat-label>Имя</mat-label>
+              <input matInput formControlName="first_name" required autocomplete="given-name">
               <mat-error>{{ getFieldError('first_name') }}</mat-error>
             </mat-form-field>
-          </div>
 
-          <mat-form-field class="full-width">
-            <mat-label>Отчество</mat-label>
-            <input matInput formControlName="middle_name">
-            <mat-error>{{ getFieldError('middle_name') }}</mat-error>
-          </mat-form-field>
-
-          <mat-form-field class="full-width">
-            <mat-label>Дата рождения</mat-label>
-            <input matInput
-                   [matDatepicker]="birthDatePicker"
-                   formControlName="birth_date">
-            <mat-datepicker-toggle matIconSuffix [for]="birthDatePicker"></mat-datepicker-toggle>
-            <mat-datepicker #birthDatePicker></mat-datepicker>
-          </mat-form-field>
-        </div>
-
-
-        <div class="form-section">
-          <h3>Контактная информация</h3>
-
-          <div class="form-row">
             <mat-form-field>
-              <mat-label>Телефон *</mat-label>
-              <input matInput
-                     formControlName="phone"
-                     placeholder="+7 (999) 123-45-67"
-                     required>
+              <mat-label>Отчество</mat-label>
+              <input matInput formControlName="middle_name" autocomplete="additional-name">
+              <mat-error>{{ getFieldError('middle_name') }}</mat-error>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Дата рождения</mat-label>
+              <input matInput [matDatepicker]="birthDatePicker" formControlName="birth_date">
+              <mat-datepicker-toggle matIconSuffix [for]="birthDatePicker"></mat-datepicker-toggle>
+              <mat-datepicker #birthDatePicker></mat-datepicker>
+            </mat-form-field>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <header class="section-header">
+            <span class="section-icon success">
+              <svg viewBox="0 0 32 32" aria-hidden="true">
+                <path d="M8 6.5h16a2.5 2.5 0 0 1 2.5 2.5v14A2.5 2.5 0 0 1 24 25.5H8A2.5 2.5 0 0 1 5.5 23V9A2.5 2.5 0 0 1 8 6.5Z" />
+                <path d="m6.5 10 9.5 7 9.5-7" />
+              </svg>
+            </span>
+            <div>
+              <span class="eyebrow">02</span>
+              <h2>Контакты</h2>
+            </div>
+          </header>
+
+          <div class="form-grid">
+            <mat-form-field>
+              <mat-label>Телефон</mat-label>
+              <input
+                matInput
+                formControlName="phone"
+                placeholder="+7 999 123-45-67"
+                required
+                autocomplete="tel">
               <mat-error>{{ getFieldError('phone') }}</mat-error>
             </mat-form-field>
 
             <mat-form-field>
               <mat-label>Email</mat-label>
-              <input matInput
-                     type="email"
-                     formControlName="email"
-                     placeholder="example@domain.com">
+              <input matInput type="email" formControlName="email" autocomplete="email">
               <mat-error>{{ getFieldError('email') }}</mat-error>
             </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Канал связи</mat-label>
+              <mat-select formControlName="preferred_channel">
+                <mat-option *ngFor="let option of channelOptions" [value]="option.value">
+                  {{ option.label }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <label class="consent-box">
+              <mat-checkbox formControlName="marketing_consent">
+                Согласие на коммуникации
+              </mat-checkbox>
+            </label>
           </div>
-        </div>
+        </section>
 
+        <section class="form-section">
+          <header class="section-header">
+            <span class="section-icon accent">
+              <svg viewBox="0 0 32 32" aria-hidden="true">
+                <path d="M16 16 7.5 7.5" />
+                <path d="M16 16h10" />
+                <path d="M16 16 8.5 25" />
+                <path d="M6.5 10.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+                <path d="M26 20a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+                <path d="M7.5 29.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+              </svg>
+            </span>
+            <div>
+              <span class="eyebrow">03</span>
+              <h2>Источник и заметки</h2>
+            </div>
+          </header>
 
-        <div class="form-section">
-          <h3>Откуда узнали о нас</h3>
-
-          <div class="form-row">
+          <div class="form-grid">
             <mat-form-field>
               <mat-label>Источник</mat-label>
               <mat-select formControlName="source">
-                <mat-option value="">Не указано</mat-option>
+                <mat-option value="">Не указан</mat-option>
                 <mat-option *ngFor="let option of sourceOptions" [value]="option.value">
                   {{ option.label }}
                 </mat-option>
@@ -88,43 +137,62 @@
 
             <mat-form-field>
               <mat-label>Детали источника</mat-label>
-              <input matInput
-                     formControlName="source_details"
-                     placeholder="Дополнительная информация">
+              <input matInput formControlName="source_details">
               <mat-error>{{ getFieldError('source_details') }}</mat-error>
             </mat-form-field>
+
+            <mat-form-field class="span-2">
+              <mat-label>Заметки</mat-label>
+              <textarea matInput formControlName="notes" rows="5"></textarea>
+              <mat-hint>{{ customerForm.get('notes')?.value?.length || 0 }}/1000</mat-hint>
+              <mat-error>{{ getFieldError('notes') }}</mat-error>
+            </mat-form-field>
           </div>
-        </div>
+        </section>
 
-
-        <div class="form-section">
-          <h3>Дополнительная информация</h3>
-
-          <mat-form-field class="full-width">
-            <mat-label>Заметки</mat-label>
-            <textarea matInput
-                      formControlName="notes"
-                      rows="3"
-                      placeholder="Дополнительная информация о клиенте"></textarea>
-            <mat-hint>{{ customerForm.get('notes')?.value?.length || 0 }}/1000</mat-hint>
-            <mat-error>{{ getFieldError('notes') }}</mat-error>
-          </mat-form-field>
-        </div>
-
-
-        <div class="form-actions">
-          <button mat-button type="button" (click)="cancel()">
+        <footer class="form-actions">
+          <button mat-stroked-button type="button" class="cancel-button" (click)="cancel()">
             Отмена
           </button>
-          <button mat-raised-button
-                  color="primary"
-                  type="submit"
-                  [disabled]="loading">
-            <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
-            <span *ngIf="!loading">{{ isEditMode ? 'Сохранить изменения' : 'Создать клиента' }}</span>
+          <button mat-flat-button class="submit-button" type="submit" [disabled]="loading">
+            <mat-spinner diameter="18" *ngIf="loading"></mat-spinner>
+            <mat-icon *ngIf="!loading">save</mat-icon>
+            <span>{{ isEditMode ? 'Сохранить' : 'Создать клиента' }}</span>
           </button>
-        </div>
+        </footer>
       </form>
-    </mat-card-content>
-  </mat-card>
+    </main>
+
+    <aside class="customer-preview">
+      <section class="preview-card">
+        <span class="preview-avatar">{{ previewInitials }}</span>
+        <h2>{{ previewName }}</h2>
+        <p>{{ customerForm.get('phone')?.value || 'Телефон не указан' }}</p>
+
+        <div class="preview-tags">
+          <span>{{ selectedSourceLabel }}</span>
+          <span>{{ customerForm.get('preferred_channel')?.value || 'Канал не выбран' }}</span>
+        </div>
+      </section>
+
+      <section class="side-panel">
+        <span class="eyebrow">Контроль</span>
+        <h2>Готовность карточки</h2>
+        <div class="check-list">
+          <div [class.done]="customerForm.get('last_name')?.valid && customerForm.get('first_name')?.valid">
+            <mat-icon>person</mat-icon>
+            <span>ФИО</span>
+          </div>
+          <div [class.done]="customerForm.get('phone')?.valid">
+            <mat-icon>phone</mat-icon>
+            <span>Телефон</span>
+          </div>
+          <div [class.done]="customerForm.get('email')?.valid || !customerForm.get('email')?.value">
+            <mat-icon>alternate_email</mat-icon>
+            <span>Email</span>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </section>
 </div>

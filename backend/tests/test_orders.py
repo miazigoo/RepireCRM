@@ -11,9 +11,11 @@ from django.utils import timezone
 from customers.models import Customer
 from device.models import Device, DeviceBrand, DeviceModel, DeviceType
 from orders.models import (
+    AdditionalService,
     Order,
     OrderApproval,
     OrderAuditLog,
+    OrderService,
     OrderStatusHistory,
     RepairStage,
 )
@@ -195,6 +197,33 @@ class OrderTestCase(TestCase):
                 response = self.client.get(route, **self.auth_headers())
 
                 self.assertEqual(response.status_code, 200, response.content)
+
+    def test_order_list_serializes_additional_services_through_order_service(self):
+        order = self.create_order()
+        service = AdditionalService.objects.create(
+            name="Защитное стекло",
+            category=AdditionalService.ServiceCategory.PROTECTION,
+            price=900,
+        )
+        OrderService.objects.create(
+            order=order,
+            service=service,
+            quantity=2,
+            price=900,
+        )
+
+        response = self.client.get(
+            "/api/orders/",
+            data={"page": 1, "page_size": 100},
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        payload = response.json()
+        additional_services = payload["items"][0]["additional_services"]
+        self.assertEqual(additional_services[0]["service"]["name"], "Защитное стекло")
+        self.assertEqual(additional_services[0]["quantity"], 2)
+        self.assertEqual(additional_services[0]["total_price"], 1800.0)
 
     def test_create_order_endpoint_accepts_trailing_slash_post(self):
         response = self.client.post(
