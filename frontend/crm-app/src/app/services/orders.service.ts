@@ -15,6 +15,7 @@ import {
 } from '../core/models/models';
 
 type OrderListResponse = Order[] | PaginatedResponse<Order>;
+type OrderUpdatePayload = Partial<Order> & { status_comment?: string };
 
 @Injectable({
   providedIn: 'root'
@@ -47,7 +48,7 @@ export class OrdersService {
     return this.apiService.post<Order>(`${this.endpoint}/`, order);
   }
 
-  updateOrder(id: number, order: Partial<Order>): Observable<Order> {
+  updateOrder(id: number, order: OrderUpdatePayload): Observable<Order> {
     return this.apiService.put<Order>(`${this.endpoint}/${id}`, order);
   }
 

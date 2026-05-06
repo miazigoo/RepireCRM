@@ -1,20 +1,16 @@
 // frontend/crm-app/src/app/features/orders/order-detail/order-detail.component.ts
 import { Component, OnInit } from '@angular/core';
-import { NgIf, NgFor, NgClass, DatePipe, CurrencyPipe } from '@angular/common';
+import { NgIf, NgFor, NgClass, DatePipe } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
+import { MAT_FORM_FIELD_DEFAULT_OPTIONS, MatFormFieldModule } from '@angular/material/form-field';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatTableModule } from '@angular/material/table';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { finalize } from 'rxjs';
@@ -24,6 +20,7 @@ import {
   OrderApproval,
   OrderAuditLog,
   OrderStatusHistory,
+  OrderStatus,
   RepairStage
 } from '../../../core/models/models';
 
@@ -31,20 +28,30 @@ import {
   selector: 'app-order-detail',
   standalone: true,
   imports: [
-    NgIf, NgFor, DatePipe, CurrencyPipe, RouterModule, ReactiveFormsModule,
-    MatCardModule, MatButtonModule, MatIconModule, MatChipsModule,
-    MatDividerModule, MatMenuModule, MatDialogModule, MatSnackBarModule,
-    MatProgressSpinnerModule, MatTabsModule, MatTableModule, MatFormFieldModule,
+    NgIf, NgFor, NgClass, DatePipe, RouterModule, ReactiveFormsModule,
+    MatButtonModule, MatIconModule,
+    MatDividerModule, MatMenuModule, MatSnackBarModule,
+    MatProgressSpinnerModule, MatTabsModule, MatFormFieldModule,
     MatInputModule, MatCheckboxModule
   ],
   templateUrl: './order-detail.component.html',
-  styleUrl: './order-detail.component.css'
+  styleUrl: './order-detail.component.scss',
+  providers: [
+    {
+      provide: MAT_FORM_FIELD_DEFAULT_OPTIONS,
+      useValue: {
+        appearance: 'outline',
+        floatLabel: 'always'
+      }
+    }
+  ]
 })
 export class OrderDetailComponent implements OnInit {
   order: Order | null = null;
   loading = false;
   stageSaving = false;
   approvalSaving = false;
+  statusSaving = false;
   orderId: number;
 
   statusHistory: OrderStatusHistory[] = [];
@@ -56,11 +63,25 @@ export class OrderDetailComponent implements OnInit {
   approvalForm: FormGroup;
   selectedStagePhoto: File | null = null;
 
+  readonly statusOptions: Array<{ value: OrderStatus; label: string; icon: string }> = [
+    { value: 'received', label: 'Принят', icon: 'inbox' },
+    { value: 'diagnosed', label: 'Диагностика', icon: 'search' },
+    { value: 'waiting_parts', label: 'Ожидание запчастей', icon: 'inventory_2' },
+    { value: 'in_repair', label: 'В ремонте', icon: 'build' },
+    { value: 'testing', label: 'Тестирование', icon: 'fact_check' },
+    { value: 'ready', label: 'Готов', icon: 'task_alt' },
+    { value: 'completed', label: 'Выдан', icon: 'done_all' },
+    { value: 'cancelled', label: 'Отменен', icon: 'cancel' }
+  ];
+
+  private readonly moneyFormatter = new Intl.NumberFormat('ru-RU', {
+    maximumFractionDigits: 0
+  });
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private ordersService: OrdersService,
-    private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private fb: FormBuilder
   ) {
@@ -146,8 +167,7 @@ export class OrderDetailComponent implements OnInit {
   }
 
   changeStatus(): void {
-    // Open status change dialog
-    console.log('Change status');
+    this.snackBar.open('Выберите новый статус в шкале заказа', 'Закрыть', { duration: 2500 });
   }
 
   printReceipt(): void {
@@ -223,6 +243,34 @@ export class OrderDetailComponent implements OnInit {
       });
   }
 
+  setOrderStatus(status: OrderStatus): void {
+    if (!this.order || this.order.status === status || this.statusSaving) {
+      return;
+    }
+
+    const previousStatus = this.order.status;
+    this.statusSaving = true;
+    this.ordersService.updateOrder(this.orderId, {
+      status,
+      status_comment: 'Изменено из карточки заказа'
+    }).pipe(finalize(() => this.statusSaving = false))
+      .subscribe({
+        next: (order) => {
+          this.order = order;
+          this.snackBar.open('Статус заказа обновлен', 'Закрыть', { duration: 2500 });
+          this.loadStatusHistory();
+          this.loadAuditLog();
+        },
+        error: (error) => {
+          const message = error.error?.error || 'Не удалось изменить статус заказа';
+          this.snackBar.open(message, 'Закрыть', { duration: 3500 });
+          if (this.order) {
+            this.order = { ...this.order, status: previousStatus };
+          }
+        }
+      });
+  }
+
   getStatusLabel(status: string): string {
     const statusLabels: {[key: string]: string} = {
       'received': 'Принят',
@@ -259,6 +307,76 @@ export class OrderDetailComponent implements OnInit {
       'cancelled': 'cancel'
     };
     return statusIcons[status] || 'help';
+  }
+
+  getCustomerFullName(order: Order): string {
+    return [order.customer.last_name, order.customer.first_name, order.customer.middle_name]
+      .filter(Boolean)
+      .join(' ');
+  }
+
+  getCustomerInitials(order: Order): string {
+    const first = order.customer.first_name?.charAt(0) || '';
+    const last = order.customer.last_name?.charAt(0) || '';
+    return `${last}${first}`.toUpperCase() || 'К';
+  }
+
+  getDeviceTitle(order: Order): string {
+    return [order.device.model.brand.name, order.device.model.name].filter(Boolean).join(' ');
+  }
+
+  getDeviceMeta(order: Order): string {
+    return [
+      order.device.color,
+      order.device.storage_capacity,
+      order.device.serial_number ? `SN ${order.device.serial_number}` : '',
+      order.device.imei ? `IMEI ${order.device.imei}` : ''
+    ].filter(Boolean).join(' · ') || 'Без уточнений';
+  }
+
+  getOrderAmount(order: Order): number {
+    return Number(order.final_cost ?? order.total_cost ?? order.cost_estimate ?? 0);
+  }
+
+  getWorkSummary(order: Order): string {
+    return order.diagnosis || order.work_description || order.problem_description || 'Описание пока не заполнено';
+  }
+
+  getCompletionLabel(order: Order): string {
+    if (order.completed_at) {
+      return 'Завершен';
+    }
+    if (order.estimated_completion) {
+      return 'План';
+    }
+    return 'Срок';
+  }
+
+  getCompletionValue(order: Order): string {
+    if (order.completed_at) {
+      return order.completed_at;
+    }
+    return order.estimated_completion || order.created_at;
+  }
+
+  getStatusIndex(status: OrderStatus): number {
+    return this.statusOptions.findIndex(option => option.value === status);
+  }
+
+  isStatusDone(status: OrderStatus): boolean {
+    if (!this.order || this.order.status === 'cancelled') {
+      return false;
+    }
+
+    return this.getStatusIndex(status) < this.getStatusIndex(this.order.status);
+  }
+
+  formatMoney(value: number | null | undefined): string {
+    return `${this.moneyFormatter.format(Number(value || 0))} ₽`;
+  }
+
+  trackById(_: number, item: { id: number }): number {
+    return item.id;
   }
 
   openDocument(url: string): void {

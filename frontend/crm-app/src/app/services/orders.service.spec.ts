@@ -95,6 +95,23 @@ describe('OrdersService', () => {
     });
   });
 
+  it('updates order status with an optional status comment', () => {
+    const order = { id: 42, order_number: 'ORD-042', status: 'ready' } as Order;
+    apiService.put.and.returnValue(of(order));
+
+    service.updateOrder(42, {
+      status: 'ready',
+      status_comment: 'Изменено из карточки заказа',
+    }).subscribe((result) => {
+      expect(result).toEqual(order);
+    });
+
+    expect(apiService.put).toHaveBeenCalledOnceWith('/orders/42', {
+      status: 'ready',
+      status_comment: 'Изменено из карточки заказа',
+    });
+  });
+
   it('creates orders using trailing slash endpoint to avoid Django POST redirect', () => {
     const order = { id: 8, order_number: 'ORD-008' } as Order;
     const payload = { customer_id: 1, device: { model_id: 2 } };

@@ -182,6 +182,33 @@ body .mat-mdc-dialog-surface {
   color: var(--color-text-primary) !important;
 }
 
+body .cdk-overlay-container .orders-select-panel {
+  --mat-option-label-text-color: var(--color-text-primary);
+  --mat-option-selected-state-label-text-color: var(--color-primary);
+  --mat-option-hover-state-layer-color: var(--color-primary-soft);
+  --mat-option-focus-state-layer-color: var(--color-primary-soft);
+  --mat-option-selected-state-layer-color: var(--color-primary-soft);
+
+  border: 1px solid var(--color-border);
+  background: var(--panel-background) !important;
+  color: var(--color-text-primary) !important;
+  box-shadow: var(--shadow-medium);
+}
+
+body .cdk-overlay-container .orders-select-panel .mat-mdc-option {
+  color: var(--color-text-primary) !important;
+}
+
+body .cdk-overlay-container .orders-select-panel .mat-mdc-option:hover,
+body .cdk-overlay-container .orders-select-panel .mat-mdc-option.mdc-list-item--selected {
+  background-color: var(--color-primary-soft) !important;
+}
+
+body .cdk-overlay-container .orders-select-panel .mat-mdc-option.mdc-list-item--selected .mdc-list-item__primary-text,
+body .cdk-overlay-container .orders-select-panel .mat-mdc-option.mdc-list-item--selected .mat-pseudo-checkbox-minimal.mat-pseudo-checkbox-checked::after {
+  color: var(--color-primary) !important;
+}
+
 body .mat-mdc-menu-item,
 body .mat-mdc-option,
 body .mat-mdc-select-value,
@@ -260,6 +287,55 @@ body .mat-mdc-standard-chip {
   background: var(--color-surface-strong) !important;
   color: var(--color-text-primary) !important;
   border: 1px solid var(--color-border);
+}
+
+.status-chip,
+.priority-chip {
+  display: inline-grid;
+  min-height: 30px;
+  place-items: center;
+  border-radius: 999px;
+  padding: 0 10px;
+  background: color-mix(in srgb, var(--color-text-secondary) 12%, transparent);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.status-chip.received,
+.status-chip.diagnosed,
+.status-chip.in_repair {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.status-chip.waiting_parts,
+.status-chip.testing {
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  color: var(--color-warning);
+}
+
+.status-chip.ready,
+.status-chip.completed {
+  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  color: var(--color-success);
+}
+
+.status-chip.cancelled,
+.priority-chip.urgent {
+  background: color-mix(in srgb, var(--color-danger) 13%, transparent);
+  color: var(--color-danger);
+}
+
+.priority-chip.normal {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.priority-chip.high {
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  color: var(--color-warning);
 }
 
 body .mat-mdc-raised-button:not(:disabled) {
