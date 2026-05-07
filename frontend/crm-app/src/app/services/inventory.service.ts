@@ -77,6 +77,36 @@ function unwrapList<T>(response: ListResponse<T>): T[] {
   return Array.isArray(response) ? response : response.items ?? [];
 }
 
+function normalizeStockStatus(item: Partial<InventoryItem>): InventoryItem['stock_status'] {
+  if (item.stock_status) {
+    return item.stock_status;
+  }
+
+  const totalStock = Number(item.total_stock ?? 0);
+  const minQuantity = Number(item.min_quantity ?? 0);
+  if (totalStock <= 0) {
+    return 'out_of_stock';
+  }
+
+  return minQuantity > 0 && totalStock <= minQuantity ? 'low_stock' : 'in_stock';
+}
+
+function normalizeInventoryItem(item: Partial<InventoryItem>): InventoryItem {
+  return {
+    ...item,
+    id: Number(item.id),
+    name: item.name || '',
+    sku: item.sku || '',
+    category: item.category || item.category_name || 'Без категории',
+    total_stock: Number(item.total_stock ?? 0),
+    min_quantity: Number(item.min_quantity ?? 0),
+    selling_price: Number(item.selling_price ?? 0),
+    purchase_price: Number(item.purchase_price ?? 0),
+    stock_status: normalizeStockStatus(item),
+    last_movement_date: item.last_movement_date || '',
+  };
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -85,7 +115,7 @@ export class InventoryService {
 
   getInventoryItems(): Observable<InventoryItem[]> {
     return this.apiService.get<ListResponse<InventoryItem>>('/inventory/items').pipe(
-      map(unwrapList),
+      map((response) => unwrapList(response).map(normalizeInventoryItem)),
       catchError(() => of([]))
     );
   }

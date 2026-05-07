@@ -1,7 +1,8 @@
-
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
+import { ApiService } from './api.service';
 
 export interface Notification {
   id: number;
@@ -14,6 +15,8 @@ export interface Notification {
   action_url?: string;
   created_at: string;
   data?: any;
+  is_read?: boolean;
+  read_at?: string | null;
 }
 
 @Injectable({
@@ -33,8 +36,25 @@ export class NotificationService {
   public unreadCount$ = this.unreadCountSubject.asObservable();
   public connectionStatus$ = this.connectionStatusSubject.asObservable();
 
-  constructor() {
+  constructor(private apiService: ApiService) {
+    this.refresh();
     this.connect();
+  }
+
+  public refresh(): void {
+    if (!localStorage.getItem('access_token')) {
+      return;
+    }
+
+    this.apiService.get<Notification[]>('/notifications/', { limit: 20 }).pipe(
+      catchError(() => {
+        this.connectionStatusSubject.next(false);
+        return of([]);
+      })
+    ).subscribe((notifications) => {
+      this.syncNotifications(notifications);
+      this.connectionStatusSubject.next(true);
+    });
   }
 
   private connect(): void {
@@ -85,7 +105,6 @@ export class NotificationService {
     switch (data.type) {
       case 'notification':
         this.addNotification(data.notification);
-        this.showBrowserNotification(data.notification);
         break;
       case 'unread_count':
         this.unreadCountSubject.next(data.count);
@@ -98,12 +117,15 @@ export class NotificationService {
 
   private addNotification(notification: Notification): void {
     const currentNotifications = this.notificationsSubject.value;
-    const updatedNotifications = [notification, ...currentNotifications].slice(0, 50); // Keep last 50
-    this.notificationsSubject.next(updatedNotifications);
+    const updatedNotifications = [
+      { ...notification, is_read: notification.is_read ?? false },
+      ...currentNotifications.filter((item) => item.id !== notification.id)
+    ].slice(0, 50); // Keep last 50
+    this.syncNotifications(updatedNotifications);
 
-    // Update unread count
-    const currentCount = this.unreadCountSubject.value;
-    this.unreadCountSubject.next(currentCount + 1);
+    if (notification.is_read !== true) {
+      this.showBrowserNotification(notification);
+    }
   }
 
   private showBrowserNotification(notification: Notification): void {
@@ -149,6 +171,15 @@ export class NotificationService {
     }
   }
 
+  private syncNotifications(notifications: Notification[]): void {
+    const normalized = notifications.map((notification) => ({
+      ...notification,
+      is_read: notification.is_read ?? false
+    }));
+    this.notificationsSubject.next(normalized);
+    this.unreadCountSubject.next(normalized.filter((notification) => !notification.is_read).length);
+  }
+
   public markAsRead(notificationId: number): void {
     this.sendMessage({
       action: 'mark_as_read',
@@ -157,31 +188,25 @@ export class NotificationService {
 
     // Update local state
     const currentNotifications = this.notificationsSubject.value;
-    const updatedNotifications = currentNotifications.map(notification =>
-      notification.id === notificationId
-        ? { ...notification, is_read: true }
-        : notification
+    const updatedNotifications = currentNotifications.filter(
+      notification => notification.id !== notificationId
     );
-    this.notificationsSubject.next(updatedNotifications);
+    this.syncNotifications(updatedNotifications);
 
-    // Decrease unread count
-    const currentCount = this.unreadCountSubject.value;
-    if (currentCount > 0) {
-      this.unreadCountSubject.next(currentCount - 1);
-    }
+    this.apiService.post(`/notifications/${notificationId}/mark-read`, {}).subscribe({
+      error: () => this.refresh()
+    });
   }
 
   public markAllAsRead(): void {
     this.sendMessage({ action: 'mark_all_as_read' });
 
     // Update local state
-    const currentNotifications = this.notificationsSubject.value;
-    const updatedNotifications = currentNotifications.map(notification => ({
-      ...notification,
-      is_read: true
-    }));
-    this.notificationsSubject.next(updatedNotifications);
-    this.unreadCountSubject.next(0);
+    this.syncNotifications([]);
+
+    this.apiService.post('/notifications/mark-all-read', {}).subscribe({
+      error: () => this.refresh()
+    });
   }
 
   public requestNotificationPermission(): void {

@@ -55,6 +55,7 @@ describe('MainLayoutComponent', () => {
             notifications$: of([]),
             unreadCount$: of(0),
             connectionStatus$: of(true),
+            refresh: jasmine.createSpy('refresh'),
             requestNotificationPermission: jasmine.createSpy('requestNotificationPermission'),
             markAsRead: jasmine.createSpy('markAsRead'),
             markAllAsRead: jasmine.createSpy('markAllAsRead'),
@@ -100,5 +101,15 @@ describe('MainLayoutComponent', () => {
 
     expect(fixture.componentInstance.isNavigationItemActive(adminItem)).toBeFalse();
     expect(fixture.componentInstance.isNavigationItemActive(settingsItem)).toBeTrue();
+  });
+
+  it('uses real unread notification count in navigation badges', () => {
+    expect(fixture.componentInstance.notificationsCount).toBe(0);
+
+    const notificationItem = fixture.componentInstance.navigationGroups
+      .flatMap(group => group.items)
+      .find(item => item.label === 'Уведомления')!;
+
+    expect(fixture.componentInstance.getBadgeValue(notificationItem)).toBe(0);
   });
 });

@@ -30,6 +30,13 @@ class InventoryItemSchema(Schema):
     purchase_price: float
     selling_price: float
     total_stock: int
+    min_quantity: int
+    stock_status: str
+    last_movement_date: Optional[datetime] = None
+
+    @staticmethod
+    def _stock_balances(obj):
+        return list(obj.stock_balances.all())
 
     @staticmethod
     def resolve_category_name(obj):
@@ -55,6 +62,37 @@ class InventoryItemSchema(Schema):
     def resolve_total_stock(obj):
         # uses @property total_stock on model
         return int(obj.total_stock or 0)
+
+    @staticmethod
+    def resolve_min_quantity(obj):
+        balances = InventoryItemSchema._stock_balances(obj)
+        if not balances:
+            return 0
+        return min(balance.min_quantity for balance in balances)
+
+    @staticmethod
+    def resolve_stock_status(obj):
+        balances = InventoryItemSchema._stock_balances(obj)
+        if not balances:
+            return "out_of_stock"
+
+        available_quantity = sum(balance.available_quantity for balance in balances)
+        if available_quantity <= 0:
+            return "out_of_stock"
+
+        if any(
+            balance.available_quantity <= balance.min_quantity for balance in balances
+        ):
+            return "low_stock"
+
+        return "in_stock"
+
+    @staticmethod
+    def resolve_last_movement_date(obj):
+        balances = InventoryItemSchema._stock_balances(obj)
+        if not balances:
+            return None
+        return max(balance.last_movement_date for balance in balances)
 
 
 class StockBalanceSchema(Schema):

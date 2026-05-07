@@ -1,3 +1,5 @@
+import math
+
 from django.core.validators import RegexValidator
 from django.db import models
 from django.utils import timezone
@@ -173,12 +175,13 @@ class OrganizationSubscription(models.Model):
 
     @property
     def total_days(self):
-        return max(1, (self.expires_at.date() - self.started_at.date()).days)
+        seconds = (self.expires_at - self.started_at).total_seconds()
+        return max(1, math.ceil(seconds / 86400))
 
     @property
     def remaining_days(self):
-        today = timezone.localdate()
-        return max(0, (self.expires_at.date() - today).days)
+        seconds = (self.expires_at - timezone.now()).total_seconds()
+        return max(0, math.ceil(seconds / 86400))
 
     @property
     def remaining_percent(self):
@@ -197,7 +200,7 @@ class OrganizationSubscription(models.Model):
 
     @property
     def is_expired(self):
-        return self.remaining_days == 0
+        return self.expires_at <= timezone.now()
 
 
 SUBSCRIPTION_COLOR_SCALE = {

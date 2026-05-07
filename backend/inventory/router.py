@@ -52,9 +52,11 @@ def list_inventory_items(request, search: str = None, category_id: int = None):
         raise PermissionError("Магазин не выбран")
 
     # Товары видны если у них есть остаток в текущем магазине ИЛИ это активные товары
-    queryset = InventoryItem.objects.select_related(
-        "category", "primary_supplier"
-    ).filter(is_active=True)
+    queryset = (
+        InventoryItem.objects.select_related("category", "primary_supplier")
+        .prefetch_related("stock_balances")
+        .filter(is_active=True)
+    )
 
     if search:
         queryset = queryset.filter(

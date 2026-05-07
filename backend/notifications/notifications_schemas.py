@@ -14,5 +14,19 @@ class NotificationSchema(Schema):
     icon: str
     color: str
     action_url: Optional[str] = None
+    is_read: bool
+    read_at: Optional[datetime] = None
     created_at: datetime
     data: Optional[Dict] = None
+
+    @staticmethod
+    def resolve_type(obj):
+        return obj.notification_type.code
+
+    @staticmethod
+    def resolve_icon(obj):
+        return obj.notification_type.icon
+
+    @staticmethod
+    def resolve_color(obj):
+        return obj.notification_type.color

@@ -1,85 +1,68 @@
-
-<div class="notifications-container">
-  <button mat-icon-button
-          [matMenuTriggerFor]="notificationsMenu"
-          [matTooltip]="(connectionStatus$ | async) ? 'Уведомления' : 'Нет соединения'"
-          [disabled]="!(connectionStatus$ | async)">
-    <mat-icon [matBadge]="unreadCount$ | async"
-              matBadgeColor="warn"
-              [matBadgeHidden]="(unreadCount$ | async) === 0"
-              aria-hidden="false">
-      notifications
-    </mat-icon>
-  </button>
-
-  <mat-menu #notificationsMenu="matMenu" class="notifications-menu">
-    <div class="notifications-header" (click)="$event.stopPropagation()">
+<section class="notifications-panel" (click)="$event.stopPropagation()">
+  <header class="notifications-header">
+    <div>
+      <span class="panel-kicker">Центр событий</span>
       <h4>Уведомления</h4>
-      <button mat-button
-              *ngIf="(unreadCount$ | async)! > 0"
-              (click)="markAllAsRead()"
-              class="mark-all-read-btn">
+    </div>
+
+    <div class="header-actions">
+      <span class="unread-pill" *ngIf="((unreadCount$ | async) || 0) > 0">
+        {{ unreadCount$ | async }}
+      </span>
+      <button mat-icon-button type="button" matTooltip="Обновить" (click)="refresh()">
+        <mat-icon>refresh</mat-icon>
+      </button>
+      <button
+        mat-button
+        type="button"
+        *ngIf="((unreadCount$ | async) || 0) > 0"
+        (click)="markAllAsRead()">
         Прочитать все
       </button>
     </div>
+  </header>
 
-    <mat-divider></mat-divider>
+  <div class="connection-note" *ngIf="(connectionStatus$ | async) === false">
+    <mat-icon>sync_problem</mat-icon>
+    <span>Лента временно недоступна. Попробуйте обновить.</span>
+  </div>
 
-    <div class="notifications-list"
-         *ngIf="(notifications$ | async)?.length! > 0; else noNotifications">
+  <mat-divider></mat-divider>
 
-      <div *ngFor="let notification of (notifications$ | async)?.slice(0, 10)"
-           class="notification-item"
-           [class]="getPriorityClass(notification.priority)"
-           (click)="onNotificationClick(notification)">
+  <ng-container *ngIf="notifications$ | async as notifications">
+    <div class="notifications-list" *ngIf="notifications.length > 0; else noNotifications">
+      <button
+        *ngFor="let notification of notifications.slice(0, 10)"
+        type="button"
+        class="notification-item"
+        [ngClass]="getPriorityClass(notification.priority)"
+        (click)="onNotificationClick(notification)">
+        <span class="notification-icon" [style.color]="resolveColor(notification.color)">
+          <mat-icon>{{ notification.icon || 'notifications' }}</mat-icon>
+        </span>
 
-        <div class="notification-icon">
-          <mat-icon [style.color]="notification.color">
-            {{ notification.icon }}
-          </mat-icon>
-        </div>
-
-        <div class="notification-content">
-          <div class="notification-title">
-            {{ notification.title }}
-            <mat-icon class="priority-icon"
-                      *ngIf="notification.priority !== 'normal'"
-                      [matTooltip]="notification.priority">
+        <span class="notification-content">
+          <span class="notification-title">
+            <span>{{ notification.title }}</span>
+            <mat-icon
+              class="priority-icon"
+              *ngIf="notification.priority !== 'normal'"
+              [matTooltip]="getPriorityLabel(notification.priority)">
               {{ getPriorityIcon(notification.priority) }}
             </mat-icon>
-          </div>
-
-          <div class="notification-message">
-            {{ notification.message }}
-          </div>
-
-          <div class="notification-time">
-            {{ getRelativeTime(notification.created_at) }}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <ng-template #noNotifications>
-      <div class="no-notifications">
-        <mat-icon>notifications_none</mat-icon>
-        <p>Нет новых уведомлений</p>
-      </div>
-    </ng-template>
-
-    <mat-divider *ngIf="(notifications$ | async)?.length! > 0"></mat-divider>
-
-    <div class="notifications-footer" (click)="$event.stopPropagation()">
-      <button mat-button routerLink="/notifications" class="view-all-btn">
-        Показать все уведомления
+          </span>
+          <span class="notification-message">{{ notification.message }}</span>
+          <span class="notification-time">{{ getRelativeTime(notification.created_at) }}</span>
+        </span>
       </button>
     </div>
-  </mat-menu>
-</div>
+  </ng-container>
 
-
-<div class="connection-status"
-     *ngIf="!(connectionStatus$ | async)"
-     matTooltip="Нет соединения с сервером уведомлений">
-  <mat-icon color="warn">wifi_off</mat-icon>
-</div>
+  <ng-template #noNotifications>
+    <div class="no-notifications">
+      <mat-icon>notifications_none</mat-icon>
+      <strong>Новых уведомлений нет</strong>
+      <span>Важные события появятся здесь.</span>
+    </div>
+  </ng-template>
+</section>

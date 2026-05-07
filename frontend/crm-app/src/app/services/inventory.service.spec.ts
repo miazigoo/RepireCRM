@@ -54,10 +54,49 @@ describe('InventoryService', () => {
     apiService.get.and.returnValue(of({ items: [item], count: 1 }));
 
     service.getInventoryItems().subscribe((items) => {
-      expect(items).toEqual([item]);
+      expect(items).toEqual([
+        jasmine.objectContaining({
+          id: 7,
+          name: 'Дисплей',
+          sku: 'LCD-1',
+          category: 'Без категории',
+          total_stock: 0,
+          min_quantity: 0,
+          purchase_price: 0,
+          selling_price: 0,
+          stock_status: 'out_of_stock',
+          last_movement_date: '',
+        }),
+      ]);
     });
 
     expect(apiService.get).toHaveBeenCalledOnceWith('/inventory/items');
+  });
+
+  it('normalizes legacy inventory responses with derived stock status', () => {
+    apiService.get.and.returnValue(of({
+      items: [
+        {
+          id: 8,
+          name: 'Чехол',
+          sku: 'CASE-1',
+          category_name: 'Аксессуары',
+          total_stock: 1,
+          min_quantity: 2,
+          purchase_price: '450',
+          selling_price: '1500',
+        },
+      ],
+    }));
+
+    service.getInventoryItems().subscribe((items) => {
+      expect(items[0]).toEqual(jasmine.objectContaining({
+        category: 'Аксессуары',
+        purchase_price: 450,
+        selling_price: 1500,
+        stock_status: 'low_stock',
+      }));
+    });
   });
 
   it('maps stock dashboard totals into inventory statistics', () => {

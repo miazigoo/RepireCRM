@@ -164,17 +164,8 @@
     </div>
 
 
-    <mat-menu #notificationsMenu="matMenu">
-        <div class="notifications-header">
-        <h4>Уведомления</h4>
-        </div>
-        <mat-divider></mat-divider>
-        <app-notifications></app-notifications>
-        <ng-template #noNotifications>
-        <div class="no-notifications">
-            <p>Нет новых уведомлений</p>
-        </div>
-        </ng-template>
+    <mat-menu #notificationsMenu="matMenu" class="layout-notifications-menu">
+      <app-notifications></app-notifications>
     </mat-menu>
 
 

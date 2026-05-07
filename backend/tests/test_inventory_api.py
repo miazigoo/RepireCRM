@@ -7,7 +7,13 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
-from inventory.models import Category, InventoryItem, PurchaseOrder, PurchaseOrderItem
+from inventory.models import (
+    Category,
+    InventoryItem,
+    PurchaseOrder,
+    PurchaseOrderItem,
+    StockBalance,
+)
 from shops.models import Shop
 from users.models import Permission, Role
 
@@ -84,6 +90,47 @@ class InventoryApiTestCase(TestCase):
         self.assertEqual(payload["sku"], "BAT-IP15")
         self.assertTrue(Category.objects.filter(name="Аккумуляторы").exists())
         self.assertTrue(InventoryItem.objects.filter(sku="BAT-IP15").exists())
+
+    def test_inventory_items_include_stock_display_fields(self):
+        category = Category.objects.create(name="Аксессуары")
+        item = InventoryItem.objects.create(
+            name="Чехол MagSafe",
+            sku="CASE-MAG",
+            item_type="accessory",
+            category=category,
+            purchase_price=400,
+            selling_price=1200,
+            created_by=self.user,
+        )
+        balance, _ = StockBalance.objects.get_or_create(
+            shop=self.shop,
+            item=item,
+        )
+        balance.quantity = 1
+        balance.min_quantity = 2
+        balance.save(
+            update_fields=[
+                "quantity",
+                "reserved_quantity",
+                "available_quantity",
+                "min_quantity",
+                "last_movement_date",
+            ]
+        )
+
+        response = self.client.get(
+            "/api/inventory/items",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        payload = response.json()
+        result = payload["items"][0]
+        self.assertEqual(result["sku"], "CASE-MAG")
+        self.assertEqual(result["total_stock"], 1)
+        self.assertEqual(result["min_quantity"], 2)
+        self.assertEqual(result["stock_status"], "low_stock")
+        self.assertIsNotNone(result["last_movement_date"])
 
     def test_create_purchase_order_accepts_legacy_purchase_permission(self):
         category = Category.objects.create(name="Дисплеи")

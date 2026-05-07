@@ -223,27 +223,30 @@ export class InventoryDashboardComponent implements OnInit, AfterViewInit {
     return this.stockAlerts.filter(alert => alert.alert_type === 'low_stock');
   }
 
-  getStockStatusClass(status: string): string {
+  getStockStatusClass(status: string | undefined): string {
     switch (status) {
       case 'in_stock': return 'status-in-stock';
       case 'low_stock': return 'status-low-stock';
       case 'out_of_stock': return 'status-out-stock';
-      default: return '';
+      default: return 'status-out-stock';
     }
   }
 
-  getStockStatusLabel(status: string): string {
+  getStockStatusLabel(status: string | undefined): string {
     switch (status) {
       case 'in_stock': return 'В наличии';
       case 'low_stock': return 'Мало';
       case 'out_of_stock': return 'Нет в наличии';
-      default: return status;
+      default: return 'Нет данных';
     }
   }
 
   getStockLevel(item: InventoryItem): number {
-    if (item.min_quantity === 0) return 100;
-    return Math.min(100, (item.total_stock / (item.min_quantity * 2)) * 100);
+    const total = Number(item.total_stock || 0);
+    const min = Number(item.min_quantity || 0);
+    if (total <= 0) return 0;
+    if (min <= 0) return 100;
+    return Math.min(100, (total / (min * 2)) * 100);
   }
 
   getStockLevelStyle(item: InventoryItem): string {

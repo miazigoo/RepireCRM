@@ -21,6 +21,7 @@ import * as AuthActions from '../../../store/auth/auth.actions';
 import { User, Shop } from '../../../core/models/models';
 import { HelpGuideDialogComponent } from '../../help/help-guide-dialog/help-guide-dialog.component';
 import { NotificationsComponent } from '../notifications/notifications.component';
+import { NotificationService } from '../../../services/notification.service';
 
 interface NavigationItem {
   label: string;
@@ -72,7 +73,6 @@ export class MainLayoutComponent implements OnInit {
   availableShops: Shop[] = []; // Будет загружаться из API
   pendingOrdersCount = 0;
   notificationsCount = 0;
-  notifications: any[] = [];
   currentRouteTitle = 'Панель управления';
 
   navigationGroups: NavigationGroup[] = [
@@ -131,7 +131,8 @@ export class MainLayoutComponent implements OnInit {
     private breakpointObserver: BreakpointObserver,
     private store: Store<AppState>,
     private router: Router,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private notificationService: NotificationService
   ) {
     this.isHandset$ = this.breakpointObserver.observe(Breakpoints.Handset)
       .pipe(
@@ -161,7 +162,10 @@ export class MainLayoutComponent implements OnInit {
       this.currentShop = shop;
     });
 
-    this.loadNotifications();
+    this.notificationService.unreadCount$.subscribe(count => {
+      this.notificationsCount = count;
+    });
+    this.notificationService.refresh();
     this.loadPendingOrdersCount();
   }
 
@@ -219,29 +223,6 @@ export class MainLayoutComponent implements OnInit {
     }
   }
 
-  handleNotification(notification: any): void {
-    // Обработка уведомления - переход к соответствующему разделу
-    switch (notification.type) {
-      case 'order_ready':
-        this.router.navigate(['/orders', notification.orderId]);
-        break;
-      case 'low_stock':
-        this.router.navigate(['/inventory']);
-        break;
-      default:
-        break;
-    }
-  }
-
-  getNotificationIcon(type: string): string {
-    switch (type) {
-      case 'order_ready': return 'check_circle';
-      case 'urgent': return 'priority_high';
-      case 'low_stock': return 'inventory';
-      default: return 'info';
-    }
-  }
-
   private loadAvailableShops(): void {
     // Здесь будет загрузка доступных магазинов через сервис
     // Временно заглушка
@@ -249,25 +230,6 @@ export class MainLayoutComponent implements OnInit {
       { id: 1, name: 'Ремонт+ Москва Центр', code: 'MSK01', is_active: true, timezone: 'Europe/Moscow', currency: 'RUB' },
       { id: 2, name: 'Ремонт+ СПб Невский', code: 'SPB01', is_active: true, timezone: 'Europe/Moscow', currency: 'RUB' }
     ];
-  }
-
-  private loadNotifications(): void {
-    // Загрузка уведомлений через WebSocket или HTTP
-    this.notifications = [
-      {
-        id: 1,
-        type: 'order_ready',
-        message: 'Заказ #MSK-000001 готов к выдаче',
-        orderId: 1
-      },
-      {
-        id: 2,
-        type: 'urgent',
-        message: 'Срочный заказ просрочен на 2 дня',
-        orderId: 2
-      }
-    ];
-    this.notificationsCount = this.notifications.length;
   }
 
   private loadPendingOrdersCount(): void {

@@ -1,36 +1,27 @@
-// frontend/crm-app/src/app/components/layout/notifications/notifications.component.ts
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { NgIf, NgFor, DatePipe, AsyncPipe } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Component, OnInit } from '@angular/core';
+import { NgIf, NgFor, NgClass, AsyncPipe } from '@angular/common';
+import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatBadgeModule } from '@angular/material/badge';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatListModule } from '@angular/material/list';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Observable, Subscription } from 'rxjs';
+import { Observable } from 'rxjs';
 import { NotificationService, Notification } from '../../../services/notification.service';
 
 @Component({
   selector: 'app-notifications',
   standalone: true,
   imports: [
-    NgIf, NgFor, AsyncPipe,
-    RouterLink,
-    MatButtonModule, MatIconModule, MatBadgeModule,
-    MatMenuModule, MatListModule, MatDividerModule, MatTooltipModule,
-    MatDividerModule
+    NgIf, NgFor, NgClass, AsyncPipe,
+    MatButtonModule, MatIconModule, MatDividerModule, MatTooltipModule
   ],
   templateUrl: './notifications.component.html',
   styleUrl: './notifications.component.css'
 })
-export class NotificationsComponent implements OnInit, OnDestroy {
+export class NotificationsComponent implements OnInit {
   notifications$: Observable<Notification[]>;
   unreadCount$: Observable<number>;
   connectionStatus$: Observable<boolean>;
-
-  private subscription = new Subscription();
 
   constructor(
     private notificationService: NotificationService,
@@ -42,22 +33,20 @@ export class NotificationsComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // Request notification permission on component init
+    this.notificationService.refresh();
     this.notificationService.requestNotificationPermission();
   }
 
-  ngOnDestroy(): void {
-    this.subscription.unsubscribe();
-  }
-
   onNotificationClick(notification: Notification): void {
-    // Mark as read
     this.notificationService.markAsRead(notification.id);
 
-    // Navigate if action URL is provided
     if (notification.action_url) {
-      this.router.navigate([notification.action_url]);
+      this.router.navigateByUrl(notification.action_url);
     }
+  }
+
+  refresh(): void {
+    this.notificationService.refresh();
   }
 
   markAllAsRead(): void {
@@ -82,6 +71,24 @@ export class NotificationsComponent implements OnInit, OnDestroy {
       case 'low': return 'keyboard_arrow_down';
       default: return 'remove';
     }
+  }
+
+  getPriorityLabel(priority: string): string {
+    switch (priority) {
+      case 'urgent': return 'Срочно';
+      case 'high': return 'Высокий приоритет';
+      case 'normal': return 'Обычный приоритет';
+      case 'low': return 'Низкий приоритет';
+      default: return 'Обычный приоритет';
+    }
+  }
+
+  resolveColor(color: string): string {
+    if (/^(#|rgb|hsl|var\()/.test(color)) {
+      return color;
+    }
+
+    return `var(--color-${color}, var(--color-primary))`;
   }
 
   getRelativeTime(dateString: string): string {
