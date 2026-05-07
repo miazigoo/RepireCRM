@@ -160,6 +160,26 @@ describe('OrderFormComponent', () => {
     expect(latestSuggestions).toEqual([redmiModel]);
   }));
 
+  it('does not reopen model suggestions after a concrete model is selected', fakeAsync(() => {
+    let latestSuggestions: DeviceModel[] = [];
+    const samsungModel = {
+      ...deviceModel,
+      id: 22,
+      name: 'Galaxy S24',
+      brand: { id: 2, name: 'Samsung' },
+    } as DeviceModel;
+
+    component.deviceModels = [samsungModel, deviceModel];
+    component.filteredDeviceModels.subscribe(models => latestSuggestions = models);
+
+    component.onDeviceModelSelected(samsungModel);
+    component.showDeviceModelSuggestions();
+    tick();
+
+    expect(component.selectedDeviceModel).toEqual(samsungModel);
+    expect(latestSuggestions).toEqual([]);
+  }));
+
   it('keeps a broader set of frequent device chips', () => {
     component.deviceModels = Array.from({ length: 20 }, (_, index) => ({
       ...deviceModel,

@@ -346,6 +346,7 @@ export class OrderFormComponent implements OnInit {
       model,
       model_id: model.id
     });
+    this.deviceModelTrigger?.closePanel();
   }
 
   selectPopularDeviceModel(model: DeviceModel): void {
@@ -353,8 +354,17 @@ export class OrderFormComponent implements OnInit {
   }
 
   showDeviceModelSuggestions(): void {
+    if (this.getSelectedDeviceModel()) {
+      this.deviceModelTrigger?.closePanel();
+      return;
+    }
+
     this.refreshDeviceModelSuggestions();
-    setTimeout(() => this.deviceModelTrigger?.openPanel());
+    setTimeout(() => {
+      if (!this.getSelectedDeviceModel()) {
+        this.deviceModelTrigger?.openPanel();
+      }
+    });
   }
 
   onCustomerStepNext(stepper: MatStepper): void {
@@ -597,7 +607,11 @@ export class OrderFormComponent implements OnInit {
   }
 
   private filterDeviceModels(value: DeviceModel | string): DeviceModel[] {
-    if (!value || typeof value !== 'string') {
+    if (value && typeof value !== 'string') {
+      return [];
+    }
+
+    if (!value) {
       return this.deviceModels.slice(0, this.visibleDeviceModelLimit);
     }
 
