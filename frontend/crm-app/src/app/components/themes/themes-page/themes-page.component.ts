@@ -1,9 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   InterfaceStyle,
   Theme,
@@ -18,13 +15,10 @@ type ThemeModeFilter = 'all' | 'light' | 'dark';
   standalone: true,
   imports: [
     CommonModule,
-    MatButtonModule,
-    MatButtonToggleModule,
-    MatIconModule,
-    MatTooltipModule
+    MatButtonToggleModule
   ],
   templateUrl: './themes-page.component.html',
-  styleUrl: './themes-page.component.css'
+  styleUrl: './themes-page.component.scss'
 })
 export class ThemesPageComponent implements OnInit {
   themes: Theme[] = [];

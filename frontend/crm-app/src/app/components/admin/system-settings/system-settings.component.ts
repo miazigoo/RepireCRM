@@ -2,18 +2,14 @@
 import { Component, OnInit } from '@angular/core';
 import { NgIf, NgFor } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatDividerModule } from '@angular/material/divider';
-import { AdminService } from '../../../services/admin.service';
 
 interface SystemSettings {
   general: {
@@ -48,19 +44,29 @@ interface SystemSettings {
   };
 }
 
+type SettingsOverviewTone = 'primary' | 'accent' | 'warning';
+
+interface SettingsOverviewItem {
+  label: string;
+  value: string;
+  tone: SettingsOverviewTone;
+}
+
 @Component({
   selector: 'app-system-settings',
   standalone: true,
   imports: [
-    NgIf, ReactiveFormsModule,
-    MatCardModule, MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatButtonModule, MatIconModule, MatSlideToggleModule,
+    NgIf, NgFor, ReactiveFormsModule,
+    MatFormFieldModule, MatInputModule,
+    MatButtonModule, MatSlideToggleModule,
     MatProgressSpinnerModule, MatSnackBarModule, MatTabsModule, MatDividerModule
   ],
   templateUrl: './system-settings.component.html',
-  styleUrl: './system-settings.component.css'
+  styleUrl: './system-settings.component.scss'
 })
 export class SystemSettingsComponent implements OnInit {
+  private readonly storageKey = 'repairCrmSystemSettings';
+
   generalForm!: FormGroup;
   notificationsForm!: FormGroup;
   securityForm!: FormGroup;
@@ -68,10 +74,14 @@ export class SystemSettingsComponent implements OnInit {
 
   loading = false;
   settings: SystemSettings | null = null;
+  settingsOverview: SettingsOverviewItem[] = [
+    { label: 'Каналы', value: 'Email + Push', tone: 'primary' },
+    { label: 'Сессия', value: '480 мин', tone: 'accent' },
+    { label: 'Резерв', value: '24 ч', tone: 'warning' },
+  ];
 
   constructor(
     private fb: FormBuilder,
-    private adminService: AdminService,
     private snackBar: MatSnackBar
   ) {}
 
@@ -118,47 +128,11 @@ export class SystemSettingsComponent implements OnInit {
 
   private loadSettings(): void {
     this.loading = true;
-    // В реальном приложении загружаем настройки с сервера
-    // this.adminService.getSystemSettings().subscribe({...});
 
-    // Пока используем мок-данные
-    setTimeout(() => {
-      this.settings = {
-        general: {
-          app_name: 'Repair CRM',
-          app_version: '1.0.0',
-          company_name: 'ООО "Ремонт+"',
-          company_address: 'г. Москва, ул. Примерная, д. 123',
-          company_phone: '+7 (495) 123-45-67',
-          company_email: 'info@repair-plus.ru'
-        },
-        notifications: {
-          email_enabled: true,
-          sms_enabled: false,
-          push_enabled: true,
-          order_status_notifications: true,
-          daily_reports: false
-        },
-        security: {
-          password_min_length: 8,
-          password_require_uppercase: true,
-          password_require_lowercase: true,
-          password_require_numbers: true,
-          password_require_symbols: false,
-          session_timeout_minutes: 480,
-          max_login_attempts: 5
-        },
-        backup: {
-          auto_backup_enabled: true,
-          backup_frequency_hours: 24,
-          backup_retention_days: 30,
-          backup_location: '/backups/'
-        }
-      };
-
-      this.populateForms();
-      this.loading = false;
-    }, 1000);
+    this.settings = this.mergeSettings(this.readSavedSettings());
+    this.populateForms();
+    this.syncOverview();
+    this.loading = false;
   }
 
   private populateForms(): void {
@@ -172,67 +146,54 @@ export class SystemSettingsComponent implements OnInit {
 
   saveGeneralSettings(): void {
     if (this.generalForm.valid) {
-      this.loading = true;
-      // В реальном приложении отправляем данные на сервер
-      setTimeout(() => {
-        this.snackBar.open('Общие настройки сохранены', 'Закрыть', { duration: 3000 });
-        this.loading = false;
-      }, 1000);
+      this.patchSettings(
+        'general',
+        this.generalForm.getRawValue() as SystemSettings['general']
+      );
+      this.snackBar.open('Общие настройки сохранены', 'Закрыть', { duration: 3000 });
     }
   }
 
   saveNotificationSettings(): void {
     if (this.notificationsForm.valid) {
-      this.loading = true;
-      setTimeout(() => {
-        this.snackBar.open('Настройки уведомлений сохранены', 'Закрыть', { duration: 3000 });
-        this.loading = false;
-      }, 1000);
+      this.patchSettings(
+        'notifications',
+        this.notificationsForm.getRawValue() as SystemSettings['notifications']
+      );
+      this.snackBar.open('Настройки уведомлений сохранены', 'Закрыть', { duration: 3000 });
     }
   }
 
   saveSecuritySettings(): void {
     if (this.securityForm.valid) {
-      this.loading = true;
-      setTimeout(() => {
-        this.snackBar.open('Настройки безопасности сохранены', 'Закрыть', { duration: 3000 });
-        this.loading = false;
-      }, 1000);
+      this.patchSettings(
+        'security',
+        this.securityForm.getRawValue() as SystemSettings['security']
+      );
+      this.snackBar.open('Настройки безопасности сохранены', 'Закрыть', { duration: 3000 });
     }
   }
 
   saveBackupSettings(): void {
     if (this.backupForm.valid) {
-      this.loading = true;
-      setTimeout(() => {
-        this.snackBar.open('Настройки резервного копирования сохранены', 'Закрыть', { duration: 3000 });
-        this.loading = false;
-      }, 1000);
+      this.patchSettings(
+        'backup',
+        this.backupForm.getRawValue() as SystemSettings['backup']
+      );
+      this.snackBar.open('Настройки резервного копирования сохранены', 'Закрыть', { duration: 3000 });
     }
   }
 
   testEmailSettings(): void {
-    this.loading = true;
-    setTimeout(() => {
-      this.snackBar.open('Тестовое письмо отправлено', 'Закрыть', { duration: 3000 });
-      this.loading = false;
-    }, 2000);
+    this.snackBar.open('Тестовое письмо отправлено', 'Закрыть', { duration: 3000 });
   }
 
   testSMSSettings(): void {
-    this.loading = true;
-    setTimeout(() => {
-      this.snackBar.open('Тестовое SMS отправлено', 'Закрыть', { duration: 3000 });
-      this.loading = false;
-    }, 2000);
+    this.snackBar.open('Тестовое SMS отправлено', 'Закрыть', { duration: 3000 });
   }
 
   createBackupNow(): void {
-    this.loading = true;
-    setTimeout(() => {
-      this.snackBar.open('Резервная копия создана успешно', 'Закрыть', { duration: 3000 });
-      this.loading = false;
-    }, 3000);
+    this.snackBar.open('Резервная копия создана успешно', 'Закрыть', { duration: 3000 });
   }
 
   getFieldError(form: FormGroup, fieldName: string): string {
@@ -252,5 +213,89 @@ export class SystemSettingsComponent implements OnInit {
       }
     }
     return '';
+  }
+
+  private patchSettings<T extends keyof SystemSettings>(section: T, value: SystemSettings[T]): void {
+    this.settings = {
+      ...this.mergeSettings(this.settings ?? undefined),
+      [section]: value
+    };
+    localStorage.setItem(this.storageKey, JSON.stringify(this.settings));
+    this.syncOverview();
+  }
+
+  private syncOverview(): void {
+    const settings = this.settings || this.getDefaultSettings();
+    const notificationChannels = [
+      settings.notifications.email_enabled ? 'Email' : null,
+      settings.notifications.sms_enabled ? 'SMS' : null,
+      settings.notifications.push_enabled ? 'Push' : null,
+    ].filter(Boolean).join(' + ') || 'Отключены';
+
+    this.settingsOverview = [
+      { label: 'Каналы', value: notificationChannels, tone: 'primary' },
+      { label: 'Сессия', value: `${settings.security.session_timeout_minutes} мин`, tone: 'accent' },
+      { label: 'Резерв', value: settings.backup.auto_backup_enabled ? `${settings.backup.backup_frequency_hours} ч` : 'Вручную', tone: 'warning' },
+    ];
+  }
+
+  private readSavedSettings(): Partial<SystemSettings> | undefined {
+    const savedSettings = localStorage.getItem(this.storageKey);
+    if (!savedSettings) {
+      return undefined;
+    }
+
+    try {
+      return JSON.parse(savedSettings) as Partial<SystemSettings>;
+    } catch {
+      localStorage.removeItem(this.storageKey);
+      return undefined;
+    }
+  }
+
+  private mergeSettings(saved?: Partial<SystemSettings>): SystemSettings {
+    const defaults = this.getDefaultSettings();
+
+    return {
+      general: { ...defaults.general, ...saved?.general },
+      notifications: { ...defaults.notifications, ...saved?.notifications },
+      security: { ...defaults.security, ...saved?.security },
+      backup: { ...defaults.backup, ...saved?.backup }
+    };
+  }
+
+  private getDefaultSettings(): SystemSettings {
+    return {
+      general: {
+        app_name: 'Repair CRM',
+        app_version: '1.0.0',
+        company_name: 'ООО "Ремонт+"',
+        company_address: 'г. Москва, ул. Примерная, д. 123',
+        company_phone: '+7 (495) 123-45-67',
+        company_email: 'info@repair-plus.ru'
+      },
+      notifications: {
+        email_enabled: true,
+        sms_enabled: false,
+        push_enabled: true,
+        order_status_notifications: true,
+        daily_reports: false
+      },
+      security: {
+        password_min_length: 8,
+        password_require_uppercase: true,
+        password_require_lowercase: true,
+        password_require_numbers: true,
+        password_require_symbols: false,
+        session_timeout_minutes: 480,
+        max_login_attempts: 5
+      },
+      backup: {
+        auto_backup_enabled: true,
+        backup_frequency_hours: 24,
+        backup_retention_days: 30,
+        backup_location: '/backups/'
+      }
+    };
   }
 }

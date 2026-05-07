@@ -1,19 +1,45 @@
 <div class="themes-page">
-  <header class="themes-header">
-    <div>
+  <section class="themes-hero" [ngStyle]="getThemePreviewStyles(currentTheme)">
+    <div class="hero-copy">
       <span class="eyebrow">Оформление</span>
       <h1>Темы</h1>
+
+      <div class="selection-stack">
+        <span class="selection-chip">
+          <i class="selection-mark palette"></i>
+          <span>Палитра</span>
+          <strong>{{ currentTheme.displayName }}</strong>
+        </span>
+        <span class="selection-chip">
+          <i class="selection-mark skin"></i>
+          <span>Облик</span>
+          <strong>{{ currentSkin.displayName }}</strong>
+        </span>
+        <span class="selection-chip">
+          <i class="selection-mark density"></i>
+          <span>Детали</span>
+          <strong>{{ currentStyle.displayName }}</strong>
+        </span>
+      </div>
     </div>
 
-    <div class="current-choice">
-      <mat-icon>palette</mat-icon>
-      <span>{{ currentTheme.displayName }}</span>
-      <span class="choice-separator"></span>
-      <span>{{ currentSkin.displayName }}</span>
-      <span class="choice-separator"></span>
-      <span>{{ currentStyle.displayName }}</span>
+    <div class="hero-preview" aria-hidden="true">
+      <div class="hero-preview-sidebar">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <div class="hero-preview-main">
+        <div class="hero-preview-top"></div>
+        <div class="hero-preview-grid">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
     </div>
-  </header>
+  </section>
 
   <section class="theme-workspace">
     <div class="themes-catalog">
@@ -59,9 +85,9 @@
           <div class="theme-meta">
             <div>
               <h3>{{ theme.displayName }}</h3>
-              <span>{{ theme.isDark ? 'Темная' : 'Светлая' }}</span>
+              <span>{{ theme.description }}</span>
             </div>
-            <mat-icon *ngIf="theme.id === currentTheme.id">check_circle</mat-icon>
+            <strong class="theme-state" *ngIf="theme.id === currentTheme.id">Выбрано</strong>
           </div>
 
           <div class="palette-dots">
@@ -90,14 +116,18 @@
           [class.selected]="skin.id === currentSkin.id"
           [attr.aria-pressed]="skin.id === currentSkin.id"
           (click)="selectSkin(skin.id)">
-          <mat-icon>{{ skin.icon }}</mat-icon>
-          <div>
+          <span class="skin-mark" [ngClass]="skin.id" aria-hidden="true">
+            <i></i>
+            <i></i>
+            <i></i>
+          </span>
+          <span class="option-copy">
             <h3>{{ skin.displayName }}</h3>
             <span>{{ skin.description }}</span>
-          </div>
-          <mat-icon class="selected-icon" *ngIf="skin.id === currentSkin.id">
-            done
-          </mat-icon>
+          </span>
+          <svg class="selected-icon" *ngIf="skin.id === currentSkin.id" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m5 12 4 4 10-9" />
+          </svg>
         </button>
       </div>
 
@@ -116,41 +146,19 @@
           [class.selected]="style.id === currentStyle.id"
           [attr.aria-pressed]="style.id === currentStyle.id"
           (click)="selectStyle(style.id)">
-          <mat-icon>{{ style.icon }}</mat-icon>
-          <div>
+          <span class="style-mark" [ngClass]="style.id" aria-hidden="true">
+            <i></i>
+            <i></i>
+            <i></i>
+          </span>
+          <span class="option-copy">
             <h3>{{ style.displayName }}</h3>
             <span>{{ style.description }}</span>
-          </div>
-          <mat-icon class="selected-icon" *ngIf="style.id === currentStyle.id">
-            done
-          </mat-icon>
+          </span>
+          <svg class="selected-icon" *ngIf="style.id === currentStyle.id" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m5 12 4 4 10-9" />
+          </svg>
         </button>
-      </div>
-
-      <div class="live-preview" [ngStyle]="getThemePreviewStyles(currentTheme)">
-        <div class="preview-title">
-          <span>Repair CRM</span>
-          <strong>{{ currentSkin.displayName }}</strong>
-        </div>
-        <div class="preview-shell">
-          <div class="preview-menu">
-            <span class="active"></span>
-            <span></span>
-            <span></span>
-          </div>
-          <div class="preview-main">
-            <div class="preview-head"></div>
-            <div class="preview-table">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-            <div class="preview-actions">
-              <span></span>
-              <span></span>
-            </div>
-          </div>
-        </div>
       </div>
     </aside>
   </section>

@@ -1,12 +1,9 @@
 // frontend/crm-app/src/app/components/admin/admin-dashboard/admin-dashboard.component.ts
 import { Component, OnInit } from '@angular/core';
-import { NgIf, NgFor, CurrencyPipe, DatePipe } from '@angular/common';
+import { NgIf, NgFor, DatePipe } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatGridListModule } from '@angular/material/grid-list';
 import { AdminService } from '../../../services/admin.service';
 import { SubscriptionPlan, SubscriptionStatus } from '../../../core/models/models';
 
@@ -24,12 +21,11 @@ interface SystemStats {
   selector: 'app-admin-dashboard',
   standalone: true,
   imports: [
-    NgIf, NgFor, CurrencyPipe, DatePipe, RouterModule,
-    MatCardModule, MatButtonModule, MatIconModule,
-    MatProgressSpinnerModule, MatGridListModule
+    NgIf, NgFor, DatePipe, RouterModule,
+    MatButtonModule, MatProgressSpinnerModule
   ],
   templateUrl: './admin-dashboard.component.html',
-  styleUrl: './admin-dashboard.component.css'
+  styleUrl: './admin-dashboard.component.scss'
 })
 export class AdminDashboardComponent implements OnInit {
   stats: SystemStats | null = null;
@@ -44,28 +40,28 @@ export class AdminDashboardComponent implements OnInit {
       description: 'Добавление, редактирование и удаление пользователей',
       icon: 'people',
       route: '/admin/users',
-      color: 'primary'
+      tone: 'users'
     },
     {
       title: 'Управление магазинами',
       description: 'Настройка филиалов и их параметров',
       icon: 'store',
       route: '/admin/shops',
-      color: 'accent'
+      tone: 'shops'
     },
     {
       title: 'Роли и разрешения',
       description: 'Настройка ролей и прав доступа',
       icon: 'security',
       route: '/admin/roles',
-      color: 'warn'
+      tone: 'roles'
     },
     {
       title: 'Системные настройки',
       description: 'Общие настройки системы',
       icon: 'settings',
       route: '/admin/settings',
-      color: 'primary'
+      tone: 'settings'
     }
   ];
 
@@ -108,6 +104,15 @@ export class AdminDashboardComponent implements OnInit {
     }
   }
 
+  getHealthStatusClass(health: string): string {
+    switch (health) {
+      case 'good': return 'good';
+      case 'warning': return 'warning';
+      case 'error': return 'error';
+      default: return 'unknown';
+    }
+  }
+
   changeSubscription(planCode: string): void {
     this.subscriptionLoading = true;
     this.adminService.changeSubscription(planCode).subscribe({
@@ -126,6 +131,16 @@ export class AdminDashboardComponent implements OnInit {
   getSubscriptionGradient(): string {
     const color = this.getSubscriptionBackground();
     return `linear-gradient(90deg, ${color} ${this.subscription?.remaining_percent || 0}%, #e5e7eb 0)`;
+  }
+
+  formatCurrency(value: number | null | undefined): string {
+    return `${new Intl.NumberFormat('ru-RU', {
+      maximumFractionDigits: 0
+    }).format(value || 0)} ₽`;
+  }
+
+  formatNumber(value: number | null | undefined): string {
+    return new Intl.NumberFormat('ru-RU').format(value || 0);
   }
 
   private loadSubscription(): void {

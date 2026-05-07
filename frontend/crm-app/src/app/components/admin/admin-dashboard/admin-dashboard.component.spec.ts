@@ -83,6 +83,19 @@ describe('AdminDashboardComponent', () => {
     ]);
   });
 
+  it('renders redesigned admin shell with ruble formatting', () => {
+    fixture.detectChanges();
+
+    const element: HTMLElement = fixture.nativeElement;
+
+    expect(element.querySelector('.admin-shell')).not.toBeNull();
+    expect(element.textContent).toContain('Администрирование');
+    expect(element.textContent).toContain('₽');
+    expect(element.textContent).not.toContain('RUB');
+    expect(component.formatCurrency(12000)).toContain('₽');
+    expect(component.formatCurrency(12000)).not.toContain('RUB');
+  });
+
   it('builds progress gradient from backend color and remaining percent', () => {
     component.subscription = {
       ...subscription,

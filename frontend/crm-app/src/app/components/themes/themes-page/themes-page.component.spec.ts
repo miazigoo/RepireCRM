@@ -32,8 +32,10 @@ describe('ThemesPageComponent', () => {
     expect(element.textContent).toContain('Палитры');
     expect(element.textContent).toContain('Облик');
     expect(element.textContent).toContain('Детали');
+    expect(element.querySelector('.themes-hero')).not.toBeNull();
     expect(element.querySelector('.preset-section')).toBeNull();
     expect(element.querySelectorAll('.preset-card').length).toBe(0);
+    expect(element.querySelectorAll('mat-icon').length).toBe(0);
     expect(element.querySelectorAll('.theme-card').length).toBeGreaterThan(9);
     expect(element.querySelectorAll('.skin-card').length).toBeGreaterThan(5);
     expect(element.querySelectorAll('.style-card').length).toBeGreaterThan(4);
