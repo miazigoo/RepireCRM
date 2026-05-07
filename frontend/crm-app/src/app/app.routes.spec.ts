@@ -12,6 +12,7 @@ describe('app routes', () => {
     expect(childPath('orders')).toBeTruthy();
     expect(childPath('customers')).toBeTruthy();
     expect(childPath('inventory')).toBeTruthy();
+    expect(childPath('notifications')).toBeTruthy();
     expect(childPath('reports')).toBeTruthy();
     expect(childPath('admin')).toBeTruthy();
   });

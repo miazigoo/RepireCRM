@@ -1,177 +1,315 @@
-
-<div class="reports-dashboard">
-
-  <div class="dashboard-header">
-    <div class="header-content">
-      <h1>Аналитика и отчеты</h1>
-      <p class="subtitle">Комплексный анализ деятельности сервисного центра</p>
+<div class="reports-shell">
+  <section class="reports-hero">
+    <div class="hero-copy">
+      <span class="eyebrow">Аналитический центр</span>
+      <h1>Отчеты</h1>
+      <div class="hero-pulse">
+        <span>
+          <svg class="pulse-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 5.5h14v14H5Z" />
+            <path d="M8 3.5v4M16 3.5v4M5 10h14" />
+          </svg>
+          {{ getPeriodLabel() }}
+        </span>
+        <span>
+          <svg class="pulse-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 5.5h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2Z" />
+            <path d="M8 3.5v4M16 3.5v4M4 10h16" />
+            <path d="M8 14h3M14 14h2M8 17h2" />
+          </svg>
+          {{ getDateRangeLabel() }}
+        </span>
+        <span *ngIf="lastUpdated">
+          <svg class="pulse-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5a7 7 0 1 1-6.1 10.4" />
+            <path d="M5 16v-5h5" />
+            <path d="M12 8v4l2.7 1.7" />
+          </svg>
+          {{ lastUpdated | date:'HH:mm' }}
+        </span>
+      </div>
     </div>
 
-    <div class="header-actions">
-      <button mat-button (click)="exportReport('pdf')" [disabled]="loading">
-        <mat-icon>picture_as_pdf</mat-icon>
+    <div class="hero-actions">
+      <button mat-stroked-button type="button" (click)="applyFilters()" [disabled]="loading">
+        <svg class="button-svg" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20 12a8 8 0 0 1-14.8 4.2" />
+          <path d="M4 16.5h5v-5" />
+          <path d="M4 12A8 8 0 0 1 18.8 7.8" />
+          <path d="M20 7.5h-5v5" />
+        </svg>
+        Обновить
+      </button>
+      <button mat-stroked-button type="button" (click)="exportReport('pdf')" [disabled]="loading || !metrics">
+        <svg class="button-svg" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 3.5h7l4 4v13H7Z" />
+          <path d="M14 3.5v4h4" />
+          <path d="M9.5 13.5h5M9.5 16.5h5M9.5 10.5h2" />
+        </svg>
         PDF
       </button>
-
-      <button mat-button (click)="exportReport('excel')" [disabled]="loading">
-        <mat-icon>file_download</mat-icon>
+      <button mat-flat-button type="button" (click)="exportReport('excel')" [disabled]="loading || !metrics">
+        <svg class="button-svg" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 4v10" />
+          <path d="m8 10 4 4 4-4" />
+          <path d="M5 19.5h14" />
+        </svg>
         Excel
       </button>
     </div>
-  </div>
+  </section>
 
+  <section class="filters-panel" [formGroup]="filtersForm">
+    <mat-form-field appearance="outline">
+      <mat-label>Период</mat-label>
+      <mat-select formControlName="period">
+        <mat-select-trigger>{{ getPeriodLabel() }}</mat-select-trigger>
+        <mat-option *ngFor="let option of periodOptions" [value]="option.value">
+          <span class="period-option">
+            <strong>{{ option.label }}</strong>
+            <small>{{ option.hint }}</small>
+          </span>
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
 
-  <div class="metrics-grid" *ngIf="metrics && !loading">
-    <mat-card class="metric-card revenue-card">
-      <mat-card-content>
-        <div class="metric-header">
-          <div class="metric-icon">
-            <mat-icon>attach_money</mat-icon>
+    <mat-form-field appearance="outline">
+      <mat-label>Начало</mat-label>
+      <input matInput [matDatepicker]="dateFromPicker" formControlName="date_from" (dateChange)="onCustomDateChange()">
+      <mat-datepicker-toggle matIconSuffix [for]="dateFromPicker"></mat-datepicker-toggle>
+      <mat-datepicker #dateFromPicker></mat-datepicker>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Конец</mat-label>
+      <input matInput [matDatepicker]="dateToPicker" formControlName="date_to" (dateChange)="onCustomDateChange()">
+      <mat-datepicker-toggle matIconSuffix [for]="dateToPicker"></mat-datepicker-toggle>
+      <mat-datepicker #dateToPicker></mat-datepicker>
+    </mat-form-field>
+
+    <button mat-flat-button type="button" (click)="applyFilters()" [disabled]="loading">
+      <svg class="button-svg" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 7h8" />
+        <path d="M17 7h2" />
+        <path d="M15 5v4" />
+        <path d="M5 17h2" />
+        <path d="M11 17h8" />
+        <path d="M9 15v4" />
+      </svg>
+      Применить
+    </button>
+  </section>
+
+  <ng-container *ngIf="metrics && !loading; else loadingState">
+    <section class="metrics-grid" aria-label="Ключевые показатели">
+      <article class="metric-card metric-revenue">
+        <div class="metric-icon">
+          <svg class="metric-svg" viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M5 9.5h22v15H5Z" />
+            <path d="M8 13h6.5a2.2 2.2 0 1 1 0 4.4H10" />
+            <path d="M10 12v10M8 17.4h8.5" />
+            <path d="M23 19h.1" />
+          </svg>
+        </div>
+        <div class="metric-body">
+          <span class="metric-label">Выручка</span>
+          <strong>{{ formatCurrency(metrics.revenue.current) }}</strong>
+          <p>Предыдущий период: {{ formatCurrency(metrics.revenue.previous) }}</p>
+        </div>
+        <div class="metric-trend" [ngClass]="getGrowthColor()">
+          <mat-icon>{{ getGrowthIcon() }}</mat-icon>
+          <span>{{ formatPercent(metrics.revenue.growth_percent) }}</span>
+        </div>
+      </article>
+
+      <article class="metric-card metric-orders">
+        <div class="metric-icon">
+          <svg class="metric-svg" viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M10 5.5h12a3 3 0 0 1 3 3v18H7v-18a3 3 0 0 1 3-3Z" />
+            <path d="M12 4h8v4h-8Z" />
+            <path d="M11.5 14.5h9M11.5 19h9M11.5 23.5h5.5" />
+          </svg>
+        </div>
+        <div class="metric-body">
+          <span class="metric-label">Заказы</span>
+          <strong>{{ formatNumber(metrics.orders.total) }}</strong>
+          <p>{{ metrics.orders.completed }} выдано / {{ metrics.orders.in_progress }} в работе</p>
+        </div>
+        <div class="metric-progress">
+          <span [style.width.%]="getCompletionRate()"></span>
+        </div>
+      </article>
+
+      <article class="metric-card metric-check">
+        <div class="metric-icon">
+          <svg class="metric-svg" viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M9 5.5h14v21l-3-2-2.5 2-2.5-2-2.5 2-3.5-2Z" />
+            <path d="M12.5 12h7M12.5 16h7M12.5 20h4" />
+          </svg>
+        </div>
+        <div class="metric-body">
+          <span class="metric-label">Средний чек</span>
+          <strong>{{ formatCurrency(metrics.avg_check.current) }}</strong>
+          <p>Финальная стоимость выполненных заказов</p>
+        </div>
+      </article>
+
+      <article class="metric-card metric-conversion">
+        <div class="metric-icon">
+          <svg class="metric-svg" viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M16 5.5a10.5 10.5 0 1 0 10.5 10.5" />
+            <path d="M16 10a6 6 0 1 0 6 6" />
+            <path d="M16 16 25 7" />
+            <path d="M22 7h3v3" />
+          </svg>
+        </div>
+        <div class="metric-body">
+          <span class="metric-label">Конверсия</span>
+          <strong>{{ formatPercent(metrics.orders.conversion_rate) }}</strong>
+          <p>Доля завершенных заказов</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="analytics-grid">
+      <article class="panel revenue-panel">
+        <header class="panel-header">
+          <div>
+            <span class="panel-kicker">Финансы</span>
+            <h2>Динамика выручки</h2>
           </div>
-          <div class="metric-trend" [ngClass]="getGrowthColor()">
-            <mat-icon>{{ getGrowthIcon() }}</mat-icon>
-            <span>{{ formatPercent(metrics.revenue.growth_percent) }}</span>
+          <span class="panel-counter">{{ metrics.period.days }} дней</span>
+        </header>
+
+        <div class="chart-frame large" *ngIf="revenueChartData && !chartLoading; else revenueEmpty">
+          <canvas baseChart
+                  [data]="revenueChartData"
+                  [options]="revenueChartOptions"
+                  type="line">
+          </canvas>
+        </div>
+      </article>
+
+      <article class="panel summary-panel">
+        <header class="panel-header compact">
+          <div>
+            <span class="panel-kicker">Итог</span>
+            <h2>Период</h2>
+          </div>
+        </header>
+
+        <div class="summary-stack">
+          <div class="summary-row">
+            <span>Выручка</span>
+            <strong>{{ formatCurrency(financialSummary?.total_revenue || metrics.revenue.current) }}</strong>
+          </div>
+          <div class="summary-row">
+            <span>Заказов</span>
+            <strong>{{ formatNumber(financialSummary?.total_orders || metrics.orders.completed) }}</strong>
+          </div>
+          <div class="summary-row">
+            <span>Средний чек</span>
+            <strong>{{ formatCurrency(financialSummary?.avg_check || metrics.avg_check.current) }}</strong>
+          </div>
+          <div class="summary-row">
+            <span>Дней</span>
+            <strong>{{ financialSummary?.period_days || metrics.period.days }}</strong>
           </div>
         </div>
+      </article>
 
-        <div class="metric-content">
-          <h3>{{ formatCurrency(metrics.revenue.current) }}</h3>
-          <p>Доход за {{ metrics.period.days }} дней</p>
-          <small class="metric-comparison">
-            Предыдущий период: {{ formatCurrency(metrics.revenue.previous) }}
-          </small>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card class="metric-card orders-card">
-      <mat-card-content>
-        <div class="metric-header">
-          <div class="metric-icon">
-            <mat-icon>assignment</mat-icon>
+      <article class="panel services-panel">
+        <header class="panel-header">
+          <div>
+            <span class="panel-kicker">Услуги</span>
+            <h2>Популярные работы</h2>
           </div>
-          <div class="metric-badge">
-            {{ metrics.orders.conversion_rate }}% конверсия
+          <span class="panel-counter">{{ metrics.top_services.length }} позиций</span>
+        </header>
+
+        <div class="services-layout" *ngIf="metrics.top_services.length > 0; else servicesEmpty">
+          <div class="chart-frame doughnut" *ngIf="servicesChartData">
+            <canvas baseChart
+                    [data]="servicesChartData"
+                    [options]="servicesChartOptions"
+                    type="doughnut">
+            </canvas>
           </div>
-        </div>
 
-        <div class="metric-content">
-          <h3>{{ metrics.orders.total }}</h3>
-          <p>Всего заказов</p>
-          <div class="metric-breakdown">
-            <span class="completed">{{ metrics.orders.completed }} выполнено</span>
-            <span class="in-progress">{{ metrics.orders.in_progress }} в работе</span>
-          </div>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card class="metric-card check-card">
-      <mat-card-content>
-        <div class="metric-header">
-          <div class="metric-icon">
-            <mat-icon>trending_up</mat-icon>
-          </div>
-        </div>
-
-        <div class="metric-content">
-          <h3>{{ formatCurrency(metrics.avg_check.current) }}</h3>
-          <p>Средний чек</p>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  </div>
-
-
-  <div class="charts-section" *ngIf="metrics && !loading">
-    <mat-tab-group class="charts-tabs">
-
-      <mat-tab label="Динамика доходов">
-        <div class="chart-container">
-          <mat-card>
-            <mat-card-content>
-              <div class="chart-wrapper" *ngIf="revenueChartData">
-                <canvas baseChart
-                        [data]="revenueChartData"
-                        [options]="revenueChartOptions"
-                        type="line">
-                </canvas>
-              </div>
-
-              <div class="chart-loading" *ngIf="!revenueChartData">
-                <mat-icon>bar_chart</mat-icon>
-                <p>Загрузка данных...</p>
-              </div>
-            </mat-card-content>
-          </mat-card>
-        </div>
-      </mat-tab>
-
-
-      <mat-tab label="Популярные услуги">
-        <div class="chart-container">
-          <div class="services-layout">
-            <mat-card class="chart-card">
-              <mat-card-content>
-                <div class="chart-wrapper" *ngIf="servicesChartData">
-                  <canvas baseChart
-                          [data]="servicesChartData"
-                          [options]="servicesChartOptions"
-                          type="doughnut">
-                  </canvas>
+          <div class="services-list">
+            <div class="service-item" *ngFor="let service of metrics.top_services; let i = index">
+              <div class="service-position">{{ i + 1 }}</div>
+              <div class="service-info">
+                <div class="service-name">{{ service.name }}</div>
+                <div class="service-stats">
+                  <span>{{ service.count }} заказов</span>
+                  <strong>{{ formatCurrency(service.revenue) }}</strong>
                 </div>
-              </mat-card-content>
-            </mat-card>
-
-            <mat-card class="services-list">
-              <mat-card-header>
-                <mat-card-title>Топ услуги</mat-card-title>
-              </mat-card-header>
-              <mat-card-content>
-                <div class="service-item" *ngFor="let service of metrics.top_services; let i = index">
-                  <div class="service-position">{{ i + 1 }}</div>
-                  <div class="service-info">
-                    <div class="service-name">{{ service.name }}</div>
-                    <div class="service-stats">
-                      <span class="service-count">{{ service.count }} заказов</span>
-                      <span class="service-revenue">{{ formatCurrency(service.revenue) }}</span>
-                    </div>
-                  </div>
-                </div>
-              </mat-card-content>
-            </mat-card>
+              </div>
+            </div>
           </div>
         </div>
-      </mat-tab>
+      </article>
 
+      <article class="panel performance-panel">
+        <header class="panel-header">
+          <div>
+            <span class="panel-kicker">Команда</span>
+            <h2>Производительность</h2>
+          </div>
+          <span class="panel-counter">{{ metrics.technician_performance.length }} мастеров</span>
+        </header>
 
-      <mat-tab label="Производительность">
-        <div class="chart-container">
-          <mat-card>
-            <mat-card-content>
-              <div class="chart-wrapper" *ngIf="performanceChartData">
-                <canvas baseChart
-                        [data]="performanceChartData"
-                        [options]="performanceChartOptions"
-                        type="bar">
-                </canvas>
-              </div>
-            </mat-card-content>
-          </mat-card>
+        <div class="chart-frame medium" *ngIf="performanceChartData; else performanceEmpty">
+          <canvas baseChart
+                  [data]="performanceChartData"
+                  [options]="performanceChartOptions"
+                  type="bar">
+          </canvas>
         </div>
-      </mat-tab>
-    </mat-tab-group>
-  </div>
-
-
-  <div class="loading-container" *ngIf="loading">
-    <mat-card>
-      <mat-card-content>
-        <div class="loading-content">
-          <mat-icon class="loading-icon">analytics</mat-icon>
-          <p>Подготовка аналитических данных...</p>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  </div>
+      </article>
+    </section>
+  </ng-container>
 </div>
+
+<ng-template #loadingState>
+  <section class="loading-state">
+    <mat-spinner diameter="36"></mat-spinner>
+    <span>Подготовка отчетов</span>
+  </section>
+</ng-template>
+
+<ng-template #revenueEmpty>
+  <div class="empty-state">
+    <svg class="empty-svg" viewBox="0 0 64 64" aria-hidden="true">
+      <path d="M10 50h44" />
+      <path d="M15 42 27 30l8 7 14-18" />
+      <path d="M44 19h5v5" />
+      <path d="M16 16v34" />
+    </svg>
+    <strong>{{ chartLoading ? 'Загружаем график' : 'Нет данных по выручке' }}</strong>
+  </div>
+</ng-template>
+
+<ng-template #servicesEmpty>
+  <div class="empty-state">
+    <svg class="empty-svg" viewBox="0 0 64 64" aria-hidden="true">
+      <path d="M22 17h20v30H22Z" />
+      <path d="M27 24h10M27 31h10M27 38h6" />
+      <path d="M18 21h4M18 43h4M42 21h4M42 43h4" />
+    </svg>
+    <strong>Услуг за период нет</strong>
+  </div>
+</ng-template>
+
+<ng-template #performanceEmpty>
+  <div class="empty-state">
+    <svg class="empty-svg" viewBox="0 0 64 64" aria-hidden="true">
+      <path d="M20 48v-5a12 12 0 0 1 24 0v5" />
+      <path d="M32 28a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" />
+      <path d="M16 52h32" />
+      <path d="M25 44h14" />
+    </svg>
+    <strong>Нет выполненных заказов по мастерам</strong>
+  </div>
+</ng-template>

@@ -16,6 +16,39 @@ from .services import ReportService
 router = Router(tags=["Отчеты"])
 
 
+def _ensure_aware(value: datetime) -> datetime:
+    if timezone.is_naive(value):
+        return timezone.make_aware(value, timezone.get_current_timezone())
+    return value
+
+
+def _resolve_period_range(
+    period: str = "30_days",
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+) -> tuple[datetime, datetime, int]:
+    end_date = _ensure_aware(date_to) if date_to else timezone.now()
+
+    if date_from:
+        start_date = _ensure_aware(date_from)
+    elif period == "today":
+        start_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == "7_days":
+        start_date = end_date - timedelta(days=6)
+    elif period == "90_days":
+        start_date = end_date - timedelta(days=89)
+    elif period == "month":
+        start_date = end_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    else:
+        start_date = end_date - timedelta(days=29)
+
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+
+    days = max((end_date.date() - start_date.date()).days + 1, 1)
+    return start_date, end_date, days
+
+
 @router.get("/sla", response=dict)
 def get_sla_report(
     request, date_from: datetime, date_to: datetime, shop_id: Optional[int] = None
@@ -31,19 +64,26 @@ def get_sla_report(
 
 
 @router.get("/dashboard-metrics", response=dict)
-def get_dashboard_metrics(request):
+def get_dashboard_metrics(
+    request,
+    period: str = "30_days",
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    shop_id: Optional[int] = None,
+):
     """Метрики для дашборда"""
     if not request.auth.has_permission("reports.view_dashboard"):
         raise PermissionError("Нет прав для просмотра дашборда")
 
-    # Определяем период - последние 30 дней
-    end_date = timezone.now()
-    start_date = end_date - timedelta(days=30)
-    prev_start_date = start_date - timedelta(days=30)
+    start_date, end_date, days = _resolve_period_range(period, date_from, date_to)
+    prev_end_date = start_date - timedelta(microseconds=1)
+    prev_start_date = start_date - (end_date - start_date)
 
     # Базовый queryset с учетом прав доступа
     orders_qs = Order.objects.all()
-    if not request.auth.is_director:
+    if shop_id and request.auth.is_director:
+        orders_qs = orders_qs.filter(shop_id=shop_id)
+    elif not request.auth.is_director:
         available_shops = request.auth.get_available_shops()
         orders_qs = orders_qs.filter(shop__in=available_shops)
 
@@ -52,7 +92,7 @@ def get_dashboard_metrics(request):
     current_completed = current_orders.filter(status="completed")
 
     # Предыдущий период для сравнения
-    prev_orders = orders_qs.filter(created_at__range=[prev_start_date, start_date])
+    prev_orders = orders_qs.filter(created_at__range=[prev_start_date, prev_end_date])
     prev_completed = prev_orders.filter(status="completed")
 
     # Расчеты
@@ -84,7 +124,7 @@ def get_dashboard_metrics(request):
         output_field=DecimalField(max_digits=12, decimal_places=2),
     )
     top_services = (
-        OrderService.objects.filter(order__created_at__range=[start_date, end_date])
+        OrderService.objects.filter(order__in=current_orders)
         .values("service__name")
         .annotate(total_count=Count("id"), total_revenue=Sum(service_revenue))
         .order_by("-total_revenue")[:5]
@@ -109,7 +149,7 @@ def get_dashboard_metrics(request):
         "period": {
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
-            "days": 30,
+            "days": days,
         },
         "revenue": {
             "current": float(current_revenue),
@@ -200,12 +240,25 @@ def generate_report(request, template_id: int, parameters: dict = None):
 
 
 @router.get("/export/dashboard")
-def export_dashboard_report(request, period: str = "30_days", format: str = "pdf"):
+def export_dashboard_report(
+    request,
+    period: str = "30_days",
+    format: str = "pdf",
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    shop_id: Optional[int] = None,
+):
     """Экспорт текущего дашборда без предварительно созданного GeneratedReport."""
     if not request.auth.has_permission("reports.export_reports"):
         raise PermissionError("Нет прав для экспорта отчетов")
 
-    metrics = get_dashboard_metrics(request)
+    metrics = get_dashboard_metrics(
+        request,
+        period=period,
+        date_from=date_from,
+        date_to=date_to,
+        shop_id=shop_id,
+    )
     filename = f"dashboard-report-{period}"
 
     if format == "excel":

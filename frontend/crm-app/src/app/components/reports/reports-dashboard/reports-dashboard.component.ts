@@ -1,51 +1,50 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { provideNativeDateAdapter } from '@angular/material/core';
 import { BaseChartDirective } from 'ng2-charts';
-import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
+import { ChartConfiguration, ChartData } from 'chart.js';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { ReportsService } from '../../../services/reports.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import {
+  DashboardMetrics,
+  FinancialReport,
+  ReportsService
+} from '../../../services/reports.service';
 import { ensureChartComponentsRegistered } from '../../../core/charts/register-chart-components';
 
 ensureChartComponentsRegistered();
 
-interface DashboardMetrics {
-  period: {
-    start_date: string;
-    end_date: string;
-    days: number;
-  };
-  revenue: {
-    current: number;
-    previous: number;
-    growth_percent: number;
-  };
-  orders: {
-    total: number;
-    completed: number;
-    in_progress: number;
-    conversion_rate: number;
-  };
-  avg_check: {
-    current: number;
-  };
-  top_services: Array<{
-    name: string;
-    count: number;
-    revenue: number;
-  }>;
-  technician_performance: Array<{
-    name: string;
-    completed_orders: number;
-    revenue: number;
-  }>;
+interface ReportPeriodOption {
+  value: string;
+  label: string;
+  hint: string;
+}
+
+interface ChartPalette {
+  text: string;
+  muted: string;
+  grid: string;
+  primary: string;
+  accent: string;
+  success: string;
+  warning: string;
+  danger: string;
+  surface: string;
+}
+
+interface ReportFilterParams extends Record<string, unknown> {
+  period: string;
+  date_from: string | null;
+  date_to: string | null;
+  shop_id: number | null;
 }
 
 @Component({
@@ -54,85 +53,44 @@ interface DashboardMetrics {
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    MatCardModule,
     MatButtonModule,
     MatIconModule,
     MatTabsModule,
     MatDatepickerModule,
     MatFormFieldModule,
+    MatInputModule,
     MatSelectModule,
+    MatProgressSpinnerModule,
     BaseChartDirective
   ],
+  providers: [provideNativeDateAdapter()],
   templateUrl: './reports-dashboard.component.html',
-  styleUrl: './reports-dashboard.component.css'
+  styleUrl: './reports-dashboard.component.scss'
 })
 export class ReportsDashboardComponent implements OnInit {
+  readonly periodOptions: ReportPeriodOption[] = [
+    { value: 'today', label: 'Сегодня', hint: 'Текущий день' },
+    { value: '7_days', label: '7 дней', hint: 'Неделя' },
+    { value: '30_days', label: '30 дней', hint: 'Месяц' },
+    { value: '90_days', label: '90 дней', hint: 'Квартал' },
+    { value: 'month', label: 'Этот месяц', hint: 'С начала месяца' },
+    { value: 'custom', label: 'Свой период', hint: 'Ручной диапазон' }
+  ];
+
   metrics: DashboardMetrics | null = null;
+  financialSummary: FinancialReport['summary'] | null = null;
   filtersForm: FormGroup;
   loading = false;
+  chartLoading = false;
+  lastUpdated: Date | null = null;
 
-  // Графики
   revenueChartData: ChartData<'line'> | null = null;
   servicesChartData: ChartData<'doughnut'> | null = null;
   performanceChartData: ChartData<'bar'> | null = null;
 
-  revenueChartOptions: ChartConfiguration['options'] = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      title: {
-        display: true,
-        text: 'Динамика доходов'
-      },
-      legend: {
-        position: 'top'
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: {
-          callback: function(value) {
-            return new Intl.NumberFormat('ru-RU', {
-              style: 'currency',
-              currency: 'RUB',
-              maximumFractionDigits: 0
-            }).format(Number(value));
-          }
-        }
-      }
-    }
-  };
-
-  servicesChartOptions: ChartConfiguration['options'] = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      title: {
-        display: true,
-        text: 'Популярные услуги'
-      },
-      legend: {
-        position: 'right'
-      }
-    }
-  };
-
-  performanceChartOptions: ChartConfiguration['options'] = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      title: {
-        display: true,
-        text: 'Производительность техников'
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true
-      }
-    }
-  };
+  revenueChartOptions: ChartConfiguration<'line'>['options'] = {};
+  servicesChartOptions: ChartConfiguration<'doughnut'>['options'] = {};
+  performanceChartOptions: ChartConfiguration<'bar'>['options'] = {};
 
   constructor(
     private fb: FormBuilder,
@@ -148,103 +106,22 @@ export class ReportsDashboardComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.applyPresetPeriod('30_days', false);
     this.loadMetrics();
-    this.setupFilterChanges();
-  }
 
-  private setupFilterChanges(): void {
-    this.filtersForm.valueChanges.subscribe(() => {
-      this.loadMetrics();
-    });
-  }
-
-  private loadMetrics(): void {
-    this.loading = true;
-
-    this.reportsService.getDashboardMetrics().subscribe({
-      next: (metrics) => {
-        this.metrics = metrics;
-        this.setupCharts();
-        this.loading = false;
-      },
-      error: (error) => {
-        console.error('Error loading metrics:', error);
-        this.snackBar.open('Ошибка загрузки метрик', 'Закрыть', { duration: 3000 });
-        this.loading = false;
+    this.filtersForm.get('period')?.valueChanges.subscribe(period => {
+      if (period && period !== 'custom') {
+        this.applyPresetPeriod(period);
       }
     });
   }
 
-  private setupCharts(): void {
-    if (!this.metrics) return;
-
-    // График доходов (будет загружаться отдельно с детальными данными)
-    this.loadRevenueChart();
-
-    // График услуг
-    this.servicesChartData = {
-      labels: this.metrics.top_services.map(s => s.name),
-      datasets: [{
-        data: this.metrics.top_services.map(s => s.revenue),
-        backgroundColor: [
-          '#FF6384',
-          '#36A2EB',
-          '#FFCE56',
-          '#4BC0C0',
-          '#9966FF',
-          '#FF9F40'
-        ]
-      }]
-    };
-
-    // График производительности
-    this.performanceChartData = {
-      labels: this.metrics.technician_performance.map(t => t.name),
-      datasets: [
-        {
-          label: 'Выполненных заказов',
-          data: this.metrics.technician_performance.map(t => t.completed_orders),
-          backgroundColor: '#36A2EB',
-          yAxisID: 'y'
-        },
-        {
-          label: 'Доход (тыс. руб.)',
-          data: this.metrics.technician_performance.map(t => t.revenue / 1000),
-          backgroundColor: '#FF6384',
-          yAxisID: 'y1'
-        }
-      ]
-    };
+  applyFilters(): void {
+    this.loadMetrics();
   }
 
-  private loadRevenueChart(): void {
-    // Здесь будет отдельный запрос для получения детальных данных по дням
-    const filters = this.filtersForm.value;
-
-    this.reportsService.getFinancialReport(
-      filters.date_from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-      filters.date_to || new Date().toISOString(),
-      filters.shop_id
-    ).subscribe({
-      next: (report) => {
-        this.revenueChartData = {
-          labels: report.daily_revenue.map((item: any) =>
-            new Date(item.date).toLocaleDateString('ru-RU')
-          ),
-          datasets: [{
-            label: 'Доход',
-            data: report.daily_revenue.map((item: any) => item.revenue),
-            borderColor: '#36A2EB',
-            backgroundColor: 'rgba(54, 162, 235, 0.1)',
-            fill: true,
-            tension: 0.4
-          }]
-        };
-      },
-      error: (error) => {
-        console.error('Error loading revenue chart:', error);
-      }
-    });
+  onCustomDateChange(): void {
+    this.filtersForm.patchValue({ period: 'custom' }, { emitEvent: false });
   }
 
   exportReport(format: 'pdf' | 'excel'): void {
@@ -252,14 +129,13 @@ export class ReportsDashboardComponent implements OnInit {
 
     this.loading = true;
 
-    // Здесь будет логика экспорта отчета
-    this.reportsService.exportDashboard(format, this.filtersForm.value).subscribe({
+    this.reportsService.exportDashboard(format, this.getFilterParams()).subscribe({
       next: (blob) => {
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `dashboard-report.${format === 'excel' ? 'csv' : 'pdf'}`;
-        a.click();
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `dashboard-report.${format === 'excel' ? 'csv' : 'pdf'}`;
+        anchor.click();
         window.URL.revokeObjectURL(url);
 
         this.loading = false;
@@ -288,18 +164,358 @@ export class ReportsDashboardComponent implements OnInit {
     const growth = this.metrics.revenue.growth_percent;
     if (growth > 0) return 'success';
     if (growth < 0) return 'warn';
-    return '';
+    return 'neutral';
   }
 
-  formatCurrency(value: number): string {
-    return new Intl.NumberFormat('ru-RU', {
-      style: 'currency',
-      currency: 'RUB',
+  getPeriodLabel(): string {
+    const period = this.filtersForm.get('period')?.value;
+    return this.periodOptions.find(option => option.value === period)?.label || 'Период';
+  }
+
+  getDateRangeLabel(): string {
+    const { date_from: dateFrom, date_to: dateTo } = this.filtersForm.value;
+
+    if (!dateFrom || !dateTo) {
+      return 'Диапазон не выбран';
+    }
+
+    return `${this.formatShortDate(dateFrom)} - ${this.formatShortDate(dateTo)}`;
+  }
+
+  getCompletionRate(): number {
+    if (!this.metrics || this.metrics.orders.total === 0) {
+      return 0;
+    }
+
+    return Math.round((this.metrics.orders.completed / this.metrics.orders.total) * 100);
+  }
+
+  getAverageCheckDelta(): number {
+    if (!this.metrics || this.metrics.revenue.previous <= 0) {
+      return 0;
+    }
+
+    return this.metrics.avg_check.current / this.metrics.revenue.previous * 100;
+  }
+
+  formatCurrency(value: number | null | undefined): string {
+    return `${new Intl.NumberFormat('ru-RU', {
       maximumFractionDigits: 0
-    }).format(value);
+    }).format(value || 0)} ₽`;
   }
 
-  formatPercent(value: number): string {
-    return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+  formatNumber(value: number | null | undefined): string {
+    return new Intl.NumberFormat('ru-RU', {
+      maximumFractionDigits: 0
+    }).format(value || 0);
+  }
+
+  formatPercent(value: number | null | undefined): string {
+    const numericValue = value || 0;
+    return `${numericValue > 0 ? '+' : ''}${numericValue.toFixed(1)}%`;
+  }
+
+  private loadMetrics(): void {
+    this.loading = true;
+    this.configureChartOptions();
+
+    this.reportsService.getDashboardMetrics(this.getFilterParams()).subscribe({
+      next: (metrics) => {
+        this.metrics = metrics;
+        this.setupCharts();
+        this.lastUpdated = new Date();
+        this.loading = false;
+      },
+      error: (error) => {
+        console.error('Error loading metrics:', error);
+        this.snackBar.open('Ошибка загрузки метрик', 'Закрыть', { duration: 3000 });
+        this.loading = false;
+        this.chartLoading = false;
+      }
+    });
+  }
+
+  private setupCharts(): void {
+    if (!this.metrics) return;
+
+    const palette = this.getChartPalette();
+    this.loadRevenueChart(palette);
+    this.setupServicesChart(palette);
+    this.setupPerformanceChart(palette);
+  }
+
+  private setupServicesChart(palette: ChartPalette): void {
+    if (!this.metrics?.top_services.length) {
+      this.servicesChartData = null;
+      return;
+    }
+
+    this.servicesChartData = {
+      labels: this.metrics.top_services.map(service => service.name),
+      datasets: [{
+        data: this.metrics.top_services.map(service => service.revenue),
+        backgroundColor: [
+          palette.primary,
+          palette.accent,
+          palette.success,
+          palette.warning,
+          palette.danger
+        ],
+        borderColor: palette.surface,
+        borderWidth: 3,
+        hoverOffset: 8
+      }]
+    };
+  }
+
+  private setupPerformanceChart(palette: ChartPalette): void {
+    if (!this.metrics?.technician_performance.length) {
+      this.performanceChartData = null;
+      return;
+    }
+
+    this.performanceChartData = {
+      labels: this.metrics.technician_performance.map(technician => technician.name.trim() || 'Без имени'),
+      datasets: [
+        {
+          label: 'Заказы',
+          data: this.metrics.technician_performance.map(technician => technician.completed_orders),
+          backgroundColor: palette.primary,
+          borderRadius: 8,
+          yAxisID: 'y'
+        },
+        {
+          label: 'Выручка, тыс. ₽',
+          data: this.metrics.technician_performance.map(technician => technician.revenue / 1000),
+          backgroundColor: palette.accent,
+          borderRadius: 8,
+          yAxisID: 'y1'
+        }
+      ]
+    };
+  }
+
+  private loadRevenueChart(palette: ChartPalette): void {
+    this.chartLoading = true;
+    const params = this.getFilterParams();
+
+    this.reportsService.getFinancialReport(
+      params.date_from as string,
+      params.date_to as string,
+      params.shop_id || undefined
+    ).subscribe({
+      next: (report) => {
+        this.financialSummary = report.summary;
+        this.revenueChartData = report.daily_revenue.length ? {
+          labels: report.daily_revenue.map(item => new Date(item.date).toLocaleDateString('ru-RU', {
+            day: '2-digit',
+            month: 'short'
+          })),
+          datasets: [{
+            label: 'Выручка',
+            data: report.daily_revenue.map(item => item.revenue),
+            borderColor: palette.primary,
+            backgroundColor: this.withAlpha(palette.primary, 0.14),
+            pointBackgroundColor: palette.primary,
+            pointBorderColor: palette.surface,
+            pointHoverRadius: 5,
+            fill: true,
+            tension: 0.38
+          }]
+        } : null;
+        this.chartLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading revenue chart:', error);
+        this.revenueChartData = null;
+        this.chartLoading = false;
+      }
+    });
+  }
+
+  private configureChartOptions(): void {
+    const palette = this.getChartPalette();
+    const moneyTick = (value: string | number) => this.formatCurrency(Number(value));
+
+    this.revenueChartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false,
+          labels: { color: palette.text }
+        },
+        tooltip: {
+          callbacks: {
+            label: context => ` ${this.formatCurrency(Number(context.parsed.y || 0))}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: palette.muted },
+          grid: { color: palette.grid }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: palette.muted,
+            callback: moneyTick
+          },
+          grid: { color: palette.grid }
+        }
+      }
+    };
+
+    this.servicesChartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: palette.text,
+            boxWidth: 10,
+            boxHeight: 10,
+            usePointStyle: true
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: context => ` ${context.label}: ${this.formatCurrency(Number(context.parsed || 0))}`
+          }
+        }
+      }
+    };
+
+    this.performanceChartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { color: palette.text }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: palette.muted },
+          grid: { display: false }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: palette.muted },
+          grid: { color: palette.grid }
+        },
+        y1: {
+          beginAtZero: true,
+          position: 'right',
+          ticks: { color: palette.muted },
+          grid: { drawOnChartArea: false }
+        }
+      }
+    };
+  }
+
+  private applyPresetPeriod(period: string, shouldLoad = true): void {
+    const { start, end } = this.getPresetRange(period);
+    this.filtersForm.patchValue({
+      period,
+      date_from: start,
+      date_to: end
+    }, { emitEvent: false });
+
+    if (shouldLoad) {
+      this.loadMetrics();
+    }
+  }
+
+  private getPresetRange(period: string): { start: Date; end: Date } {
+    const end = new Date();
+    const start = new Date(end);
+
+    if (period === 'today') {
+      start.setHours(0, 0, 0, 0);
+      return { start, end };
+    }
+
+    if (period === '7_days') {
+      start.setDate(end.getDate() - 6);
+    } else if (period === '90_days') {
+      start.setDate(end.getDate() - 89);
+    } else if (period === 'month') {
+      start.setDate(1);
+    } else {
+      start.setDate(end.getDate() - 29);
+    }
+
+    start.setHours(0, 0, 0, 0);
+    return { start, end };
+  }
+
+  private getFilterParams(): ReportFilterParams {
+    const filters = this.filtersForm.value;
+
+    return {
+      period: filters.period || '30_days',
+      date_from: this.toApiDate(filters.date_from, false),
+      date_to: this.toApiDate(filters.date_to, true),
+      shop_id: filters.shop_id
+    };
+  }
+
+  private toApiDate(value: Date | string | null, endOfDay: boolean): string | null {
+    if (!value) {
+      return null;
+    }
+
+    const date = value instanceof Date ? new Date(value) : new Date(value);
+    if (endOfDay) {
+      date.setHours(23, 59, 59, 999);
+    } else {
+      date.setHours(0, 0, 0, 0);
+    }
+
+    return date.toISOString();
+  }
+
+  private formatShortDate(value: Date | string): string {
+    return new Date(value).toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: 'short'
+    });
+  }
+
+  private getChartPalette(): ChartPalette {
+    const styles = getComputedStyle(document.body);
+    const read = (name: string, fallback: string) => styles.getPropertyValue(name).trim() || fallback;
+
+    return {
+      text: read('--color-text-primary', '#111827'),
+      muted: read('--color-text-secondary', '#64748b'),
+      grid: this.withAlpha(read('--color-border', '#d8e0ea'), 0.7),
+      primary: read('--color-primary', '#2563eb'),
+      accent: read('--color-accent', '#0f766e'),
+      success: read('--color-success', '#15803d'),
+      warning: read('--color-warning', '#b45309'),
+      danger: read('--color-danger', '#b91c1c'),
+      surface: read('--panel-background', '#ffffff')
+    };
+  }
+
+  private withAlpha(color: string, alpha: number): string {
+    if (color.startsWith('#')) {
+      const hex = color.replace('#', '');
+      const value = hex.length === 3
+        ? hex.split('').map(part => part + part).join('')
+        : hex;
+      const red = parseInt(value.slice(0, 2), 16);
+      const green = parseInt(value.slice(2, 4), 16);
+      const blue = parseInt(value.slice(4, 6), 16);
+      return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+    }
+
+    return color;
   }
 }

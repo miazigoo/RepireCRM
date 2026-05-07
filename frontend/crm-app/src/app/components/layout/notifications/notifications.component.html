@@ -1,68 +1,169 @@
-<section class="notifications-panel" (click)="$event.stopPropagation()">
-  <header class="notifications-header">
-    <div>
-      <span class="panel-kicker">Центр событий</span>
-      <h4>Уведомления</h4>
-    </div>
+<ng-container *ngIf="{ notifications: (notifications$ | async) || [], unread: (unreadCount$ | async) || 0, connected: (connectionStatus$ | async) !== false } as vm">
+  <section class="notifications-center">
+    <header class="notifications-hero">
+      <div class="hero-mark">
+        <svg class="hero-svg" viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M18 29c0-8 4.8-14 14-14s14 6 14 14v10l5 7H13l5-7Z" />
+          <path d="M26 47a6.5 6.5 0 0 0 12 0" />
+          <path d="M32 8v7" />
+          <path d="M49 15.5 44 21" />
+          <path d="M15 15.5 20 21" />
+        </svg>
+      </div>
 
-    <div class="header-actions">
-      <span class="unread-pill" *ngIf="((unreadCount$ | async) || 0) > 0">
-        {{ unreadCount$ | async }}
-      </span>
-      <button mat-icon-button type="button" matTooltip="Обновить" (click)="refresh()">
-        <mat-icon>refresh</mat-icon>
-      </button>
-      <button
-        mat-button
-        type="button"
-        *ngIf="((unreadCount$ | async) || 0) > 0"
-        (click)="markAllAsRead()">
-        Прочитать все
-      </button>
-    </div>
-  </header>
-
-  <div class="connection-note" *ngIf="(connectionStatus$ | async) === false">
-    <mat-icon>sync_problem</mat-icon>
-    <span>Лента временно недоступна. Попробуйте обновить.</span>
-  </div>
-
-  <mat-divider></mat-divider>
-
-  <ng-container *ngIf="notifications$ | async as notifications">
-    <div class="notifications-list" *ngIf="notifications.length > 0; else noNotifications">
-      <button
-        *ngFor="let notification of notifications.slice(0, 10)"
-        type="button"
-        class="notification-item"
-        [ngClass]="getPriorityClass(notification.priority)"
-        (click)="onNotificationClick(notification)">
-        <span class="notification-icon" [style.color]="resolveColor(notification.color)">
-          <mat-icon>{{ notification.icon || 'notifications' }}</mat-icon>
-        </span>
-
-        <span class="notification-content">
-          <span class="notification-title">
-            <span>{{ notification.title }}</span>
-            <mat-icon
-              class="priority-icon"
-              *ngIf="notification.priority !== 'normal'"
-              [matTooltip]="getPriorityLabel(notification.priority)">
-              {{ getPriorityIcon(notification.priority) }}
-            </mat-icon>
+      <div class="hero-copy">
+        <span class="eyebrow">Центр событий</span>
+        <h1>Уведомления</h1>
+        <div class="hero-pulse">
+          <span>
+            <svg class="pulse-svg" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7.5h16v10H4Z" />
+              <path d="m4.5 8 7.5 5.8L19.5 8" />
+              <path d="M17.5 5.5h3v3" />
+            </svg>
+            {{ vm.unread }} непрочитано
           </span>
-          <span class="notification-message">{{ notification.message }}</span>
-          <span class="notification-time">{{ getRelativeTime(notification.created_at) }}</span>
-        </span>
-      </button>
-    </div>
-  </ng-container>
+          <span [class.offline]="!vm.connected">
+            <svg class="pulse-svg" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7.2 18.5H17a4.5 4.5 0 0 0 .4-9 6.2 6.2 0 0 0-11.8 1.6A3.8 3.8 0 0 0 7.2 18.5Z" />
+              <path [attr.d]="vm.connected ? 'm9.5 14.2 2.1 2.1 4.2-4.8' : 'm10 12 4 4M14 12l-4 4'" />
+            </svg>
+            {{ vm.connected ? 'Лента активна' : 'Нет соединения' }}
+          </span>
+        </div>
+      </div>
 
-  <ng-template #noNotifications>
-    <div class="no-notifications">
-      <mat-icon>notifications_none</mat-icon>
-      <strong>Новых уведомлений нет</strong>
-      <span>Важные события появятся здесь.</span>
-    </div>
-  </ng-template>
-</section>
+      <div class="hero-actions">
+        <button mat-stroked-button type="button" (click)="refresh()">
+          <svg class="button-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 12a8 8 0 0 1-14.8 4.2" />
+            <path d="M4 16.5h5v-5" />
+            <path d="M4 12A8 8 0 0 1 18.8 7.8" />
+            <path d="M20 7.5h-5v5" />
+          </svg>
+          Обновить
+        </button>
+        <button
+          mat-flat-button
+          type="button"
+          *ngIf="vm.unread > 0"
+          (click)="markAllAsRead()">
+          <svg class="button-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m3.5 12.5 4 4L16 7" />
+            <path d="m12.5 15.5 1.5 1.5L22 8" />
+          </svg>
+          Прочитать все
+        </button>
+      </div>
+    </header>
+
+    <section class="notification-stats" aria-label="Сводка уведомлений">
+      <article class="stat-card stat-unread">
+        <span>Непрочитанные</span>
+        <strong>{{ getUnreadTotal(vm.notifications) }}</strong>
+      </article>
+
+      <article class="stat-card stat-urgent">
+        <span>Высокий приоритет</span>
+        <strong>{{ getPriorityTotal(vm.notifications, ['high', 'urgent']) }}</strong>
+      </article>
+
+      <article class="stat-card stat-total">
+        <span>В ленте</span>
+        <strong>{{ vm.notifications.length }}</strong>
+      </article>
+    </section>
+
+    <section class="notifications-workspace">
+      <article class="stream-panel">
+        <header class="panel-header">
+          <div>
+            <span class="panel-kicker">Лента</span>
+            <h2>Последние события</h2>
+          </div>
+          <span class="panel-counter">{{ vm.notifications.length }} всего</span>
+        </header>
+
+        <div class="connection-note" *ngIf="!vm.connected">
+          <mat-icon>sync_problem</mat-icon>
+          <span>Лента временно недоступна. Попробуйте обновить.</span>
+        </div>
+
+        <div class="notifications-list" *ngIf="vm.notifications.length > 0; else noNotifications">
+          <button
+            *ngFor="let notification of vm.notifications; trackBy: trackByNotificationId"
+            type="button"
+            class="notification-item"
+            [class.unread]="notification.is_read !== true"
+            [ngClass]="getPriorityClass(notification.priority)"
+            (click)="onNotificationClick(notification)">
+            <span class="notification-icon" [style.color]="resolveColor(notification.color)">
+              <mat-icon>{{ notification.icon || 'notifications' }}</mat-icon>
+            </span>
+
+            <span class="notification-content">
+              <span class="notification-title">
+                <span>{{ notification.title }}</span>
+                <mat-icon
+                  class="priority-icon"
+                  *ngIf="notification.priority !== 'normal'"
+                  [matTooltip]="getPriorityLabel(notification.priority)">
+                  {{ getPriorityIcon(notification.priority) }}
+                </mat-icon>
+              </span>
+              <span class="notification-message">{{ notification.message }}</span>
+              <span class="notification-meta">
+                <span>{{ getTypeLabel(notification.type) }}</span>
+                <span>{{ getRelativeTime(notification.created_at) }}</span>
+              </span>
+            </span>
+
+            <mat-icon class="open-icon" *ngIf="notification.action_url">arrow_forward</mat-icon>
+          </button>
+        </div>
+      </article>
+
+      <aside class="summary-panel">
+        <header class="panel-header compact">
+          <div>
+            <span class="panel-kicker">Фокус</span>
+            <h2>Приоритеты</h2>
+          </div>
+        </header>
+
+        <div class="priority-stack">
+          <div class="priority-row urgent">
+            <span>Срочные</span>
+            <strong>{{ getPriorityTotal(vm.notifications, ['urgent']) }}</strong>
+          </div>
+          <div class="priority-row high">
+            <span>Высокие</span>
+            <strong>{{ getPriorityTotal(vm.notifications, ['high']) }}</strong>
+          </div>
+          <div class="priority-row normal">
+            <span>Обычные</span>
+            <strong>{{ getPriorityTotal(vm.notifications, ['normal']) }}</strong>
+          </div>
+          <div class="priority-row low">
+            <span>Низкие</span>
+            <strong>{{ getPriorityTotal(vm.notifications, ['low']) }}</strong>
+          </div>
+        </div>
+      </aside>
+    </section>
+  </section>
+</ng-container>
+
+<ng-template #noNotifications>
+  <div class="no-notifications">
+    <svg class="empty-svg" viewBox="0 0 64 64" aria-hidden="true">
+      <path d="M18 29c0-8 4.8-14 14-14s14 6 14 14v10l5 7H13l5-7Z" />
+      <path d="M26 47a6.5 6.5 0 0 0 12 0" />
+      <path d="M24 12 20 8" />
+      <path d="M40 12 44 8" />
+      <path d="M27 31h10" />
+    </svg>
+    <strong>Новых уведомлений нет</strong>
+    <span>Важные события появятся здесь.</span>
+  </div>
+</ng-template>

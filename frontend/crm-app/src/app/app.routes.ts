@@ -36,6 +36,10 @@ export const routes: Routes = [
         loadComponent: () => import('./components/reports/reports-dashboard/reports-dashboard.component').then(m => m.ReportsDashboardComponent)
       },
       {
+        path: 'notifications',
+        loadComponent: () => import('./components/layout/notifications/notifications.component').then(m => m.NotificationsComponent)
+      },
+      {
         path: 'finance',
         loadComponent: () => import('./components/finance/finance-dashboard/finance-dashboard.component').then(m => m.FinanceDashboardComponent)
       },

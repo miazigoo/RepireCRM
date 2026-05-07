@@ -16,7 +16,7 @@ import { NotificationService, Notification } from '../../../services/notificatio
     MatButtonModule, MatIconModule, MatDividerModule, MatTooltipModule
   ],
   templateUrl: './notifications.component.html',
-  styleUrl: './notifications.component.css'
+  styleUrl: './notifications.component.scss'
 })
 export class NotificationsComponent implements OnInit {
   notifications$: Observable<Notification[]>;
@@ -51,6 +51,30 @@ export class NotificationsComponent implements OnInit {
 
   markAllAsRead(): void {
     this.notificationService.markAllAsRead();
+  }
+
+  trackByNotificationId(_: number, notification: Notification): number {
+    return notification.id;
+  }
+
+  getUnreadTotal(notifications: Notification[]): number {
+    return notifications.filter(notification => notification.is_read !== true).length;
+  }
+
+  getPriorityTotal(notifications: Notification[], priorities: Notification['priority'][]): number {
+    return notifications.filter(notification => priorities.includes(notification.priority)).length;
+  }
+
+  getTypeLabel(type: string): string {
+    const labels: Record<string, string> = {
+      low_stock: 'Склад',
+      order_status: 'Заказ',
+      system: 'Система',
+      task: 'Задача',
+      report: 'Отчет'
+    };
+
+    return labels[type] || 'Событие';
   }
 
   getPriorityClass(priority: string): string {

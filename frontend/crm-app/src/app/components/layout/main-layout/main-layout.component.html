@@ -77,23 +77,7 @@
                 </span>
               </a>
 
-              <button *ngIf="!item.route && item.action === 'notifications' && isNavItemVisible(item)"
-                      mat-list-item
-                      class="nav-item"
-                      type="button"
-                      [matMenuTriggerFor]="notificationsMenu">
-                <span class="nav-icon-frame" matListItemIcon>
-                  <mat-icon>{{ item.icon }}</mat-icon>
-                </span>
-                <span matListItemTitle class="nav-label">{{ item.label }}</span>
-                <span matListItemMeta
-                      class="nav-badge"
-                      *ngIf="getBadgeValue(item) > 0">
-                  {{ getBadgeValue(item) }}
-                </span>
-              </button>
-
-              <button *ngIf="!item.route && item.action !== 'notifications' && isNavItemVisible(item)"
+              <button *ngIf="!item.route && isNavItemVisible(item)"
                       mat-list-item
                       class="nav-item"
                       type="button"
@@ -153,7 +137,7 @@
       <button class="mobile-notifications"
               mat-icon-button
               matTooltip="Уведомления"
-              [matMenuTriggerFor]="notificationsMenu">
+              routerLink="/notifications">
         <mat-icon [matBadge]="notificationsCount"
                   matBadgeColor="warn"
                   [matBadgeHidden]="notificationsCount === 0"
@@ -162,11 +146,6 @@
         </mat-icon>
       </button>
     </div>
-
-
-    <mat-menu #notificationsMenu="matMenu" class="layout-notifications-menu">
-      <app-notifications></app-notifications>
-    </mat-menu>
 
 
     <mat-menu #userMenu="matMenu">

@@ -20,7 +20,6 @@ import { selectCurrentUser, selectCurrentShop } from '../../../store/auth/auth.s
 import * as AuthActions from '../../../store/auth/auth.actions';
 import { User, Shop } from '../../../core/models/models';
 import { HelpGuideDialogComponent } from '../../help/help-guide-dialog/help-guide-dialog.component';
-import { NotificationsComponent } from '../notifications/notifications.component';
 import { NotificationService } from '../../../services/notification.service';
 
 interface NavigationItem {
@@ -28,7 +27,7 @@ interface NavigationItem {
   icon: string;
   route?: string;
   badge?: 'pendingOrdersCount' | 'notificationsCount';
-  action?: 'help' | 'notifications';
+  action?: 'help';
   directorOnly?: boolean;
   activeRoutes?: string[];
 }
@@ -55,7 +54,6 @@ interface NavigationGroup {
     MatListModule,
     MatTooltipModule,
     MatDialogModule,
-    NotificationsComponent
   ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss'
@@ -88,7 +86,7 @@ export class MainLayoutComponent implements OnInit {
     {
       label: 'Контроль',
       items: [
-        { label: 'Уведомления', icon: 'notifications', action: 'notifications', badge: 'notificationsCount' },
+        { label: 'Уведомления', icon: 'notifications', route: '/notifications', badge: 'notificationsCount' },
         { label: 'Отчеты', icon: 'query_stats', route: '/reports' },
         { label: 'Справочник', icon: 'help_center', action: 'help' }
       ]
@@ -117,6 +115,7 @@ export class MainLayoutComponent implements OnInit {
     '/inventory': 'Склад',
     '/inventory/items/new': 'Новый товар',
     '/inventory/purchase-orders/new': 'Заказ поставщику',
+    '/notifications': 'Уведомления',
     '/reports': 'Отчеты',
     '/admin': 'Администрирование',
     '/admin/users': 'Пользователи',

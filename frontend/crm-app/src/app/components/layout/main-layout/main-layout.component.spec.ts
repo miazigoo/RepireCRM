@@ -77,6 +77,7 @@ describe('MainLayoutComponent', () => {
     expect(targets).toContain('/orders');
     expect(targets).toContain('/customers');
     expect(targets).toContain('/inventory');
+    expect(targets).toContain('/notifications');
     expect(targets).toContain('/reports');
     expect(targets).toContain('/admin');
     expect(targets).toContain('/admin/settings');
