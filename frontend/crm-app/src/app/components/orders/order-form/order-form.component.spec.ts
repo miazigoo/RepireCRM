@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
@@ -136,6 +136,38 @@ describe('OrderFormComponent', () => {
     });
     expect(component.selectedDeviceModel).toEqual(createdModel);
     expect(stepper.next).toHaveBeenCalled();
+  });
+
+  it('shows model suggestions on click after the catalog loads', fakeAsync(() => {
+    let latestSuggestions: DeviceModel[] = [];
+    const redmiModel = {
+      ...deviceModel,
+      id: 12,
+      name: 'Redmi 14C',
+      brand: { id: 2, name: 'Xiaomi' },
+    } as DeviceModel;
+
+    component.deviceModels = [];
+    component.deviceForm.get('model')?.setValue('');
+    component.filteredDeviceModels.subscribe(models => latestSuggestions = models);
+
+    expect(latestSuggestions).toEqual([]);
+
+    component.deviceModels = [redmiModel];
+    component.showDeviceModelSuggestions();
+    tick();
+
+    expect(latestSuggestions).toEqual([redmiModel]);
+  }));
+
+  it('keeps a broader set of frequent device chips', () => {
+    component.deviceModels = Array.from({ length: 20 }, (_, index) => ({
+      ...deviceModel,
+      id: index + 1,
+      name: `Модель ${index + 1}`,
+    })) as DeviceModel[];
+
+    expect(component.popularDeviceModels.length).toBe(12);
   });
 
   it('adds a quick case service once during order creation', () => {

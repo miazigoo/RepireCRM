@@ -10,6 +10,10 @@ from ninja.pagination import PageNumberPagination, paginate
 
 from customers.models import Customer
 from device.models import Device, DeviceBrand, DeviceModel, DeviceType
+from device.popular_models import (
+    ensure_popular_device_models,
+    popular_device_model_ordering,
+)
 from Schemas.common import ErrorSchema
 from users.models import User
 
@@ -300,6 +304,7 @@ def list_device_models(request, search: str = None):
     if not request.auth.has_permission("orders.view_order"):
         raise PermissionError("Нет прав для просмотра моделей устройств")
 
+    ensure_popular_device_models()
     qs = DeviceModel.objects.select_related("brand", "device_type").filter(
         is_active=True
     )
@@ -311,7 +316,9 @@ def list_device_models(request, search: str = None):
             | Q(device_type__name__icontains=search)
         )
 
-    return qs.order_by("brand__name", "name")
+    return qs.annotate(popularity_rank=popular_device_model_ordering()).order_by(
+        "popularity_rank", "brand__name", "name"
+    )
 
 
 @router.post("/device-models", response={201: DeviceModelSchema, 400: ErrorSchema})

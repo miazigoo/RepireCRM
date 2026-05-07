@@ -1,5 +1,5 @@
 // frontend/crm-app/src/app/features/orders/order-form/order-form.component.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { NgIf, NgFor, AsyncPipe } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -8,7 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatStepper, MatStepperModule } from '@angular/material/stepper';
-import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatAutocompleteModule, MatAutocompleteTrigger } from '@angular/material/autocomplete';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -42,6 +42,8 @@ import { Customer, DeviceModel, AdditionalService } from '../../../core/models/m
   styleUrl: './order-form.component.scss'
 })
 export class OrderFormComponent implements OnInit {
+  @ViewChild('deviceModelTrigger') private deviceModelTrigger?: MatAutocompleteTrigger;
+
   orderForm!: FormGroup;
   customerForm!: FormGroup;
   deviceForm!: FormGroup;
@@ -60,6 +62,8 @@ export class OrderFormComponent implements OnInit {
   selectedServices: AdditionalService[] = [];
 
   readonly quickServiceLabels = ['Чехол', 'Защитное стекло', 'Диагностика'];
+  private readonly visibleDeviceModelLimit = 80;
+  private readonly popularDeviceModelLimit = 12;
 
   // Form steps
   customerStepCompleted = false;
@@ -151,6 +155,7 @@ export class OrderFormComponent implements OnInit {
 
     this.ordersService.getDeviceModels().subscribe(models => {
       this.deviceModels = models;
+      this.refreshDeviceModelSuggestions();
     });
 
     // Load additional services
@@ -265,7 +270,7 @@ export class OrderFormComponent implements OnInit {
   }
 
   get popularDeviceModels(): DeviceModel[] {
-    return this.deviceModels.slice(0, 8);
+    return this.deviceModels.slice(0, this.popularDeviceModelLimit);
   }
 
   get servicesTotal(): number {
@@ -345,6 +350,11 @@ export class OrderFormComponent implements OnInit {
 
   selectPopularDeviceModel(model: DeviceModel): void {
     this.onDeviceModelSelected(model);
+  }
+
+  showDeviceModelSuggestions(): void {
+    this.refreshDeviceModelSuggestions();
+    setTimeout(() => this.deviceModelTrigger?.openPanel());
   }
 
   onCustomerStepNext(stepper: MatStepper): void {
@@ -588,7 +598,7 @@ export class OrderFormComponent implements OnInit {
 
   private filterDeviceModels(value: DeviceModel | string): DeviceModel[] {
     if (!value || typeof value !== 'string') {
-      return this.deviceModels.slice(0, 30);
+      return this.deviceModels.slice(0, this.visibleDeviceModelLimit);
     }
 
     const filterValue = value.toLowerCase();
@@ -597,7 +607,16 @@ export class OrderFormComponent implements OnInit {
       const modelNumber = model.model_number?.toLowerCase() || '';
       return fullName.includes(filterValue) ||
         modelNumber.includes(filterValue);
-    }).slice(0, 30);
+    }).slice(0, this.visibleDeviceModelLimit);
+  }
+
+  private refreshDeviceModelSuggestions(): void {
+    const control = this.deviceForm?.get('model');
+    if (!control) {
+      return;
+    }
+
+    control.setValue(control.value || '', { emitEvent: true });
   }
 
   private getSelectedDeviceModel(): DeviceModel | null {

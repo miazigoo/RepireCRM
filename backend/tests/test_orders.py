@@ -272,6 +272,23 @@ class OrderTestCase(TestCase):
         self.assertEqual(payload["brand"]["name"], "Samsung")
         self.assertEqual(payload["name"], "Galaxy A55")
 
+    def test_device_models_endpoint_seeds_broad_popular_catalog(self):
+        response = self.client.get(
+            "/api/orders/device-models",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        payload = response.json()
+        model_names = {f"{item['brand']['name']} {item['name']}" for item in payload}
+        self.assertGreaterEqual(len(payload), 150)
+        self.assertIn("Realme Note 60X", model_names)
+        self.assertIn("Xiaomi Redmi 14C", model_names)
+        self.assertIn("Samsung Galaxy A55", model_names)
+        self.assertIn("Apple iPhone 16 Pro", model_names)
+        self.assertEqual(payload[0]["brand"]["name"], "Realme")
+        self.assertEqual(payload[0]["name"], "Note 60X")
+
     @override_settings(MEDIA_ROOT="/tmp/repair_crm_test_media")
     def test_repair_stage_api_accepts_photo_and_writes_audit_log(self):
         order = self.create_order()

@@ -178,10 +178,13 @@
                 <mat-form-field class="full-width model-field" appearance="outline">
                   <mat-label>Модель устройства</mat-label>
                   <input
+                    #deviceModelTrigger="matAutocompleteTrigger"
                     matInput
                     formControlName="model"
                     required
                     [matAutocomplete]="deviceModelAuto"
+                    (focus)="showDeviceModelSuggestions()"
+                    (click)="showDeviceModelSuggestions()"
                     placeholder="Например, Samsung Galaxy S24">
                   <mat-autocomplete
                     #deviceModelAuto="matAutocomplete"
