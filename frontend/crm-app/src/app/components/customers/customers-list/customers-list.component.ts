@@ -4,7 +4,7 @@ import { NgIf, NgFor, DatePipe } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
+import { MatPaginatorModule, MatPaginator, MatPaginatorIntl } from '@angular/material/paginator';
 import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MAT_FORM_FIELD_DEFAULT_OPTIONS, MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -18,6 +18,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { CustomersService } from '../../../services/customers.service';
 import { Customer } from '../../../core/models/models';
 import { MatDividerModule } from '@angular/material/divider';
+import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl';
 
 @Component({
   selector: 'app-customers-list',
@@ -32,6 +33,7 @@ import { MatDividerModule } from '@angular/material/divider';
   templateUrl: './customers-list.component.html',
   styleUrl: './customers-list.component.scss',
   providers: [
+    { provide: MatPaginatorIntl, useClass: RussianPaginatorIntl },
     {
       provide: MAT_FORM_FIELD_DEFAULT_OPTIONS,
       useValue: {

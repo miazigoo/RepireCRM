@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 import { ApiService } from './api.service';
 
 export interface Task {
@@ -27,6 +27,8 @@ export interface TasksSummary {
   priority_breakdown: Record<string, number>;
 }
 
+type TaskListResponse = Task[] | { items: Task[]; count?: number };
+
 @Injectable({
   providedIn: 'root'
 })
@@ -34,7 +36,7 @@ export class TasksService {
   constructor(private apiService: ApiService) {}
 
   getMyTasksSummary(): Observable<TasksSummary> {
-    return this.apiService.get<TasksSummary>('/tasks/summary').pipe(
+    return this.apiService.get<TasksSummary>('/tasks/my-tasks-summary').pipe(
       catchError(() => of({
         total_tasks: 0,
         status_breakdown: {},
@@ -46,7 +48,8 @@ export class TasksService {
   }
 
   getTasks(filters: Record<string, unknown>): Observable<Task[]> {
-    return this.apiService.get<Task[]>('/tasks', filters).pipe(
+    return this.apiService.get<TaskListResponse>('/tasks', filters).pipe(
+      map((response) => Array.isArray(response) ? response : response.items ?? []),
       catchError(() => of([]))
     );
   }

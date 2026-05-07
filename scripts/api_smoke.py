@@ -2,8 +2,8 @@
 """Smoke-check callable Repair CRM API GET endpoints from OpenAPI.
 
 The script logs in, reads /api/openapi.json, fills common path/query parameters
-from existing test data, and fails on 404/422/5xx responses. Destructive
-methods are intentionally skipped.
+from existing test data, and fails on any 4xx/5xx response. Destructive methods
+are intentionally skipped.
 """
 
 from __future__ import annotations
@@ -105,6 +105,13 @@ def main() -> int:
             if found_id:
                 context[key] = found_id
 
+    loyalty_response, loyalty_payload = request_json(
+        session, "GET", f"{base_url}/loyalty/programs"
+    )
+    context["loyalty_enabled"] = int(
+        loyalty_response.status_code < 400 and bool(unwrap_list(loyalty_payload))
+    )
+
     spec_response, spec = request_json(session, "GET", f"{base_url}/openapi.json")
     if spec_response.status_code != 200:
         print(f"openapi failed: {spec_response.status_code} {spec}")
@@ -119,6 +126,14 @@ def main() -> int:
         if not operation:
             continue
         if path in {"/", "/api/", "/openapi.json", "/api/openapi.json"}:
+            continue
+        if path.startswith("/api/portal/"):
+            skipped.append(f"GET {path} uses customer portal auth")
+            continue
+        if path == "/api/loyalty/customer/{customer_id}" and not context.get(
+            "loyalty_enabled"
+        ):
+            skipped.append(f"GET {path} loyalty program is not configured")
             continue
 
         resolved_path = path
@@ -160,11 +175,7 @@ def main() -> int:
             params=query,
         )
         checked.append(f"GET {resolved_path}")
-        if (
-            response.status_code == 404
-            or response.status_code == 422
-            or response.status_code >= 500
-        ):
+        if response.status_code >= 400:
             failures.append(
                 f"GET {resolved_path} -> {response.status_code}: "
                 f"{str(payload)[:220]}"

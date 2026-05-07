@@ -16,7 +16,14 @@ router = Router(tags=["Задачи"])
 
 @router.get("/", response=List[TaskSchema])
 @paginate
-def list_tasks(request, status: str = None, assigned_to_me: bool = False):
+def list_tasks(
+    request,
+    status: str = None,
+    priority: str = None,
+    search: str = None,
+    assigned_to_me: bool = False,
+    created_by_me: bool = False,
+):
     """Список задач"""
     if not request.auth.has_permission("tasks.view_task"):
         raise PermissionError("Нет прав для просмотра задач")
@@ -59,6 +66,17 @@ def list_tasks(request, status: str = None, assigned_to_me: bool = False):
     if status:
         queryset = queryset.filter(status=status)
 
+    if priority:
+        queryset = queryset.filter(priority=priority)
+
+    if search:
+        queryset = queryset.filter(
+            Q(title__icontains=search) | Q(description__icontains=search)
+        )
+
+    if created_by_me:
+        queryset = queryset.filter(created_by=request.auth)
+
     return queryset.order_by("-created_at")
 
 
@@ -84,71 +102,6 @@ def create_task(request, data: TaskCreateSchema):
 
     except Exception as e:
         return {"error": str(e)}
-
-
-@router.put("/{task_id}", response=dict)
-def update_task(request, task_id: int, data: TaskUpdateSchema):
-    """Обновление задачи"""
-    task = get_object_or_404(Task, id=task_id)
-
-    # Проверяем права на редактирование
-    if not request.auth.has_permission("tasks.change_task"):
-        # Исполнители могут обновлять только статус и прогресс
-        if request.auth not in task.get_assignees():
-            raise PermissionError("Нет прав для редактирования задачи")
-
-        # Ограничиваем поля для исполнителей
-        allowed_fields = {"status", "progress_percent", "actual_hours"}
-        update_fields = set(data.dict(exclude_unset=True).keys())
-        if not update_fields.issubset(allowed_fields):
-            raise PermissionError(
-                "Исполнители могут обновлять только статус и прогресс"
-            )
-
-    try:
-        # Сохраняем старый статус для уведомлений
-        old_status = task.status
-
-        # Обновляем поля
-        for field, value in data.dict(exclude_unset=True).items():
-            setattr(task, field, value)
-
-        # Устанавливаем исполнителя при завершении
-        if task.status == Task.Status.COMPLETED and not task.completed_by:
-            task.completed_by = request.auth
-
-        task.save()
-
-        # Отправляем уведомления при изменении статуса
-        if task.status != old_status:
-            service = TaskService()
-            service.notify_status_change(task, old_status)
-
-        return {"success": True, "task_id": task.id, "status": task.status}
-
-    except Exception as e:
-        return {"error": str(e)}
-
-
-@router.post("/{task_id}/comments", response=dict)
-def add_task_comment(request, task_id: int, text: str, attachments: List[dict] = None):
-    """Добавление комментария к задаче"""
-    task = get_object_or_404(Task, id=task_id)
-
-    # Проверяем доступ к задаче
-    if not request.auth.has_permission("tasks.view_task"):
-        if request.auth not in task.get_assignees() and task.created_by != request.auth:
-            raise PermissionError("Нет доступа к задаче")
-
-    comment = TaskComment.objects.create(
-        task=task, author=request.auth, text=text, attachments=attachments or []
-    )
-
-    # Уведомляем участников задачи
-    service = TaskService()
-    service.notify_new_comment(task, comment)
-
-    return {"success": True, "comment_id": comment.id}
 
 
 @router.get("/my-tasks-summary", response=dict)
@@ -215,6 +168,71 @@ def list_task_templates(request):
         }
         for template in templates
     ]
+
+
+@router.put("/{task_id}", response=dict)
+def update_task(request, task_id: int, data: TaskUpdateSchema):
+    """Обновление задачи"""
+    task = get_object_or_404(Task, id=task_id)
+
+    # Проверяем права на редактирование
+    if not request.auth.has_permission("tasks.change_task"):
+        # Исполнители могут обновлять только статус и прогресс
+        if request.auth not in task.get_assignees():
+            raise PermissionError("Нет прав для редактирования задачи")
+
+        # Ограничиваем поля для исполнителей
+        allowed_fields = {"status", "progress_percent", "actual_hours"}
+        update_fields = set(data.dict(exclude_unset=True).keys())
+        if not update_fields.issubset(allowed_fields):
+            raise PermissionError(
+                "Исполнители могут обновлять только статус и прогресс"
+            )
+
+    try:
+        # Сохраняем старый статус для уведомлений
+        old_status = task.status
+
+        # Обновляем поля
+        for field, value in data.dict(exclude_unset=True).items():
+            setattr(task, field, value)
+
+        # Устанавливаем исполнителя при завершении
+        if task.status == Task.Status.COMPLETED and not task.completed_by:
+            task.completed_by = request.auth
+
+        task.save()
+
+        # Отправляем уведомления при изменении статуса
+        if task.status != old_status:
+            service = TaskService()
+            service.notify_status_change(task, old_status)
+
+        return {"success": True, "task_id": task.id, "status": task.status}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@router.post("/{task_id}/comments", response=dict)
+def add_task_comment(request, task_id: int, text: str, attachments: List[dict] = None):
+    """Добавление комментария к задаче"""
+    task = get_object_or_404(Task, id=task_id)
+
+    # Проверяем доступ к задаче
+    if not request.auth.has_permission("tasks.view_task"):
+        if request.auth not in task.get_assignees() and task.created_by != request.auth:
+            raise PermissionError("Нет доступа к задаче")
+
+    comment = TaskComment.objects.create(
+        task=task, author=request.auth, text=text, attachments=attachments or []
+    )
+
+    # Уведомляем участников задачи
+    service = TaskService()
+    service.notify_new_comment(task, comment)
+
+    return {"success": True, "comment_id": comment.id}
 
 
 @router.post("/create-from-template/{template_id}", response=dict)

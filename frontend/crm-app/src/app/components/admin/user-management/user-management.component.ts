@@ -4,7 +4,7 @@ import { NgIf, NgFor, DatePipe } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
+import { MatPaginatorModule, MatPaginator, MatPaginatorIntl } from '@angular/material/paginator';
 import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -21,6 +21,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { AdminService } from '../../../services/admin.service';
 import { User, Role, Shop } from '../../../core/models/models';
 import { MatDividerModule } from '@angular/material/divider';
+import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl';
 
 @Component({
   selector: 'app-user-management',
@@ -33,7 +34,8 @@ import { MatDividerModule } from '@angular/material/divider';
     MatDialogModule, MatSnackBarModule, MatSlideToggleModule, MatDividerModule
   ],
   templateUrl: './user-management.component.html',
-  styleUrl: './user-management.component.css'
+  styleUrl: './user-management.component.css',
+  providers: [{ provide: MatPaginatorIntl, useClass: RussianPaginatorIntl }]
 })
 export class UserManagementComponent implements OnInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;

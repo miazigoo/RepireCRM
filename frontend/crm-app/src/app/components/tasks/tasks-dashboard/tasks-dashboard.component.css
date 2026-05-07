@@ -3,29 +3,343 @@
   gap: 20px;
 }
 
+.dashboard-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 24px;
+  border: var(--panel-border);
+  border-radius: var(--card-radius);
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--color-warning) 13%, transparent), transparent 34%),
+    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, transparent), color-mix(in srgb, var(--color-accent) 8%, transparent)),
+    var(--panel-background);
+  box-shadow: var(--panel-shadow);
+}
+
+.header-content h1 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 32px;
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+
+.subtitle {
+  margin: 8px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
 }
 
+.summary-card {
+  overflow: hidden;
+}
+
+.summary-card mat-card-content {
+  min-height: 112px;
+  padding: 20px !important;
+}
+
+.summary-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.summary-icon {
+  display: inline-grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 16px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.overdue-card .summary-icon {
+  background: color-mix(in srgb, var(--color-danger) 13%, transparent);
+  color: var(--color-danger);
+}
+
+.today-card .summary-icon {
+  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  color: var(--color-success);
+}
+
+.summary-info h3 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 30px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.summary-info p,
+.tab-description {
+  margin: 6px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.breakdown-content {
+  display: grid;
+  gap: 12px;
+}
+
+.breakdown-content h4 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.breakdown-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filters-card,
+.tasks-table-card {
+  overflow: hidden;
+}
+
+.filters-form {
+  display: grid;
+  grid-template-columns: minmax(170px, 1fr) minmax(170px, 1fr) minmax(260px, 2fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.task-filter-tabs {
+  margin: -8px 0 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table-container {
+  overflow: auto;
+}
+
+.tasks-table {
+  width: 100%;
+  min-width: 980px;
+  background: transparent;
+}
+
+:host ::ng-deep .tasks-table .mat-mdc-header-cell {
+  color: var(--color-text-primary) !important;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+:host ::ng-deep .tasks-table .mat-mdc-row:hover {
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+}
+
+:host ::ng-deep .tasks-table .mat-sort-header-arrow {
+  color: var(--color-primary);
+}
+
+.task-title-cell {
+  display: grid;
+  gap: 5px;
+  min-width: 220px;
+}
+
+.task-name {
+  color: var(--color-text-primary);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.task-name:hover {
+  color: var(--color-primary);
+}
+
+.task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.task-category {
+  color: var(--color-primary);
+}
+
+.assigned-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.assigned-name {
+  color: var(--color-text-primary);
+  font-weight: 800;
+}
+
+.assignment-type {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.assignment-type mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+}
+
+.not-assigned,
+.no-due-date {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.progress-cell {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) 42px;
+  gap: 10px;
+  align-items: center;
+  min-width: 150px;
+}
+
+.progress-text {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.due-date-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.due-date {
+  color: var(--color-text-primary);
+  font-weight: 800;
+}
+
+.due-date.due-soon,
+.due-icon {
+  color: var(--color-warning);
+}
+
+.due-date.overdue,
+.overdue-icon {
+  color: var(--color-danger);
+}
+
+.task-actions {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.overdue-row {
+  background: color-mix(in srgb, var(--color-danger) 5%, transparent);
+}
+
+.high-priority-row {
+  box-shadow: inset 3px 0 0 var(--color-danger);
+}
+
 .status-pending,
-.priority-normal {
-  background: #e0f2fe;
-}
-
+.priority-normal,
 .status-in-progress,
-.priority-high {
-  background: #fef3c7;
-}
-
+.priority-high,
 .status-completed,
-.priority-low {
-  background: #dcfce7;
-}
-
+.priority-low,
 .status-cancelled,
 .status-overdue,
 .priority-urgent {
-  background: #fee2e2;
+  min-height: 28px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+:host ::ng-deep .status-pending,
+:host ::ng-deep .priority-normal {
+  --mdc-chip-label-text-color: var(--color-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 26%, transparent);
+  background: var(--color-primary-soft) !important;
+  color: var(--color-primary) !important;
+}
+
+:host ::ng-deep .status-in-progress,
+:host ::ng-deep .priority-high {
+  --mdc-chip-label-text-color: var(--color-warning);
+  border-color: color-mix(in srgb, var(--color-warning) 32%, transparent);
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent) !important;
+  color: var(--color-warning) !important;
+}
+
+:host ::ng-deep .status-completed,
+:host ::ng-deep .priority-low {
+  --mdc-chip-label-text-color: var(--color-success);
+  border-color: color-mix(in srgb, var(--color-success) 28%, transparent);
+  background: color-mix(in srgb, var(--color-success) 14%, transparent) !important;
+  color: var(--color-success) !important;
+}
+
+:host ::ng-deep .status-cancelled,
+:host ::ng-deep .status-overdue,
+:host ::ng-deep .priority-urgent {
+  --mdc-chip-label-text-color: var(--color-danger);
+  border-color: color-mix(in srgb, var(--color-danger) 28%, transparent);
+  background: color-mix(in srgb, var(--color-danger) 13%, transparent) !important;
+  color: var(--color-danger) !important;
+}
+
+@media (max-width: 900px) {
+  .dashboard-header,
+  .filters-form {
+    grid-template-columns: 1fr;
+  }
+
+  .header-actions {
+    justify-content: stretch;
+  }
+
+  .header-actions button {
+    flex: 1 1 160px;
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-header {
+    padding: 18px;
+  }
+
+  .header-content h1 {
+    font-size: 26px;
+  }
 }

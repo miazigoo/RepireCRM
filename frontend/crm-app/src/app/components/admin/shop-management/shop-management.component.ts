@@ -4,7 +4,7 @@ import { NgIf, NgFor, DatePipe } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
+import { MatPaginatorModule, MatPaginator, MatPaginatorIntl } from '@angular/material/paginator';
 import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -20,6 +20,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { AdminService, ShopCreateRequest } from '../../../services/admin.service';
 import { Shop } from '../../../core/models/models';
 import { MatDividerModule } from '@angular/material/divider';
+import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl';
 
 @Component({
   selector: 'app-shop-management',
@@ -32,7 +33,8 @@ import { MatDividerModule } from '@angular/material/divider';
     MatDialogModule, MatSnackBarModule, MatSlideToggleModule, MatDividerModule
   ],
   templateUrl: './shop-management.component.html',
-  styleUrl: './shop-management.component.css'
+  styleUrl: './shop-management.component.css',
+  providers: [{ provide: MatPaginatorIntl, useClass: RussianPaginatorIntl }]
 })
 export class ShopManagementComponent implements OnInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;

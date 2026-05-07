@@ -5,7 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
+import { MatPaginatorModule, MatPaginator, MatPaginatorIntl } from '@angular/material/paginator';
 import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatChipsModule } from '@angular/material/chips';
@@ -14,11 +14,13 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { TasksService } from '../../../services/tasks.service';
+import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl';
 
 interface Task {
   id: number;
@@ -64,12 +66,14 @@ interface TasksSummary {
     MatBadgeModule,
     MatTooltipModule,
     MatDividerModule,
-    MatDialogModule,
     MatSelectModule,
-    MatFormFieldModule
+    MatFormFieldModule,
+    MatInputModule,
+    MatSnackBarModule
   ],
   templateUrl: './tasks-dashboard.component.html',
-  styleUrl: './tasks-dashboard.component.css'
+  styleUrl: './tasks-dashboard.component.css',
+  providers: [{ provide: MatPaginatorIntl, useClass: RussianPaginatorIntl }]
 })
 export class TasksDashboardComponent implements OnInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -94,7 +98,7 @@ export class TasksDashboardComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private tasksService: TasksService,
-    private dialog: MatDialog
+    private snackBar: MatSnackBar
   ) {
     this.filtersForm = this.fb.group({
       status: [''],
@@ -127,7 +131,7 @@ export class TasksDashboardComponent implements OnInit {
         this.tasksSummary = summary;
       },
       error: (error) => {
-        console.error('Error loading tasks summary:', error);
+        this.showError(error, 'Не удалось загрузить сводку задач');
       }
     });
   }
@@ -153,7 +157,7 @@ export class TasksDashboardComponent implements OnInit {
         this.loading = false;
       },
       error: (error) => {
-        console.error('Error loading tasks:', error);
+        this.showError(error, 'Не удалось загрузить задачи');
         this.loading = false;
       }
     });
@@ -239,23 +243,31 @@ export class TasksDashboardComponent implements OnInit {
   }
 
   createTask(): void {
-    // Открыть диалог создания задачи или перейти на форму
+    this.snackBar.open('Форма создания задач будет добавлена отдельным экраном', 'Закрыть', {
+      duration: 3500
+    });
   }
 
   editTask(task: Task): void {
-    // Открыть диалог редактирования задачи
+    this.snackBar.open(`Редактирование: ${task.title}`, 'Закрыть', {
+      duration: 3000
+    });
   }
 
   changeTaskStatus(task: Task, newStatus: string): void {
     this.tasksService.updateTask(task.id, { status: newStatus as Task['status'] }).subscribe({
       next: () => {
-        task.status = newStatus as any;
+        task.status = newStatus as Task['status'];
         if (newStatus === 'completed') {
           task.progress_percent = 100;
         }
+        this.loadTasksSummary();
+        this.snackBar.open('Статус задачи обновлен', 'Закрыть', {
+          duration: 2500
+        });
       },
       error: (error) => {
-        console.error('Error updating task status:', error);
+        this.showError(error, 'Не удалось обновить статус задачи');
       }
     });
   }
@@ -264,22 +276,42 @@ export class TasksDashboardComponent implements OnInit {
     this.tasksService.updateTask(task.id, { progress_percent: progress }).subscribe({
       next: () => {
         task.progress_percent = progress;
+        this.snackBar.open('Прогресс задачи обновлен', 'Закрыть', {
+          duration: 2500
+        });
       },
       error: (error) => {
-        console.error('Error updating task progress:', error);
+        this.showError(error, 'Не удалось обновить прогресс задачи');
       }
     });
   }
 
   viewTask(task: Task): void {
-    // Переход к детальному просмотру задачи
+    this.snackBar.open(`Задача: ${task.title}`, 'Закрыть', {
+      duration: 3000
+    });
   }
 
   addComment(task: Task): void {
-    // Открыть диалог добавления комментария
+    this.snackBar.open(`Комментарии к задаче: ${task.title}`, 'Закрыть', {
+      duration: 3000
+    });
+  }
+
+  showTemplatesNotice(): void {
+    this.snackBar.open('Шаблоны задач доступны в API, отдельный экран еще не подключен', 'Закрыть', {
+      duration: 3500
+    });
   }
 
   getObjectKeys(obj: any): string[] {
     return Object.keys(obj);
+  }
+
+  private showError(error: any, fallback: string): void {
+    const message = error?.error?.detail || error?.error?.error || fallback;
+    this.snackBar.open(message, 'Закрыть', {
+      duration: 4000
+    });
   }
 }

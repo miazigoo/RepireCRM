@@ -1,34 +1,303 @@
-.dashboard-container {
+.finance-dashboard {
   display: grid;
   gap: 20px;
 }
 
-.summary-grid {
+.dashboard-header {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 24px;
+  border: var(--panel-border);
+  border-radius: var(--card-radius);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--color-success) 14%, transparent), transparent 34%),
+    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, transparent), color-mix(in srgb, var(--color-accent) 8%, transparent)),
+    var(--panel-background);
+  box-shadow: var(--panel-shadow);
+}
+
+.header-content h1 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 32px;
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+
+.subtitle {
+  margin: 8px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.period-selector {
+  min-width: 180px;
+}
+
+.period-selector .mat-mdc-form-field {
+  width: 100%;
+}
+
+.financial-metrics,
+.charts-section {
+  min-width: 0;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
 }
 
-.chart-container {
-  height: 320px;
+.metric-card {
+  overflow: hidden;
 }
 
-.transaction-income {
-  color: #15803d;
+.metric-card mat-card-content {
+  display: grid;
+  gap: 18px;
+  min-height: 132px;
+  padding: 20px !important;
 }
 
-.transaction-expense {
-  color: #b91c1c;
+.metric-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.status-completed {
-  background: #dcfce7;
+.metric-icon,
+.transaction-type {
+  display: inline-grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
 }
 
-.status-pending {
-  background: #fef3c7;
+.income-card .metric-icon,
+.transaction-income.transaction-type {
+  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  color: var(--color-success);
 }
 
+.expense-card .metric-icon,
+.transaction-expense.transaction-type {
+  background: color-mix(in srgb, var(--color-danger) 13%, transparent);
+  color: var(--color-danger);
+}
+
+.profit-card .metric-icon {
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  color: var(--color-accent);
+}
+
+.cash-card .metric-icon {
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  color: var(--color-warning);
+}
+
+.metric-trend,
+.metric-badge,
+.metric-info {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-text-secondary) 10%, transparent);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.metric-trend.positive,
+.positive {
+  color: var(--color-success);
+}
+
+.metric-trend.negative,
+.negative {
+  color: var(--color-danger);
+}
+
+.metric-content h3 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 26px;
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1.15;
+}
+
+.metric-content p {
+  margin: 6px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.finance-tabs,
+.chart-container,
+.transactions-container {
+  min-width: 0;
+}
+
+.chart-container,
+.transactions-container {
+  padding-top: 18px;
+}
+
+.chart-wrapper {
+  height: 340px;
+  min-height: 280px;
+}
+
+.transactions-container mat-card {
+  overflow: hidden;
+}
+
+mat-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 0;
+}
+
+.card-actions {
+  margin-left: auto;
+}
+
+.table-container {
+  overflow: auto;
+}
+
+.transactions-table {
+  width: 100%;
+  min-width: 820px;
+  background: transparent;
+}
+
+:host ::ng-deep .transactions-table .mat-mdc-header-cell {
+  color: var(--color-text-primary) !important;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+:host ::ng-deep .transactions-table .mat-mdc-row:hover {
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+}
+
+.transaction-description {
+  color: var(--color-text-primary);
+  font-weight: 800;
+}
+
+.transaction-amount {
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.payment-method-chip,
+.status-completed,
+.status-pending,
 .status-cancelled {
-  background: #fee2e2;
+  min-height: 28px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+:host ::ng-deep .payment-method-chip {
+  --mdc-chip-label-text-color: var(--color-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 26%, transparent);
+  background: var(--color-primary-soft) !important;
+  color: var(--color-primary) !important;
+}
+
+:host ::ng-deep .status-completed {
+  --mdc-chip-label-text-color: var(--color-success);
+  border-color: color-mix(in srgb, var(--color-success) 28%, transparent);
+  background: color-mix(in srgb, var(--color-success) 14%, transparent) !important;
+  color: var(--color-success) !important;
+}
+
+:host ::ng-deep .status-pending {
+  --mdc-chip-label-text-color: var(--color-warning);
+  border-color: color-mix(in srgb, var(--color-warning) 32%, transparent);
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent) !important;
+  color: var(--color-warning) !important;
+}
+
+:host ::ng-deep .status-cancelled {
+  --mdc-chip-label-text-color: var(--color-danger);
+  border-color: color-mix(in srgb, var(--color-danger) 28%, transparent);
+  background: color-mix(in srgb, var(--color-danger) 13%, transparent) !important;
+  color: var(--color-danger) !important;
+}
+
+.loading-container mat-card-content {
+  padding: 28px !important;
+}
+
+.loading-content {
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  min-height: 180px;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.loading-icon {
+  width: 44px;
+  height: 44px;
+  color: var(--color-primary);
+  font-size: 44px;
+}
+
+@media (max-width: 900px) {
+  .dashboard-header {
+    grid-template-columns: 1fr;
+  }
+
+  .header-actions {
+    justify-content: stretch;
+  }
+
+  .header-actions button,
+  .period-selector {
+    flex: 1 1 180px;
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-header {
+    padding: 18px;
+  }
+
+  .header-content h1 {
+    font-size: 26px;
+  }
+
+  .metric-content h3 {
+    font-size: 22px;
+  }
 }

@@ -1,29 +1,49 @@
-/* frontend/crm-app/src/app/components/admin/shop-management/shop-management.component.css */
 .shop-management-container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
 .header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+  padding: 22px 24px;
+  border: var(--panel-border);
+  border-radius: var(--card-radius);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, transparent), color-mix(in srgb, var(--color-accent) 8%, transparent)),
+    var(--panel-background);
+  box-shadow: var(--panel-shadow);
 }
 
 .header h1 {
   margin: 0;
-  color: #333;
+  color: var(--color-text-primary);
+  font-size: 32px;
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+
+.form-card,
+.table-card {
+  overflow: hidden;
 }
 
 .form-card {
   margin-bottom: 24px;
 }
 
+.form-card mat-card-content {
+  padding: 24px !important;
+}
+
 .form-section {
-  margin-bottom: 32px;
+  margin-bottom: 28px;
   padding-bottom: 24px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .form-section:last-of-type {
@@ -31,10 +51,10 @@
 }
 
 .form-section h3 {
-  margin: 0 0 20px 0;
-  color: #666;
-  font-size: 16px;
-  font-weight: 500;
+  margin: 0 0 18px;
+  color: var(--color-text-primary);
+  font-size: 17px;
+  font-weight: 900;
 }
 
 .full-width {
@@ -43,22 +63,22 @@
 
 .form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 16px;
 }
 
 .form-actions {
   display: flex;
-  gap: 16px;
   justify-content: flex-end;
-  margin-top: 32px;
-  padding-top: 24px;
-  border-top: 1px solid #e0e0e0;
+  gap: 14px;
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid var(--color-border);
 }
 
 .form-actions button {
-  min-width: 120px;
+  min-width: 132px;
 }
 
 .table-card {
@@ -67,92 +87,120 @@
 
 .table-container {
   position: relative;
-  max-height: 600px;
+  max-height: 640px;
   overflow: auto;
 }
 
 .shops-table {
   width: 100%;
+  min-width: 940px;
+  background: transparent;
+}
+
+:host ::ng-deep .shops-table .mat-mdc-header-cell {
+  color: var(--color-text-primary) !important;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+:host ::ng-deep .shops-table .mat-mdc-row:hover {
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+}
+
+:host ::ng-deep .shops-table .mat-sort-header-arrow {
+  color: var(--color-primary);
 }
 
 .shop-info {
   display: flex;
+  min-width: 150px;
   flex-direction: column;
 }
 
 .shop-name {
-  font-weight: 500;
   margin-bottom: 2px;
+  color: var(--color-text-primary);
+  font-weight: 900;
 }
 
 .shop-code {
-  font-size: 12px;
-  color: #666;
+  color: var(--color-text-secondary);
   font-family: 'Courier New', monospace;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .shop-code-badge {
-  background: #f5f5f5;
-  padding: 4px 8px;
-  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 3px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-surface-strong) 86%, var(--panel-background));
+  color: var(--color-text-primary);
   font-family: 'Courier New', monospace;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 900;
 }
 
 .shop-address {
-  font-size: 14px;
-  color: #666;
-  max-width: 200px;
+  display: block;
+  max-width: 240px;
   overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
-  display: block;
 }
 
-.phone-link, .email-link {
-  color: #1976d2;
+.phone-link,
+.email-link {
+  color: var(--color-primary);
+  font-weight: 800;
   text-decoration: none;
 }
 
-.phone-link:hover, .email-link:hover {
+.phone-link:hover,
+.email-link:hover {
   text-decoration: underline;
 }
 
 .no-data {
-  color: #999;
-  font-style: italic;
+  color: var(--color-text-secondary);
   font-size: 12px;
+  font-style: italic;
 }
 
 .status-text {
   margin-left: 8px;
   font-size: 12px;
+  font-weight: 900;
 }
 
 .status-text.active {
-  color: #4caf50;
+  color: var(--color-success);
 }
 
 .status-text.inactive {
-  color: #f44336;
+  color: var(--color-danger);
 }
 
 .danger-action {
-  color: #f44336 !important;
+  color: var(--color-danger) !important;
 }
 
 .loading-shade {
   position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 56px;
-  right: 0;
-  background: rgba(0, 0, 0, 0.15);
+  inset: 0 0 56px;
   z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: color-mix(in srgb, var(--color-background) 62%, transparent);
+  backdrop-filter: blur(2px);
 }
 
 @media (max-width: 768px) {
@@ -161,17 +209,12 @@
   }
 
   .header {
-    flex-direction: column;
-    gap: 16px;
     align-items: stretch;
+    flex-direction: column;
   }
 
   .form-actions {
     flex-direction: column;
-  }
-
-  .shops-table {
-    font-size: 14px;
   }
 
   .shop-address {

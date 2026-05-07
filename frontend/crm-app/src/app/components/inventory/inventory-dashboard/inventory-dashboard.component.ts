@@ -8,12 +8,13 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
+import { MatPaginatorModule, MatPaginator, MatPaginatorIntl } from '@angular/material/paginator';
 import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { InventoryItem, InventoryService, StockAlert } from '../../../services/inventory.service';
+import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl';
 
 @Component({
   selector: 'app-inventory-dashboard',
@@ -36,6 +37,7 @@ import { InventoryItem, InventoryService, StockAlert } from '../../../services/i
   templateUrl: './inventory-dashboard.component.html',
   styleUrl: './inventory-dashboard.component.scss',
   providers: [
+    { provide: MatPaginatorIntl, useClass: RussianPaginatorIntl },
     {
       provide: MAT_FORM_FIELD_DEFAULT_OPTIONS,
       useValue: {

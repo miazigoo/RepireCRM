@@ -2,7 +2,7 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { DatePipe, NgClass, NgFor, NgIf } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
+import { MatPaginatorModule, MatPaginator, MatPaginatorIntl } from '@angular/material/paginator';
 import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MAT_FORM_FIELD_DEFAULT_OPTIONS, MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -17,6 +17,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { OrdersService } from '../../../services/orders.service';
 import { Order, OrderStatus, OrderPriority } from '../../../core/models/models';
+import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl';
 
 @Component({
   selector: 'app-orders-list',
@@ -44,6 +45,7 @@ import { Order, OrderStatus, OrderPriority } from '../../../core/models/models';
   templateUrl: './orders-list.component.html',
   styleUrl: './orders-list.component.scss',
   providers: [
+    { provide: MatPaginatorIntl, useClass: RussianPaginatorIntl },
     {
       provide: MAT_FORM_FIELD_DEFAULT_OPTIONS,
       useValue: {

@@ -3,7 +3,7 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { NgIf, NgFor } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
+import { MatPaginatorModule, MatPaginator, MatPaginatorIntl } from '@angular/material/paginator';
 import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -19,6 +19,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDividerModule } from '@angular/material/divider';
 import { AdminService } from '../../../services/admin.service';
 import { Role, Permission } from '../../../core/models/models';
+import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl';
 
 interface PermissionsByCategory {
   [category: string]: Permission[];
@@ -35,7 +36,8 @@ interface PermissionsByCategory {
     MatSnackBarModule, MatCheckboxModule, MatExpansionModule, MatDividerModule
   ],
   templateUrl: './role-management.component.html',
-  styleUrl: './role-management.component.css'
+  styleUrl: './role-management.component.css',
+  providers: [{ provide: MatPaginatorIntl, useClass: RussianPaginatorIntl }]
 })
 export class RoleManagementComponent implements OnInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;

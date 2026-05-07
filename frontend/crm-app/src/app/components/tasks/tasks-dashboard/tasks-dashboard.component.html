@@ -13,7 +13,7 @@
         Новая задача
       </button>
 
-      <button mat-button routerLink="/tasks/templates">
+      <button mat-button type="button" (click)="showTemplatesNotice()">
         <mat-icon>description</mat-icon>
         Шаблоны
       </button>
@@ -114,8 +114,8 @@
         </mat-form-field>
 
         <mat-form-field class="search-field">
-          <mat-label>Поиск</mat-label>
-          <input matInput formControlName="search" placeholder="Название задачи...">
+          <mat-label>Поиск по задачам</mat-label>
+          <input matInput formControlName="search">
           <mat-icon matSuffix>search</mat-icon>
         </mat-form-field>
       </form>
@@ -125,10 +125,12 @@
 
   <mat-card class="tasks-table-card">
     <mat-card-content>
-      <mat-tab-group (selectedTabChange)="onTabChanged($event.index)">
+      <mat-tab-group class="task-filter-tabs" [selectedIndex]="selectedTab" (selectedTabChange)="onTabChanged($event.index)">
+        <mat-tab label="Все задачи"></mat-tab>
+        <mat-tab label="Мои задачи"></mat-tab>
+        <mat-tab label="Созданные мной"></mat-tab>
+      </mat-tab-group>
 
-
-        <mat-tab label="Все задачи">
           <div class="table-container">
             <table mat-table [dataSource]="dataSource" matSort class="tasks-table">
 
@@ -304,24 +306,6 @@
             [pageSize]="25"
             showFirstLastButtons>
           </mat-paginator>
-        </mat-tab>
-
-
-        <mat-tab label="Мои задачи">
-          <div class="my-tasks-content">
-            <p class="tab-description">Задачи, назначенные вам</p>
-
-          </div>
-        </mat-tab>
-
-
-        <mat-tab label="Созданные мной">
-          <div class="created-tasks-content">
-            <p class="tab-description">Задачи, которые вы создали</p>
-
-          </div>
-        </mat-tab>
-      </mat-tab-group>
     </mat-card-content>
   </mat-card>
 </div>

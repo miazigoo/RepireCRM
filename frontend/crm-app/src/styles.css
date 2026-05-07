@@ -135,6 +135,26 @@ body .mat-mdc-card {
   backdrop-filter: var(--panel-backdrop-filter);
 }
 
+body .mat-expansion-panel {
+  background: var(--panel-background) !important;
+  color: var(--color-text-primary) !important;
+  border: var(--panel-border);
+  border-radius: var(--card-radius) !important;
+  box-shadow: var(--panel-shadow) !important;
+}
+
+body .mat-expansion-panel-header,
+body .mat-expansion-panel-header-title,
+body .mat-expansion-panel-header-description,
+body .mat-expansion-panel-content,
+body .mat-expansion-panel-body {
+  color: var(--color-text-primary) !important;
+}
+
+body .mat-expansion-panel-header-description {
+  color: var(--color-text-secondary) !important;
+}
+
 body .mat-mdc-card-title,
 body .mat-mdc-card-subtitle,
 body .mat-mdc-card-content,

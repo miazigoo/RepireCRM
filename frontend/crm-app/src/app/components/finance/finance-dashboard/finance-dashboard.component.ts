@@ -11,6 +11,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData } from 'chart.js';
@@ -56,6 +57,7 @@ interface RecentTransaction {
     MatDatepickerModule,
     MatFormFieldModule,
     MatSelectModule,
+    MatSnackBarModule,
     BaseChartDirective
   ],
   templateUrl: './finance-dashboard.component.html',
@@ -112,7 +114,7 @@ export class FinanceDashboardComponent implements OnInit {
     plugins: {
       title: {
         display: true,
-        text: 'Структура расходов'
+        text: 'Структура выручки'
       },
       legend: {
         position: 'right'
@@ -125,7 +127,8 @@ export class FinanceDashboardComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private financeService: FinanceService
+    private financeService: FinanceService,
+    private snackBar: MatSnackBar
   ) {
     this.filtersForm = this.fb.group({
       period: ['30_days'],
@@ -159,11 +162,12 @@ export class FinanceDashboardComponent implements OnInit {
         this.summary = summary;
         this.recentTransactions = transactions;
         this.transactionDataSource.data = transactions;
+        this.applyChartTheme();
         this.setupCharts(profitData, expensesData);
         this.loading = false;
       },
       error: error => {
-        console.error('Error loading financial data:', error);
+        this.showError(error, 'Не удалось загрузить финансовые данные');
         this.loading = false;
       }
     });
@@ -217,6 +221,72 @@ export class FinanceDashboardComponent implements OnInit {
     };
   }
 
+  private applyChartTheme(): void {
+    const styles = getComputedStyle(document.body);
+    const textColor = styles.getPropertyValue('--color-text-secondary').trim() || '#526071';
+    const gridColor = styles.getPropertyValue('--color-border').trim() || 'rgba(148, 163, 184, 0.35)';
+    const currencyFormatter = (value: string | number): string => new Intl.NumberFormat('ru-RU', {
+      style: 'currency',
+      currency: 'RUB',
+      maximumFractionDigits: 0
+    }).format(Number(value));
+
+    this.profitChartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Динамика прибыли',
+          color: textColor
+        },
+        legend: {
+          labels: {
+            color: textColor
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: textColor
+          },
+          grid: {
+            color: gridColor
+          }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: textColor,
+            callback: currencyFormatter
+          },
+          grid: {
+            color: gridColor
+          }
+        }
+      }
+    };
+
+    this.expensesChartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Структура выручки',
+          color: textColor
+        },
+        legend: {
+          position: 'right',
+          labels: {
+            color: textColor
+          }
+        }
+      }
+    };
+  }
+
   getTransactionTypeIcon(type: string): string {
     return type === 'income' ? 'arrow_downward' : 'arrow_upward';
   }
@@ -261,21 +331,41 @@ export class FinanceDashboardComponent implements OnInit {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'financial-report.pdf';
+        a.download = 'financial-report.txt';
         a.click();
         window.URL.revokeObjectURL(url);
+        this.snackBar.open('Финансовый отчет сформирован', 'Закрыть', {
+          duration: 2500
+        });
       },
       error: (error) => {
-        console.error('Error exporting report:', error);
+        this.showError(error, 'Не удалось сформировать отчет');
       }
     });
   }
 
   createExpense(): void {
-    // Переход к созданию расхода
+    this.snackBar.open('Учет расходов будет подключен к финансовому модулю отдельно', 'Закрыть', {
+      duration: 3500
+    });
   }
 
   viewTransaction(transaction: RecentTransaction): void {
-    // Просмотр деталей транзакции
+    this.snackBar.open(`Операция: ${transaction.description}`, 'Закрыть', {
+      duration: 3000
+    });
+  }
+
+  showTransactionsNotice(): void {
+    this.snackBar.open('Список транзакций пока формируется из отчетов, отдельный экран не подключен', 'Закрыть', {
+      duration: 3500
+    });
+  }
+
+  private showError(error: any, fallback: string): void {
+    const message = error?.error?.detail || error?.error?.error || fallback;
+    this.snackBar.open(message, 'Закрыть', {
+      duration: 4000
+    });
   }
 }
