@@ -52,6 +52,10 @@ export interface AppearancePreset {
   skinId: string;
 }
 
+export type ThemeColorOverrides = Partial<Omit<Theme['colors'], 'text'>> & {
+  text?: Partial<Theme['colors']['text']>;
+};
+
 @Injectable({
   providedIn: 'root'
 })
@@ -59,6 +63,7 @@ export class ThemeService {
   private readonly THEME_STORAGE_KEY = 'selectedTheme';
   private readonly STYLE_STORAGE_KEY = 'selectedInterfaceStyle';
   private readonly SKIN_STORAGE_KEY = 'selectedVisualSkin';
+  private readonly CUSTOM_THEME_COLORS_STORAGE_KEY = 'customThemeColors';
   private currentThemeSubject!: BehaviorSubject<Theme>;
   private currentStyleSubject!: BehaviorSubject<InterfaceStyle>;
   private currentSkinSubject!: BehaviorSubject<VisualSkin>;
@@ -851,6 +856,7 @@ export class ThemeService {
   ];
 
   constructor() {
+    this.loadCustomThemeColors();
     this.currentThemeSubject = new BehaviorSubject<Theme>(this.getDefaultTheme());
     this.currentStyleSubject = new BehaviorSubject<InterfaceStyle>(
       this.getDefaultStyle()
@@ -1004,6 +1010,73 @@ export class ThemeService {
     localStorage.setItem(this.SKIN_STORAGE_KEY, skinId);
   }
 
+  private readCustomThemeColors(): Record<string, ThemeColorOverrides> {
+    const savedColors = localStorage.getItem(this.CUSTOM_THEME_COLORS_STORAGE_KEY);
+
+    if (!savedColors) {
+      return {};
+    }
+
+    try {
+      const parsed = JSON.parse(savedColors);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  private mergeThemeColors(
+    baseColors: Theme['colors'],
+    overrides: ThemeColorOverrides
+  ): Theme['colors'] {
+    return {
+      ...baseColors,
+      ...overrides,
+      text: {
+        ...baseColors.text,
+        ...(overrides.text || {})
+      }
+    };
+  }
+
+  private mergeColorOverrides(
+    baseColors: ThemeColorOverrides,
+    overrides: ThemeColorOverrides
+  ): ThemeColorOverrides {
+    return {
+      ...baseColors,
+      ...overrides,
+      text: {
+        ...(baseColors.text || {}),
+        ...(overrides.text || {})
+      }
+    };
+  }
+
+  private loadCustomThemeColors(): void {
+    const savedColors = this.readCustomThemeColors();
+
+    Object.entries(savedColors).forEach(([themeId, colors]) => {
+      const themeIndex = this.themes.findIndex(item => item.id === themeId);
+
+      if (themeIndex !== -1) {
+        this.themes[themeIndex].colors = this.mergeThemeColors(
+          this.themes[themeIndex].colors,
+          colors
+        );
+      }
+    });
+  }
+
+  private saveCustomThemeColors(themeId: string, colors: ThemeColorOverrides): void {
+    const savedColors = this.readCustomThemeColors();
+    savedColors[themeId] = this.mergeColorOverrides(savedColors[themeId] || {}, colors);
+    localStorage.setItem(
+      this.CUSTOM_THEME_COLORS_STORAGE_KEY,
+      JSON.stringify(savedColors)
+    );
+  }
+
   private applyTheme(theme: Theme): void {
     const root = document.documentElement;
 
@@ -1117,13 +1190,14 @@ export class ThemeService {
   }
 
   // Дополнительные методы для кастомизации
-  updateThemeColors(themeId: string, colors: Partial<Theme['colors']>): void {
+  updateThemeColors(themeId: string, colors: ThemeColorOverrides): void {
     const themeIndex = this.themes.findIndex(t => t.id === themeId);
     if (themeIndex !== -1) {
-      this.themes[themeIndex].colors = {
-        ...this.themes[themeIndex].colors,
-        ...colors
-      };
+      this.themes[themeIndex].colors = this.mergeThemeColors(
+        this.themes[themeIndex].colors,
+        colors
+      );
+      this.saveCustomThemeColors(themeId, colors);
 
       if (this.currentThemeSubject.value.id === themeId) {
         this.applyTheme(this.themes[themeIndex]);
@@ -1141,7 +1215,7 @@ export class ThemeService {
       ...baseTheme,
       ...customizations,
       id: customizations.id || `custom-${Date.now()}`,
-      colors: { ...baseTheme.colors, ...customizations.colors },
+      colors: this.mergeThemeColors(baseTheme.colors, customizations.colors || {}),
       customProperties: { ...baseTheme.customProperties, ...customizations.customProperties }
     };
 

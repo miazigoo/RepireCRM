@@ -60,14 +60,16 @@
       </div>
 
       <div class="theme-grid">
-        <button
-          type="button"
+        <article
+          role="button"
+          tabindex="0"
           class="theme-card"
           *ngFor="let theme of filteredThemes; trackBy: trackById"
           [class.selected]="theme.id === currentTheme.id"
           [attr.aria-pressed]="theme.id === currentTheme.id"
           [ngStyle]="getThemePreviewStyles(theme)"
-          (click)="selectTheme(theme.id)">
+          (click)="selectTheme(theme.id)"
+          (keydown)="selectThemeFromKeyboard($event, theme.id)">
           <div class="theme-preview">
             <div class="preview-sidebar">
               <span></span>
@@ -90,13 +92,21 @@
             <strong class="theme-state" *ngIf="theme.id === currentTheme.id">Выбрано</strong>
           </div>
 
-          <div class="palette-dots">
-            <span
-              *ngFor="let color of getThemePalette(theme)"
-              [style.background]="color">
-            </span>
+          <div class="palette-dots" (click)="$event.stopPropagation()">
+            <label
+              class="palette-dot"
+              *ngFor="let slot of paletteSlots"
+              [attr.title]="slot.label">
+              <input
+                type="color"
+                [value]="getThemeColor(theme, slot.key)"
+                [attr.aria-label]="slot.label + ': ' + theme.displayName"
+                (click)="$event.stopPropagation()"
+                (input)="updateThemeColor(theme, slot.key, $event)">
+              <span [style.background]="getThemeColor(theme, slot.key)"></span>
+            </label>
           </div>
-        </button>
+        </article>
       </div>
     </div>
 

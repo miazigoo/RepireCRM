@@ -37,6 +37,7 @@ describe('ThemesPageComponent', () => {
     expect(element.querySelectorAll('.preset-card').length).toBe(0);
     expect(element.querySelectorAll('mat-icon').length).toBe(0);
     expect(element.querySelectorAll('.theme-card').length).toBeGreaterThan(9);
+    expect(element.querySelectorAll('.palette-dot input[type="color"]').length).toBeGreaterThan(20);
     expect(element.querySelectorAll('.skin-card').length).toBeGreaterThan(5);
     expect(element.querySelectorAll('.style-card').length).toBeGreaterThan(4);
   });
@@ -55,6 +56,21 @@ describe('ThemesPageComponent', () => {
     expect(document.body.classList).toContain('graphite-gold');
     expect(document.body.classList).toContain('skin-command-center');
     expect(document.body.classList).toContain('interface-sharp');
+  });
+
+  it('allows editing individual palette colors from a theme card', () => {
+    const component = fixture.componentInstance;
+    const colorInput = fixture.nativeElement.querySelector(
+      '.palette-dot input[type="color"]'
+    ) as HTMLInputElement;
+
+    colorInput.value = '#123456';
+    colorInput.dispatchEvent(new Event('input', { bubbles: true }));
+    fixture.detectChanges();
+
+    expect(component.currentTheme.colors.primary).toBe('#123456');
+    expect(document.documentElement.style.getPropertyValue('--color-primary')).toBe('#123456');
+    expect(localStorage.getItem('customThemeColors')).toContain('#123456');
   });
 
 });

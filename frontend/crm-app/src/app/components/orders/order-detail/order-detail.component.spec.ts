@@ -21,9 +21,9 @@ describe('OrderDetailComponent', () => {
     problem_description: 'Не включается',
     accessories: 'Коробка',
     cost_estimate: 900,
-    total_cost: 900,
+    total_cost: 1800,
     prepayment: 0,
-    remaining_payment: 900,
+    remaining_payment: 1800,
     created_at: '2026-05-05T20:32:00Z',
     updated_at: '2026-05-05T20:32:00Z',
     estimated_completion: '2026-05-23T00:00:00Z',
@@ -107,6 +107,7 @@ describe('OrderDetailComponent', () => {
     expect(text).toContain('ORD-SPB01-000002');
     expect(text).toContain('Петров Петр');
     expect(text).toContain('900 ₽');
+    expect(text).toContain('1 800 ₽');
     expect(text).not.toContain('RUB');
     expect(fixture.nativeElement.querySelector('.order-detail-page')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('mat-card')).toBeFalsy();
@@ -147,6 +148,39 @@ describe('OrderDetailComponent', () => {
     });
     expect(component.order?.status).toBe('completed');
     expect(component.handoverNeedsAttention).toBeFalse();
+  });
+
+  it('shows total and remaining payment with additional services included', () => {
+    component.order = {
+      ...order,
+      cost_estimate: 2400,
+      final_cost: 2400,
+      total_cost: 3900,
+      prepayment: 500,
+      remaining_payment: 3400,
+      additional_services: [
+        {
+          service: {
+            id: 8,
+            name: 'Быстрый чехол',
+            category: 'Аксессуары',
+            price: 1500,
+          },
+          quantity: 1,
+          price: 1500,
+          total_price: 1500,
+        },
+      ],
+    } as Order;
+    fixture.detectChanges();
+
+    const text = normalizeText(fixture.nativeElement);
+
+    expect(component.getOrderAmount(component.order)).toBe(3900);
+    expect(component.getDisplayRemainingPayment(component.order)).toBe(3400);
+    expect(text).toContain('3 900 ₽');
+    expect(text).toContain('3 400 ₽');
+    expect(text).toContain('Услуги');
   });
 
   function normalizeText(element: HTMLElement): string {

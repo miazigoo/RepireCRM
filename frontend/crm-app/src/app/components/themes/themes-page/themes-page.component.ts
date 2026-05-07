@@ -4,11 +4,18 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import {
   InterfaceStyle,
   Theme,
+  ThemeColorOverrides,
   ThemeService,
   VisualSkin
 } from '../../../services/theme.service';
 
 type ThemeModeFilter = 'all' | 'light' | 'dark';
+type PaletteColorKey = keyof Omit<Theme['colors'], 'text'>;
+
+interface PaletteSlot {
+  key: PaletteColorKey;
+  label: string;
+}
 
 @Component({
   selector: 'app-themes-page',
@@ -28,6 +35,14 @@ export class ThemesPageComponent implements OnInit {
   currentStyle!: InterfaceStyle;
   currentSkin!: VisualSkin;
   modeFilter: ThemeModeFilter = 'all';
+  readonly paletteSlots: PaletteSlot[] = [
+    { key: 'primary', label: 'Основной цвет' },
+    { key: 'accent', label: 'Акцент' },
+    { key: 'secondary', label: 'Вторичный цвет' },
+    { key: 'warn', label: 'Цвет ошибок' },
+    { key: 'background', label: 'Фон' },
+    { key: 'surface', label: 'Поверхность' }
+  ];
 
   constructor(private themeService: ThemeService) {}
 
@@ -72,6 +87,34 @@ export class ThemesPageComponent implements OnInit {
     this.themeService.setTheme(themeId);
   }
 
+  selectThemeFromKeyboard(event: KeyboardEvent, themeId: string): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.selectTheme(themeId);
+    }
+  }
+
+  getThemeColor(theme: Theme, key: PaletteColorKey): string {
+    return theme.colors[key];
+  }
+
+  updateThemeColor(theme: Theme, key: PaletteColorKey, event: Event): void {
+    event.stopPropagation();
+    const input = event.target as HTMLInputElement;
+    const color = input.value;
+
+    if (!color) {
+      return;
+    }
+
+    this.themeService.setTheme(theme.id);
+    this.themeService.updateThemeColors(theme.id, {
+      [key]: color
+    } as ThemeColorOverrides);
+    this.themes = this.themeService.getAvailableThemes();
+    this.currentTheme = this.themeService.getCurrentTheme();
+  }
+
   selectStyle(styleId: string): void {
     this.themeService.setStyle(styleId);
   }
@@ -98,16 +141,6 @@ export class ThemesPageComponent implements OnInit {
       '--preview-text': theme.colors.text.primary,
       '--preview-muted': theme.colors.text.secondary
     };
-  }
-
-  getThemePalette(theme: Theme): string[] {
-    return [
-      theme.colors.primary,
-      theme.colors.accent,
-      theme.colors.secondary,
-      theme.colors.warn,
-      theme.colors.background
-    ];
   }
 
 }

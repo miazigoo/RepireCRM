@@ -536,6 +536,10 @@
 .timeline-marker {
   width: 42px;
   height: 42px;
+
+  mat-icon {
+    font-size: 22px;
+  }
 }
 
 .timeline-header {

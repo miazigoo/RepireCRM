@@ -395,14 +395,26 @@ export class OrderDetailComponent implements OnInit {
   }
 
   getOrderAmount(order: Order): number {
-    return Number(order.final_cost ?? order.total_cost ?? order.cost_estimate ?? 0);
+    return Number(order.total_cost ?? order.final_cost ?? order.cost_estimate ?? 0);
   }
 
-  get handoverServicesTotal(): number {
-    return this.order?.additional_services?.reduce(
+  getOrderServicesAmount(order: Order): number {
+    return order.additional_services?.reduce(
       (sum, service) => sum + Number(service.total_price || 0),
       0
     ) || 0;
+  }
+
+  getOrderWorkAmount(order: Order): number {
+    return Number(order.final_cost ?? order.cost_estimate ?? 0);
+  }
+
+  getDisplayRemainingPayment(order: Order): number {
+    return Math.max(0, this.getOrderAmount(order) - Number(order.prepayment || 0));
+  }
+
+  get handoverServicesTotal(): number {
+    return this.order ? this.getOrderServicesAmount(this.order) : 0;
   }
 
   get handoverTotal(): number {

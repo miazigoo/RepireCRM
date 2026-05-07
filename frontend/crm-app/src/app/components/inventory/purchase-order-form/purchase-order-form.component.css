@@ -8,14 +8,26 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
+  padding: 22px;
+  border: var(--panel-border);
+  border-radius: var(--card-radius);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-primary) 10%, transparent),
+      color-mix(in srgb, var(--color-accent) 9%, transparent)
+    ),
+    var(--panel-background);
+  box-shadow: var(--panel-shadow);
 }
 
 .page-header h1 {
   margin: 0 0 6px;
   color: var(--color-text-primary);
   font-size: 30px;
-  font-weight: 700;
+  font-weight: 950;
+  letter-spacing: 0;
 }
 
 .page-header p {
@@ -25,12 +37,17 @@
 
 .form-card {
   margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.form-card mat-card-content {
+  padding: 24px !important;
 }
 
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 14px 16px;
 }
 
 .span-2 {
@@ -58,6 +75,8 @@
   justify-content: flex-end;
   gap: 12px;
   margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-border);
 }
 
 .form-actions button {
