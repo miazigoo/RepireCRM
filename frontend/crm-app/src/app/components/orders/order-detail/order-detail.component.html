@@ -5,7 +5,9 @@
         <mat-icon>arrow_back</mat-icon>
       </a>
       <span class="order-avatar">
-        <mat-icon>{{ getStatusIcon(order.status) }}</mat-icon>
+        <svg viewBox="0 0 32 32" width="30" height="30" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" aria-hidden="true">
+          <path *ngFor="let path of getStatusIconPaths(order.status)" [attr.d]="path"></path>
+        </svg>
       </span>
       <div>
         <span class="eyebrow">Карточка заказа</span>
@@ -29,7 +31,9 @@
           *ngFor="let option of statusOptions"
           (click)="setOrderStatus(option.value)"
           [disabled]="statusSaving || option.value === order.status">
-          <mat-icon>{{ option.icon }}</mat-icon>
+          <svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.3" aria-hidden="true">
+            <path *ngFor="let path of getStatusIconPaths(option.value)" [attr.d]="path"></path>
+          </svg>
           <span>{{ option.label }}</span>
         </button>
       </mat-menu>
@@ -134,7 +138,9 @@
       [class.done]="isStatusDone(option.value)"
       [disabled]="statusSaving || option.value === order.status"
       (click)="setOrderStatus(option.value)">
-      <mat-icon>{{ option.icon }}</mat-icon>
+      <svg viewBox="0 0 32 32" width="24" height="24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" aria-hidden="true">
+        <path *ngFor="let path of getStatusIconPaths(option.value)" [attr.d]="path"></path>
+      </svg>
       <span>{{ option.label }}</span>
     </button>
   </section>
@@ -280,7 +286,9 @@
               <div class="status-timeline">
                 <article class="timeline-item" *ngFor="let item of statusHistory; trackBy: trackById">
                   <span class="timeline-marker" [ngClass]="item.new_status">
-                    <mat-icon>{{ getStatusIcon(item.new_status) }}</mat-icon>
+                    <svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" aria-hidden="true">
+                      <path *ngFor="let path of getStatusIconPaths(item.new_status)" [attr.d]="path"></path>
+                    </svg>
                   </span>
                   <div>
                     <div class="timeline-header">
@@ -422,37 +430,7 @@
           <h2>Финальная стоимость</h2>
           <p>Перед выдачей зафиксируйте итоговую сумму ремонта и оплату клиента.</p>
 
-          <mat-form-field>
-            <mat-label>Стоимость работ</mat-label>
-            <input matInput type="number" min="0" formControlName="final_cost">
-            <span matSuffix>₽</span>
-          </mat-form-field>
-
-          <mat-form-field>
-            <mat-label>Предоплата</mat-label>
-            <input matInput type="number" min="0" formControlName="prepayment">
-            <span matSuffix>₽</span>
-          </mat-form-field>
-
-          <mat-form-field>
-            <mat-label>Комментарий выдачи</mat-label>
-            <textarea matInput rows="2" formControlName="status_comment"></textarea>
-          </mat-form-field>
-
-          <div class="info-list handover-total">
-            <div>
-              <span>Услуги</span>
-              <strong>{{ formatMoney(handoverServicesTotal) }}</strong>
-            </div>
-            <div>
-              <span>Итого к оплате</span>
-              <strong>{{ formatMoney(handoverTotal) }}</strong>
-            </div>
-            <div class="remaining">
-              <span>Остаток</span>
-              <strong>{{ formatMoney(handoverRemaining) }}</strong>
-            </div>
-          </div>
+          <ng-container *ngTemplateOutlet="handoverFields"></ng-container>
 
           <button mat-flat-button class="primary-action handover-action" type="submit" [disabled]="handoverForm.invalid || handoverSaving">
             <mat-spinner *ngIf="handoverSaving" diameter="18"></mat-spinner>
@@ -527,6 +505,59 @@
     </aside>
   </section>
 </div>
+
+<ng-template #handoverFields>
+  <ng-container [formGroup]="handoverForm">
+    <mat-form-field>
+      <mat-label>Стоимость работ</mat-label>
+      <input matInput type="number" min="0" formControlName="final_cost">
+      <span matSuffix>₽</span>
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>Предоплата</mat-label>
+      <input matInput type="number" min="0" formControlName="prepayment">
+      <span matSuffix>₽</span>
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>Комментарий выдачи</mat-label>
+      <textarea matInput rows="2" formControlName="status_comment"></textarea>
+    </mat-form-field>
+
+    <div class="info-list handover-total">
+      <div>
+        <span>Услуги</span>
+        <strong>{{ formatMoney(handoverServicesTotal) }}</strong>
+      </div>
+      <div>
+        <span>Итого к оплате</span>
+        <strong>{{ formatMoney(handoverTotal) }}</strong>
+      </div>
+      <div class="remaining">
+        <span>Остаток</span>
+        <strong>{{ formatMoney(handoverRemaining) }}</strong>
+      </div>
+    </div>
+  </ng-container>
+</ng-template>
+
+<ng-template #handoverDialog>
+  <form class="handover-dialog" [formGroup]="handoverForm" (ngSubmit)="completeOrder()">
+    <h2 mat-dialog-title>Выдать заказ</h2>
+    <mat-dialog-content>
+      <p>Проверьте стоимость работ, услуги и оплату клиента перед переводом заказа в статус «Выдан».</p>
+      <ng-container *ngTemplateOutlet="handoverFields"></ng-container>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button type="button" mat-dialog-close>Отмена</button>
+      <button mat-flat-button class="primary-action" type="submit" [disabled]="handoverForm.invalid || handoverSaving">
+        <mat-spinner *ngIf="handoverSaving" diameter="18"></mat-spinner>
+        Выдать заказ
+      </button>
+    </mat-dialog-actions>
+  </form>
+</ng-template>
 
 <div class="loading-state" *ngIf="loading">
   <mat-spinner diameter="44"></mat-spinner>

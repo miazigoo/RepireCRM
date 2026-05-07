@@ -13,10 +13,9 @@
     <mat-card-content>
       <form [formGroup]="filtersForm" class="filters-form">
         <mat-form-field class="search-field">
-          <mat-label>Поиск</mat-label>
+          <mat-label>Поиск по имени, логину, email</mat-label>
           <input matInput
-                 formControlName="search"
-                 placeholder="Имя, логин, email...">
+                 formControlName="search">
           <mat-icon matSuffix>search</mat-icon>
         </mat-form-field>
 

@@ -113,6 +113,23 @@ describe('OrderDetailComponent', () => {
     expect(fixture.nativeElement.querySelector('mat-card')).toBeFalsy();
   });
 
+  it('renders order status visuals as inline svg icons', () => {
+    component.statusHistory = [
+      {
+        id: 1,
+        old_status: 'ready',
+        new_status: 'completed',
+        changed_at: '2026-05-05T21:32:00Z',
+        changed_by_name: 'Тест',
+      },
+    ];
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.order-avatar svg')).toBeTruthy();
+    expect(fixture.nativeElement.querySelectorAll('.status-rail svg').length).toBe(8);
+    expect(component.getStatusIconPaths('completed').length).toBeGreaterThan(0);
+  });
+
   it('updates order status from the redesigned status rail', () => {
     component.setOrderStatus('ready');
 
@@ -125,9 +142,12 @@ describe('OrderDetailComponent', () => {
   });
 
   it('requires the handover form before completing an order', () => {
+    spyOn(component, 'openHandoverDialog').and.stub();
+
     component.setOrderStatus('completed');
 
     expect(component.handoverNeedsAttention).toBeTrue();
+    expect(component.openHandoverDialog).toHaveBeenCalled();
     expect(ordersService.updateOrder).not.toHaveBeenCalled();
   });
 

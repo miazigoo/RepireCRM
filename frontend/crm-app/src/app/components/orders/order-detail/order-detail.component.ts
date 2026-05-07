@@ -1,6 +1,6 @@
 // frontend/crm-app/src/app/features/orders/order-detail/order-detail.component.ts
-import { Component, OnInit } from '@angular/core';
-import { NgIf, NgFor, NgClass, DatePipe } from '@angular/common';
+import { Component, OnInit, TemplateRef, ViewChild } from '@angular/core';
+import { NgIf, NgFor, NgClass, NgTemplateOutlet, DatePipe } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MAT_FORM_FIELD_DEFAULT_OPTIONS, MatFormFieldModule } from '@angular/material/form-field';
@@ -13,6 +13,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { finalize } from 'rxjs';
 import { OrdersService } from '../../../services/orders.service';
 import {
@@ -28,11 +29,11 @@ import {
   selector: 'app-order-detail',
   standalone: true,
   imports: [
-    NgIf, NgFor, NgClass, DatePipe, RouterModule, ReactiveFormsModule,
+    NgIf, NgFor, NgClass, NgTemplateOutlet, DatePipe, RouterModule, ReactiveFormsModule,
     MatButtonModule, MatIconModule,
     MatDividerModule, MatMenuModule, MatSnackBarModule,
     MatProgressSpinnerModule, MatTabsModule, MatFormFieldModule,
-    MatInputModule, MatCheckboxModule
+    MatInputModule, MatCheckboxModule, MatDialogModule
   ],
   templateUrl: './order-detail.component.html',
   styleUrl: './order-detail.component.scss',
@@ -47,6 +48,8 @@ import {
   ]
 })
 export class OrderDetailComponent implements OnInit {
+  @ViewChild('handoverDialog') handoverDialog?: TemplateRef<void>;
+
   order: Order | null = null;
   loading = false;
   stageSaving = false;
@@ -65,6 +68,7 @@ export class OrderDetailComponent implements OnInit {
   approvalForm: FormGroup;
   handoverForm: FormGroup;
   selectedStagePhoto: File | null = null;
+  private handoverDialogRef: MatDialogRef<unknown> | null = null;
 
   readonly statusOptions: Array<{ value: OrderStatus; label: string; icon: string }> = [
     { value: 'received', label: 'Принят', icon: 'inbox' },
@@ -77,6 +81,47 @@ export class OrderDetailComponent implements OnInit {
     { value: 'cancelled', label: 'Отменен', icon: 'cancel' }
   ];
 
+  private readonly statusIconPaths: Record<string, string[]> = {
+    received: [
+      'M6 10h20v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2Z',
+      'M10 10l2-4h8l2 4',
+      'M11 18h10'
+    ],
+    diagnosed: [
+      'M14 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z',
+      'm20 20 6 6',
+      'M11 14h6M14 11v6'
+    ],
+    waiting_parts: [
+      'M10 5h12M10 27h12',
+      'M11 5c0 5 10 6 10 11s-10 6-10 11',
+      'M21 5c0 5-10 6-10 11s10 6 10 11',
+      'M13 22h6'
+    ],
+    in_repair: [
+      'M20 6l6 6-4 4-6-6Z',
+      'M5 25l10.5-10.5',
+      'M8 22l2 2'
+    ],
+    testing: [
+      'M9 6h14v20H9Z',
+      'M13 11h6M13 16h6M13 21h4',
+      'M6 10h3M6 16h3M6 22h3'
+    ],
+    ready: [
+      'M16 27a11 11 0 1 0 0-22 11 11 0 0 0 0 22Z',
+      'm10.5 16 3.5 3.5L22 12'
+    ],
+    completed: [
+      'm5 16 4 4 8-10',
+      'm16 19 2.5 2.5L27 12'
+    ],
+    cancelled: [
+      'M16 27a11 11 0 1 0 0-22 11 11 0 0 0 0 22Z',
+      'm12 12 8 8M20 12l-8 8'
+    ]
+  };
+
   private readonly moneyFormatter = new Intl.NumberFormat('ru-RU', {
     maximumFractionDigits: 0
   });
@@ -86,6 +131,7 @@ export class OrderDetailComponent implements OnInit {
     private router: Router,
     private ordersService: OrdersService,
     private snackBar: MatSnackBar,
+    private dialog: MatDialog,
     private fb: FormBuilder
   ) {
     this.orderId = +this.route.snapshot.params['id'];
@@ -260,9 +306,7 @@ export class OrderDetailComponent implements OnInit {
     if (status === 'completed') {
       this.syncHandoverForm(this.order);
       this.handoverNeedsAttention = true;
-      this.snackBar.open('Укажите итоговую стоимость в блоке выдачи заказа', 'Закрыть', {
-        duration: 3500
-      });
+      this.openHandoverDialog();
       return;
     }
 
@@ -320,6 +364,8 @@ export class OrderDetailComponent implements OnInit {
           this.order = order;
           this.syncHandoverForm(order);
           this.handoverNeedsAttention = false;
+          this.handoverDialogRef?.close();
+          this.handoverDialogRef = null;
           this.snackBar.open('Заказ выдан клиенту', 'Закрыть', { duration: 2500 });
           this.loadStatusHistory();
           this.loadAuditLog();
@@ -367,6 +413,25 @@ export class OrderDetailComponent implements OnInit {
       'cancelled': 'cancel'
     };
     return statusIcons[status] || 'help';
+  }
+
+  getStatusIconPaths(status: string): string[] {
+    return this.statusIconPaths[status] || this.statusIconPaths['received'];
+  }
+
+  openHandoverDialog(): void {
+    if (!this.handoverDialog || this.handoverDialogRef) {
+      return;
+    }
+
+    this.handoverDialogRef = this.dialog.open(this.handoverDialog, {
+      width: 'min(620px, calc(100vw - 32px))',
+      panelClass: 'handover-dialog-panel',
+      autoFocus: 'first-tabbable'
+    });
+    this.handoverDialogRef.afterClosed().subscribe(() => {
+      this.handoverDialogRef = null;
+    });
   }
 
   getCustomerFullName(order: Order): string {

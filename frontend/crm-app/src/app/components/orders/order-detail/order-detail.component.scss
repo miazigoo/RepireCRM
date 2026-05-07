@@ -91,13 +91,6 @@
   height: 64px;
   background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
   color: #fff;
-
-  mat-icon {
-    width: 30px;
-    height: 30px;
-    margin: 0;
-    font-size: 30px;
-  }
 }
 
 .customer-avatar {
@@ -280,11 +273,6 @@
     cursor: default;
   }
 
-  mat-icon {
-    width: 24px;
-    height: 24px;
-    font-size: 24px;
-  }
 }
 
 .order-workspace {
@@ -536,10 +524,6 @@
 .timeline-marker {
   width: 42px;
   height: 42px;
-
-  mat-icon {
-    font-size: 22px;
-  }
 }
 
 .timeline-header {
@@ -704,9 +688,7 @@
     }
 
     .mat-mdc-icon-button mat-icon,
-    .back-icon mat-icon,
-    .order-avatar mat-icon,
-    .status-rail mat-icon {
+    .back-icon mat-icon {
       margin-right: 0;
     }
   }
