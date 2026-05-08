@@ -52,6 +52,10 @@ export const routes: Routes = [
         loadComponent: () => import('./components/themes/themes-page/themes-page.component').then(m => m.ThemesPageComponent)
       },
       {
+        path: 'profile',
+        loadComponent: () => import('./components/profile/profile.component').then(m => m.ProfileComponent)
+      },
+      {
         path: 'admin',
         loadChildren: () => import('./routes/admin.routes').then(m => m.ADMIN_ROUTES)
       },

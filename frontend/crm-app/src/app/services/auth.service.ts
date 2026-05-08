@@ -5,6 +5,17 @@ import { User, LoginRequest, LoginResponse, Shop } from '../core/models/models';
 import { Router } from '@angular/router';
 import { jwtDecode } from 'jwt-decode';
 
+export interface ChangePasswordRequest {
+  old_password: string;
+  new_password: string;
+  confirm_password: string;
+}
+
+export interface MessageResponse {
+  message: string;
+  success?: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -76,6 +87,10 @@ export class AuthService {
           }
         })
       );
+  }
+
+  changePassword(payload: ChangePasswordRequest): Observable<MessageResponse> {
+    return this.apiService.post<MessageResponse>('/auth/change-password', payload);
   }
 
   isAuthenticated(): boolean {

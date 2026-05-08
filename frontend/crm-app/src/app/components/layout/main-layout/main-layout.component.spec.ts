@@ -1,7 +1,6 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { provideRouter, Router, RouterLink } from '@angular/router';
@@ -52,7 +51,6 @@ describe('MainLayoutComponent', () => {
         { provide: Store, useValue: store },
         { provide: BreakpointObserver, useValue: { observe: () => of({ matches: false }) } },
         { provide: MatDialog, useValue: { open: jasmine.createSpy('open') } },
-        { provide: MatSnackBar, useValue: { open: jasmine.createSpy('open') } },
         {
           provide: AdminService,
           useValue: {
@@ -113,7 +111,6 @@ describe('MainLayoutComponent', () => {
     expect(targets).toContain('/admin');
     expect(targets).toContain('/admin/settings');
     expect(targets).toContain('/themes');
-    expect(targets).not.toContain('/profile');
   });
 
   it('moves theme controls out of the top navbar and into the sidebar', () => {

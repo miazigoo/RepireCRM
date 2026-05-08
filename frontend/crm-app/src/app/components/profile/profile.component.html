@@ -1,0 +1,163 @@
+<div class="profile-shell">
+  <section class="profile-hero">
+    <div class="hero-main">
+      <div class="avatar-frame" aria-hidden="true">
+        <span>{{ initials }}</span>
+      </div>
+
+      <div class="hero-copy">
+        <span class="eyebrow">Профиль</span>
+        <h1>{{ displayName }}</h1>
+        <div class="hero-meta">
+          <span>
+            <mat-icon>mail</mat-icon>
+            {{ currentUser?.email || 'Email не указан' }}
+          </span>
+          <span>
+            <mat-icon>phone</mat-icon>
+            {{ currentUser?.phone || 'Телефон не указан' }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <button mat-stroked-button
+            type="button"
+            class="refresh-button"
+            (click)="refreshProfile()"
+            [disabled]="loadingProfile">
+      <mat-spinner *ngIf="loadingProfile" diameter="18"></mat-spinner>
+      <mat-icon *ngIf="!loadingProfile">sync</mat-icon>
+      <span>Обновить</span>
+    </button>
+  </section>
+
+  <section class="profile-stats">
+    <article class="stat-card" *ngFor="let stat of profileStats">
+      <span class="stat-icon">
+        <mat-icon>{{ stat.icon }}</mat-icon>
+      </span>
+      <span class="stat-copy">
+        <small>{{ stat.label }}</small>
+        <strong>{{ stat.value }}</strong>
+      </span>
+    </article>
+  </section>
+
+  <div class="profile-grid">
+    <section class="profile-panel account-panel">
+      <header class="panel-header">
+        <div>
+          <span class="panel-kicker">Учетная запись</span>
+          <h2>Данные сотрудника</h2>
+        </div>
+      </header>
+
+      <div class="info-list">
+        <div class="info-row">
+          <span>Фамилия</span>
+          <strong>{{ currentUser?.last_name || 'Не указана' }}</strong>
+        </div>
+        <div class="info-row">
+          <span>Имя</span>
+          <strong>{{ currentUser?.first_name || 'Не указано' }}</strong>
+        </div>
+        <div class="info-row">
+          <span>Отчество</span>
+          <strong>{{ currentUser?.middle_name || 'Не указано' }}</strong>
+        </div>
+        <div class="info-row">
+          <span>Email</span>
+          <strong>{{ currentUser?.email || 'Не указан' }}</strong>
+        </div>
+        <div class="info-row">
+          <span>Телефон</span>
+          <strong>{{ currentUser?.phone || 'Не указан' }}</strong>
+        </div>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <div class="access-panel">
+        <div class="access-marker" [class.active]="currentUser?.is_active">
+          <mat-icon>{{ currentUser?.is_active ? 'verified' : 'block' }}</mat-icon>
+        </div>
+        <div>
+          <strong>{{ currentUser?.is_active ? 'Доступ активен' : 'Доступ отключен' }}</strong>
+          <span>{{ currentUser?.is_director ? 'Доступ ко всем филиалам' : 'Работа в текущем филиале' }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="profile-panel password-panel">
+      <header class="panel-header">
+        <div>
+          <span class="panel-kicker">Безопасность</span>
+          <h2>Смена пароля</h2>
+        </div>
+      </header>
+
+      <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" novalidate>
+        <div class="password-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Текущий пароль</mat-label>
+            <input matInput
+                   formControlName="old_password"
+                   [type]="hideOldPassword ? 'password' : 'text'"
+                   autocomplete="current-password">
+            <button mat-icon-button
+                    matSuffix
+                    type="button"
+                    [attr.aria-label]="hideOldPassword ? 'Показать текущий пароль' : 'Скрыть текущий пароль'"
+                    (click)="hideOldPassword = !hideOldPassword">
+              <mat-icon>{{ hideOldPassword ? 'visibility' : 'visibility_off' }}</mat-icon>
+            </button>
+            <mat-error>{{ getFieldError('old_password') }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Новый пароль</mat-label>
+            <input matInput
+                   formControlName="new_password"
+                   [type]="hideNewPassword ? 'password' : 'text'"
+                   autocomplete="new-password">
+            <button mat-icon-button
+                    matSuffix
+                    type="button"
+                    [attr.aria-label]="hideNewPassword ? 'Показать новый пароль' : 'Скрыть новый пароль'"
+                    (click)="hideNewPassword = !hideNewPassword">
+              <mat-icon>{{ hideNewPassword ? 'visibility' : 'visibility_off' }}</mat-icon>
+            </button>
+            <mat-error>{{ getFieldError('new_password') }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Повторите пароль</mat-label>
+            <input matInput
+                   formControlName="confirm_password"
+                   [type]="hideConfirmPassword ? 'password' : 'text'"
+                   autocomplete="new-password">
+            <button mat-icon-button
+                    matSuffix
+                    type="button"
+                    [attr.aria-label]="hideConfirmPassword ? 'Показать повтор пароля' : 'Скрыть повтор пароля'"
+                    (click)="hideConfirmPassword = !hideConfirmPassword">
+              <mat-icon>{{ hideConfirmPassword ? 'visibility' : 'visibility_off' }}</mat-icon>
+            </button>
+            <mat-error>{{ getFieldError('confirm_password') }}</mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-actions">
+          <button mat-flat-button
+                  type="submit"
+                  [disabled]="savingPassword">
+            <mat-spinner *ngIf="savingPassword" diameter="20"></mat-spinner>
+            <mat-icon *ngIf="!savingPassword">lock_reset</mat-icon>
+            <span>{{ savingPassword ? 'Сохранение' : 'Изменить пароль' }}</span>
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>

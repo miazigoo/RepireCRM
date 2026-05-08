@@ -11,7 +11,6 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
@@ -57,7 +56,6 @@ interface NavigationGroup {
     MatListModule,
     MatTooltipModule,
     MatDialogModule,
-    MatSnackBarModule,
   ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss'
@@ -123,6 +121,7 @@ export class MainLayoutComponent implements OnInit {
     '/reports': 'Отчеты',
     '/finance': 'Финансы',
     '/tasks': 'Задачи',
+    '/profile': 'Профиль',
     '/admin': 'Администрирование',
     '/admin/users': 'Пользователи',
     '/admin/users/new': 'Новый пользователь',
@@ -139,8 +138,7 @@ export class MainLayoutComponent implements OnInit {
     private dialog: MatDialog,
     private notificationService: NotificationService,
     private adminService: AdminService,
-    private ordersService: OrdersService,
-    private snackBar: MatSnackBar
+    private ordersService: OrdersService
   ) {
     this.isHandset$ = this.breakpointObserver.observe(Breakpoints.Handset)
       .pipe(
@@ -193,12 +191,6 @@ export class MainLayoutComponent implements OnInit {
       maxHeight: 'calc(100vh - 32px)',
       panelClass: 'guide-dialog-panel',
       autoFocus: false
-    });
-  }
-
-  openProfileNotice(): void {
-    this.snackBar.open('Профиль пользователя будет подключен отдельным экраном', 'Закрыть', {
-      duration: 3000
     });
   }
 

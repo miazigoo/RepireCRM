@@ -15,6 +15,7 @@ describe('app routes', () => {
     expect(childPath('notifications')).toBeTruthy();
     expect(childPath('reports')).toBeTruthy();
     expect(childPath('admin')).toBeTruthy();
+    expect(childPath('profile')).toBeTruthy();
   });
 
   it('loads inventory as a routed section with child pages', () => {
