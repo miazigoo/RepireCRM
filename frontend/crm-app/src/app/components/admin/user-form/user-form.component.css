@@ -112,6 +112,59 @@
   border-top: 1px solid var(--color-border);
 }
 
+.shop-access-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.shop-access-card {
+  display: grid;
+  gap: 8px;
+  min-height: 92px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--field-radius);
+  background: color-mix(in srgb, var(--color-surface-strong) 88%, var(--panel-background));
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.shop-access-card:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 34%, var(--color-border));
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--color-shadow) 12%, transparent);
+  transform: translateY(-1px);
+}
+
+.shop-access-name,
+.shop-access-code,
+.shop-access-address {
+  display: block;
+}
+
+.shop-access-name {
+  color: var(--color-text-primary);
+  font-weight: 900;
+}
+
+.shop-access-code {
+  margin-top: 3px;
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.shop-access-address {
+  padding-left: 34px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .selected-shops {
   margin-top: 16px;
 }

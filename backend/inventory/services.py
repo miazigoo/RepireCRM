@@ -496,9 +496,11 @@ class InventoryService:
         }
 
     # ---------- Аггрегации ----------
-    def get_stock_dashboard(self, user: User) -> Dict:
+    def get_stock_dashboard(self, user: User, current_shop=None) -> Dict:
         qs = StockBalance.objects.select_related("shop", "item", "item__category")
-        if not user.is_director:
+        if current_shop:
+            qs = qs.filter(shop=current_shop)
+        else:
             qs = qs.filter(shop__in=user.get_available_shops())
 
         # Totals
@@ -562,7 +564,7 @@ class InventoryService:
         }
 
     def get_item_stock_by_code(
-        self, user: User, code: Optional[str], barcode: Optional[str]
+        self, user: User, code: Optional[str], barcode: Optional[str], current_shop=None
     ) -> Dict:
         item = None
         if code:
@@ -581,7 +583,9 @@ class InventoryService:
             return {"found": False, "error": "Товар не найден"}
 
         balances = StockBalance.objects.filter(item=item).select_related("shop")
-        if not user.is_director:
+        if current_shop:
+            balances = balances.filter(shop=current_shop)
+        else:
             balances = balances.filter(shop__in=user.get_available_shops())
 
         return {
@@ -708,7 +712,7 @@ class InventoryService:
 
         return finalize_res, payment_obj
 
-    def get_reorder_suggestions(self, user: User) -> List[dict]:
+    def get_reorder_suggestions(self, user: User, current_shop=None) -> List[dict]:
         """
         Предложения на перезаказ: товары, у которых available_quantity <= reorder_point.
         Если есть SupplierItem — используем min_order_qty.
@@ -717,7 +721,9 @@ class InventoryService:
             item__is_active=True,
             available_quantity__lte=F("reorder_point"),
         )
-        if not user.is_director:
+        if current_shop:
+            qs = qs.filter(shop=current_shop)
+        else:
             qs = qs.filter(shop__in=user.get_available_shops())
 
         suggestions: List[dict] = []
@@ -757,7 +763,7 @@ class InventoryService:
 class InventoryReportService:
     """Отчеты по складу (используется в reports/router)"""
 
-    def get_turnover_report(self, period_days: int, user: User):
+    def get_turnover_report(self, period_days: int, user: User, current_shop=None):
         from django.db.models import Count, Sum
         from django.utils import timezone
 
@@ -767,7 +773,9 @@ class InventoryReportService:
         from .models import StockMovement
 
         qs = StockMovement.objects.filter(created_at__range=[start, end])
-        if not user.is_director:
+        if current_shop:
+            qs = qs.filter(stock_balance__shop=current_shop)
+        else:
             available_shops = user.get_available_shops()
             qs = qs.filter(stock_balance__shop__in=available_shops)
 

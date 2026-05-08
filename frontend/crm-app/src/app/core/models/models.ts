@@ -11,6 +11,7 @@ export interface User {
   current_shop?: Shop;
   avatar?: string;
   role?: Role;
+  shops?: Shop[];
   last_login?: string;
 }
 
@@ -65,6 +66,8 @@ export interface Role {
   name: string;
   code: string;
   description?: string;
+  permissions_count?: number;
+  permissions?: Permission[];
 }
 
 export interface Customer {
@@ -79,7 +82,7 @@ export interface Customer {
   birth_date?: string;
   notes?: string;
   preferred_channel?: string;
-  marketing_consent: boolean;  // Обязательно в backend
+  marketing_consent: boolean; // Обязательно в backend
   orders_count: number;
   total_spent: number;
   created_at: string;
@@ -149,9 +152,9 @@ export interface Order {
   device_condition?: string;
   cost_estimate: number;
   final_cost?: number;
-  prepayment: number;  // Обязательно в backend
-  total_cost: number;  // Обязательно в backend
-  remaining_payment: number;  // Обязательно в backend
+  prepayment: number; // Обязательно в backend
+  total_cost: number; // Обязательно в backend
+  remaining_payment: number; // Обязательно в backend
   created_at: string;
   updated_at: string;
   estimated_completion?: string;
@@ -265,9 +268,11 @@ export interface CustomerFilters {
 export interface Permission {
   id: number;
   name: string;
-  code: string; // Добавлено недостающее свойство
+  code: string;
+  codename?: string;
   description?: string;
   category: string;
+  category_label?: string;
 }
 
 export interface UserFilters {

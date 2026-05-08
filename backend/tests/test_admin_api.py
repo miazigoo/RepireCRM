@@ -1,8 +1,10 @@
+import json
 from datetime import timedelta
 
 import jwt
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
 
@@ -55,16 +57,19 @@ class AdminApiTestCase(TestCase):
         )
 
     def auth_headers(self):
+        return self.auth_headers_for(self.user, self.shop)
+
+    def auth_headers_for(self, user, shop):
         payload = {
-            "user_id": self.user.id,
-            "username": self.user.username,
+            "user_id": user.id,
+            "username": user.username,
             "exp": timezone.now() + timedelta(days=1),
             "iat": timezone.now(),
         }
         token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
         return {
             "HTTP_AUTHORIZATION": f"Bearer {token}",
-            "HTTP_X_CURRENT_SHOP": str(self.shop.id),
+            "HTTP_X_CURRENT_SHOP": str(shop.id),
         }
 
     def test_admin_statistics_endpoint_returns_dashboard_payload(self):
@@ -103,3 +108,107 @@ class AdminApiTestCase(TestCase):
 
                 self.assertEqual(response.status_code, 200, response.content)
                 self.assertIsInstance(response.json(), list)
+
+    def test_permissions_endpoint_returns_human_readable_catalog(self):
+        call_command("init_permissions", verbosity=0)
+
+        response = self.client.get("/api/admin/permissions", **self.auth_headers())
+
+        self.assertEqual(response.status_code, 200, response.content)
+        permissions = response.json()
+        by_code = {permission["code"]: permission for permission in permissions}
+        self.assertEqual(
+            by_code["users.manage_shop_access"]["name"],
+            "Назначать филиалы сотрудникам",
+        )
+        self.assertEqual(
+            by_code["reports.view_all_shops"]["name"],
+            "Видеть общую статистику",
+        )
+        self.assertEqual(by_code["finance.add_payment"]["category_label"], "Финансы")
+
+    def test_delegated_admin_can_assign_only_available_shops(self):
+        shop2 = Shop.objects.create(name="Second Shop", code="TEST02")
+        target = User.objects.create_user(
+            username="target-user",
+            password="pass12345",
+            first_name="Target",
+            last_name="User",
+            current_shop=self.shop,
+        )
+        target.shops.add(self.shop)
+        role = Role.objects.create(name="Shop Access Admin", code=Role.RoleType.ADMIN)
+        for codename in (
+            "users.view_user",
+            "users.change_user",
+            "users.manage_shop_access",
+        ):
+            permission = Permission.objects.create(
+                name=codename,
+                codename=codename,
+                category=Permission.PermissionCategory.USERS,
+            )
+            role.permissions.add(permission)
+        delegated = User.objects.create_user(
+            username="delegated-admin",
+            password="pass12345",
+            first_name="Delegated",
+            last_name="Admin",
+            role=role,
+            current_shop=self.shop,
+        )
+        delegated.shops.add(self.shop, shop2)
+        self.assertEqual(
+            list(target.shops.values_list("id", flat=True)), [self.shop.id]
+        )
+
+        response = self.client.put(
+            f"/api/admin/users/{target.id}",
+            data=json.dumps({"shop_ids": [shop2.id]}),
+            content_type="application/json",
+            **self.auth_headers_for(delegated, self.shop),
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        target.refresh_from_db()
+        self.assertEqual(list(target.shops.values_list("id", flat=True)), [shop2.id])
+
+    def test_user_without_shop_access_permission_cannot_assign_shops(self):
+        shop2 = Shop.objects.create(name="Second Shop", code="TEST02")
+        target = User.objects.create_user(
+            username="limited-target",
+            password="pass12345",
+            first_name="Limited",
+            last_name="Target",
+            current_shop=self.shop,
+        )
+        target.shops.add(self.shop)
+        role = Role.objects.create(name="Limited Admin", code=Role.RoleType.MANAGER)
+        for codename in ("users.view_user", "users.change_user"):
+            permission = Permission.objects.create(
+                name=codename,
+                codename=codename,
+                category=Permission.PermissionCategory.USERS,
+            )
+            role.permissions.add(permission)
+        limited = User.objects.create_user(
+            username="limited-admin",
+            password="pass12345",
+            first_name="Limited",
+            last_name="Admin",
+            role=role,
+            current_shop=self.shop,
+        )
+        limited.shops.add(self.shop, shop2)
+
+        response = self.client.put(
+            f"/api/admin/users/{target.id}",
+            data=json.dumps({"shop_ids": [shop2.id]}),
+            content_type="application/json",
+            **self.auth_headers_for(limited, self.shop),
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            list(target.shops.values_list("id", flat=True)), [self.shop.id]
+        )

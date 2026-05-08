@@ -58,6 +58,9 @@ def _get_accessible_order(request, order_id: int) -> Order:
     )
     if not request.auth.can_access_shop(order.shop):
         raise PermissionError("Нет доступа к данному заказу")
+    current_shop = getattr(request, "current_shop", None)
+    if current_shop and order.shop_id != current_shop.id:
+        raise PermissionError("Переключите филиал, чтобы открыть этот заказ")
     return order
 
 
@@ -188,7 +191,7 @@ def list_additional_services(request):
 
 
 @router.get("/statistics", response=dict)
-def get_orders_statistics(request):
+def get_orders_statistics(request, all_shops: bool = False):
     """Получение статистики по заказам"""
     if not request.auth.has_permission("reports.view_analytics"):
         raise PermissionError("Нет прав для просмотра аналитики")
@@ -200,11 +203,14 @@ def get_orders_statistics(request):
 
     # Базовый queryset с учетом прав доступа
     queryset = Order.objects.all()
-    if not request.auth.has_permission("orders.view_all_shops"):
-        available_shops = request.auth.get_available_shops()
-        queryset = queryset.filter(shop__in=available_shops)
+    if all_shops:
+        if not request.auth.can_view_global_statistics():
+            raise PermissionError("Нет прав для общей статистики по филиалам")
     elif hasattr(request, "current_shop") and request.current_shop:
         queryset = queryset.filter(shop=request.current_shop)
+    elif not request.auth.has_permission("orders.view_all_shops"):
+        available_shops = request.auth.get_available_shops()
+        queryset = queryset.filter(shop__in=available_shops)
 
     # Статистика за последние 30 дней
     thirty_days_ago = timezone.now() - timedelta(days=30)
@@ -374,6 +380,9 @@ def get_order(request, order_id: int):
     # Проверяем доступ к магазину заказа
     if not request.auth.can_access_shop(order.shop):
         raise PermissionError("Нет доступа к данному заказу")
+    current_shop = getattr(request, "current_shop", None)
+    if current_shop and order.shop_id != current_shop.id:
+        raise PermissionError("Переключите филиал, чтобы открыть этот заказ")
 
     return order
 

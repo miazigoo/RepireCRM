@@ -9,6 +9,7 @@ from django.utils import timezone
 from ninja import Router
 
 from orders.models import Order
+from shops.models import Shop
 
 from .models import GeneratedReport, ReportTemplate
 from .services import ReportService
@@ -49,9 +50,37 @@ def _resolve_period_range(
     return start_date, end_date, days
 
 
+def _get_scoped_orders_queryset(
+    request,
+    shop_id: Optional[int] = None,
+    all_shops: bool = False,
+):
+    queryset = Order.objects.all()
+    if all_shops:
+        if not request.auth.can_view_global_statistics():
+            raise PermissionError("Нет прав для общей статистики по филиалам")
+        return queryset
+
+    if shop_id:
+        shop = get_object_or_404(Shop, id=shop_id, is_active=True)
+        if not request.auth.can_access_shop(shop):
+            raise PermissionError("Нет доступа к выбранному филиалу")
+        return queryset.filter(shop=shop)
+
+    current_shop = getattr(request, "current_shop", None)
+    if current_shop:
+        return queryset.filter(shop=current_shop)
+
+    return queryset.filter(shop__in=request.auth.get_available_shops())
+
+
 @router.get("/sla", response=dict)
 def get_sla_report(
-    request, date_from: datetime, date_to: datetime, shop_id: Optional[int] = None
+    request,
+    date_from: datetime,
+    date_to: datetime,
+    shop_id: Optional[int] = None,
+    all_shops: bool = False,
 ):
     """SLA по срокам выполнения заказов"""
     if not request.auth.has_permission("reports.view_dashboard"):
@@ -59,7 +88,12 @@ def get_sla_report(
 
     service = ReportService()
     return service.generate_sla_report(
-        date_from=date_from, date_to=date_to, shop_id=shop_id, user=request.auth
+        date_from=date_from,
+        date_to=date_to,
+        shop_id=shop_id,
+        user=request.auth,
+        current_shop=getattr(request, "current_shop", None),
+        all_shops=all_shops,
     )
 
 
@@ -70,6 +104,7 @@ def get_dashboard_metrics(
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
     shop_id: Optional[int] = None,
+    all_shops: bool = False,
 ):
     """Метрики для дашборда"""
     if not request.auth.has_permission("reports.view_dashboard"):
@@ -79,13 +114,9 @@ def get_dashboard_metrics(
     prev_end_date = start_date - timedelta(microseconds=1)
     prev_start_date = start_date - (end_date - start_date)
 
-    # Базовый queryset с учетом прав доступа
-    orders_qs = Order.objects.all()
-    if shop_id and request.auth.is_director:
-        orders_qs = orders_qs.filter(shop_id=shop_id)
-    elif not request.auth.is_director:
-        available_shops = request.auth.get_available_shops()
-        orders_qs = orders_qs.filter(shop__in=available_shops)
+    orders_qs = _get_scoped_orders_queryset(
+        request, shop_id=shop_id, all_shops=all_shops
+    )
 
     # Текущий период
     current_orders = orders_qs.filter(created_at__range=[start_date, end_date])
@@ -193,7 +224,11 @@ def get_dashboard_metrics(
 
 @router.get("/financial", response=dict)
 def get_financial_report(
-    request, date_from: datetime, date_to: datetime, shop_id: Optional[int] = None
+    request,
+    date_from: datetime,
+    date_to: datetime,
+    shop_id: Optional[int] = None,
+    all_shops: bool = False,
 ):
     """Финансовый отчет"""
     if not request.auth.has_permission("reports.view_financial"):
@@ -201,7 +236,12 @@ def get_financial_report(
 
     report_service = ReportService()
     return report_service.generate_financial_report(
-        date_from=date_from, date_to=date_to, shop_id=shop_id, user=request.auth
+        date_from=date_from,
+        date_to=date_to,
+        shop_id=shop_id,
+        user=request.auth,
+        current_shop=getattr(request, "current_shop", None),
+        all_shops=all_shops,
     )
 
 
@@ -214,7 +254,9 @@ def get_inventory_turnover(request, period_days: int = 30):
     from inventory.services import InventoryReportService
 
     service = InventoryReportService()
-    return service.get_turnover_report(period_days, request.auth)
+    return service.get_turnover_report(
+        period_days, request.auth, current_shop=getattr(request, "current_shop", None)
+    )
 
 
 @router.post("/generate/{template_id}", response=dict)
@@ -247,6 +289,7 @@ def export_dashboard_report(
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
     shop_id: Optional[int] = None,
+    all_shops: bool = False,
 ):
     """Экспорт текущего дашборда без предварительно созданного GeneratedReport."""
     if not request.auth.has_permission("reports.export_reports"):
@@ -258,6 +301,7 @@ def export_dashboard_report(
         date_from=date_from,
         date_to=date_to,
         shop_id=shop_id,
+        all_shops=all_shops,
     )
     filename = f"dashboard-report-{period}"
 

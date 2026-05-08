@@ -28,6 +28,7 @@ from .models import (
     InventoryItem,
     PurchaseOrder,
     PurchaseOrderItem,
+    RetailSale,
     StockBalance,
     Supplier,
 )
@@ -38,6 +39,23 @@ router = Router(tags=["Складской учет"])
 
 def _has_any_permission(user, *codenames: str) -> bool:
     return any(user.has_permission(codename) for codename in codenames)
+
+
+def _scope_to_current_shop(request, queryset, shop_field: str = "shop"):
+    current_shop = getattr(request, "current_shop", None)
+    if current_shop:
+        return queryset.filter(**{shop_field: current_shop})
+    return queryset.filter(**{f"{shop_field}__in": request.auth.get_available_shops()})
+
+
+def _get_accessible_sale(request, sale_id: int) -> RetailSale:
+    sale = get_object_or_404(RetailSale, id=sale_id)
+    current_shop = getattr(request, "current_shop", None)
+    if current_shop and sale.shop_id != current_shop.id:
+        raise PermissionError("Нет доступа к продаже в другом филиале")
+    if not request.auth.can_access_shop(sale.shop):
+        raise PermissionError("Нет доступа к продаже в этом филиале")
+    return sale
 
 
 @router.get("/items", response=List[InventoryItemSchema])
@@ -83,10 +101,10 @@ def get_stock_balances(request, shop_id: int = None, low_stock_only: bool = Fals
 
     # Фильтрация по магазину
     if shop_id:
-        queryset = queryset.filter(shop_id=shop_id)
-    elif not request.auth.is_director:
-        available_shops = request.auth.get_available_shops()
-        queryset = queryset.filter(shop__in=available_shops)
+        shop = get_object_or_404(request.auth.get_available_shops(), id=shop_id)
+        queryset = queryset.filter(shop=shop)
+    else:
+        queryset = _scope_to_current_shop(request, queryset)
 
     # Только товары с низким остатком
     if low_stock_only:
@@ -131,9 +149,7 @@ def list_purchase_orders(request, status: str = None):
     ).prefetch_related("items__item")
 
     # Фильтрация по магазину
-    if not request.auth.is_director:
-        available_shops = request.auth.get_available_shops()
-        queryset = queryset.filter(shop__in=available_shops)
+    queryset = _scope_to_current_shop(request, queryset)
 
     if status:
         queryset = queryset.filter(status=status)
@@ -246,7 +262,9 @@ def get_reorder_suggestions(request):
         raise PermissionError("Нет прав для просмотра остатков")
 
     service = InventoryService()
-    return service.get_reorder_suggestions(request.auth)
+    return service.get_reorder_suggestions(
+        request.auth, current_shop=getattr(request, "current_shop", None)
+    )
 
 
 @router.post("/barcode/scan", response=dict)
@@ -307,9 +325,7 @@ def add_item_to_retail_sale(request, sale_id: int, data: dict):
     if not request.auth.has_permission("inventory.add_sale"):
         raise PermissionError("Нет прав для изменения продаж")
 
-    from .models import RetailSale  # прямой импорт модели
-
-    sale = get_object_or_404(RetailSale, id=sale_id)
+    sale = _get_accessible_sale(request, sale_id)
 
     if sale.status != "draft":
         return {"error": "Можно добавлять товары только в черновик продажи"}
@@ -341,9 +357,7 @@ def finalize_retail_sale(request, sale_id: int):
     if not request.auth.has_permission("inventory.add_sale"):
         raise PermissionError("Нет прав для редактирования продаж")
 
-    from .models import RetailSale
-
-    sale = get_object_or_404(RetailSale, id=sale_id)
+    sale = _get_accessible_sale(request, sale_id)
 
     service = InventoryService()
     try:
@@ -377,7 +391,9 @@ def stock_dashboard(request):
     if not request.auth.has_permission("inventory.view_stock"):
         raise PermissionError("Нет прав для просмотра остатков")
     service = InventoryService()
-    return service.get_stock_dashboard(request.auth)
+    return service.get_stock_dashboard(
+        request.auth, current_shop=getattr(request, "current_shop", None)
+    )
 
 
 # Остатки по SKU/ШК
@@ -388,7 +404,9 @@ def stock_item_by_code(
     if not request.auth.has_permission("inventory.view_stock"):
         raise PermissionError("Нет прав для просмотра остатков")
     service = InventoryService()
-    return service.get_item_stock_by_code(request.auth, code, barcode)
+    return service.get_item_stock_by_code(
+        request.auth, code, barcode, current_shop=getattr(request, "current_shop", None)
+    )
 
 
 # Быстрое создание товара из модалки
@@ -425,9 +443,7 @@ def finalize_retail_sale_with_payment(
 ):
     if not request.auth.has_permission("inventory.add_sale"):
         raise PermissionError("Нет прав для редактирования продаж")
-    from .models import RetailSale
-
-    sale = get_object_or_404(RetailSale, id=sale_id)
+    sale = _get_accessible_sale(request, sale_id)
     service = InventoryService()
     res, _pay = service.finalize_sale_with_payment(
         sale=sale,

@@ -44,6 +44,14 @@ class ShopSettingsSchema(Schema):
     organization_id: Optional[int] = None
     receipt_footer_text: Optional[str] = None
 
+    @staticmethod
+    def resolve_work_hours_start(obj):
+        return obj.work_hours_start.strftime("%H:%M") if obj.work_hours_start else None
+
+    @staticmethod
+    def resolve_work_hours_end(obj):
+        return obj.work_hours_end.strftime("%H:%M") if obj.work_hours_end else None
+
 
 class SubscriptionPlanSchema(Schema):
     code: str

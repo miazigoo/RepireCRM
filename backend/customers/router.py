@@ -240,12 +240,7 @@ def get_customer_orders(request, customer_id: int):
     # Получаем заказы клиента с учетом прав доступа к магазинам
     from orders.models import Order
 
-    queryset = Order.objects.filter(customer=customer)
-
-    if not request.auth.has_permission("orders.view_all_shops"):
-        # Показываем только заказы из доступных магазинов
-        available_shops = request.auth.get_available_shops()
-        queryset = queryset.filter(shop__in=available_shops)
+    queryset = Order.objects.filter(customer=customer, shop=request.current_shop)
 
     orders = queryset.select_related(
         "device__model__brand",

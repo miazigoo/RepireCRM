@@ -6,6 +6,9 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
+from customers.models import Customer
+from device.models import Device, DeviceBrand, DeviceModel, DeviceType
+from orders.models import Order
 from shops.models import Shop
 from users.models import Permission, Role
 
@@ -42,6 +45,32 @@ class ReportsApiTestCase(TestCase):
             is_director=True,
         )
         self.user.shops.add(self.shop)
+
+    def create_order(self, shop, final_cost=1000):
+        customer = Customer.objects.create(
+            first_name=f"Customer {shop.id}",
+            last_name="Report",
+            phone=f"+7999000000{shop.id}",
+        )
+        brand = DeviceBrand.objects.create(name=f"Brand {shop.id}")
+        device_type = DeviceType.objects.create(name=f"Phone {shop.id}")
+        model = DeviceModel.objects.create(
+            brand=brand,
+            device_type=device_type,
+            name=f"Model {shop.id}",
+        )
+        device = Device.objects.create(model=model)
+        return Order.objects.create(
+            shop=shop,
+            customer=customer,
+            device=device,
+            problem_description="Test",
+            cost_estimate=final_cost,
+            final_cost=final_cost,
+            status="completed",
+            completed_at=timezone.now(),
+            created_by=self.user,
+        )
 
     def auth_headers(self):
         payload = {
@@ -93,3 +122,44 @@ class ReportsApiTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual(response["Content-Type"], "application/pdf")
+
+    def test_director_dashboard_defaults_to_selected_shop(self):
+        shop2 = Shop.objects.create(
+            name="Second Shop",
+            code="TEST02",
+            timezone="Europe/Moscow",
+            currency="RUB",
+        )
+        self.create_order(self.shop, final_cost=1000)
+        self.create_order(shop2, final_cost=2000)
+
+        response = self.client.get(
+            "/api/reports/dashboard-metrics",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        payload = response.json()
+        self.assertEqual(payload["orders"]["total"], 1)
+        self.assertEqual(payload["revenue"]["current"], 1000.0)
+
+    def test_director_can_request_global_dashboard_statistics(self):
+        shop2 = Shop.objects.create(
+            name="Second Shop",
+            code="TEST02",
+            timezone="Europe/Moscow",
+            currency="RUB",
+        )
+        self.create_order(self.shop, final_cost=1000)
+        self.create_order(shop2, final_cost=2000)
+
+        response = self.client.get(
+            "/api/reports/dashboard-metrics",
+            data={"all_shops": "true"},
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        payload = response.json()
+        self.assertEqual(payload["orders"]["total"], 2)
+        self.assertEqual(payload["revenue"]["current"], 3000.0)

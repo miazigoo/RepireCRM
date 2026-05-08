@@ -93,6 +93,11 @@ def pay_retail_sale(request, sale_id: int, data: dict):
     if not request.auth.has_permission("finance.add_payment"):
         raise PermissionError("Нет прав для создания платежей")
     sale = get_object_or_404(RetailSale, id=sale_id)
+    current_shop = getattr(request, "current_shop", None)
+    if current_shop and sale.shop_id != current_shop.id:
+        raise PermissionError("Нет доступа к продаже в другом филиале")
+    if not request.auth.can_access_shop(sale.shop):
+        raise PermissionError("Нет доступа к продаже в этом филиале")
     pm = get_object_or_404(PaymentMethod, id=data["payment_method_id"])
     cr = None
     if pm.is_cash and data.get("cash_register_id"):

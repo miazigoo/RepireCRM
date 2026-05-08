@@ -39,6 +39,8 @@ class Permission(models.Model):
         CUSTOMERS = "customers", "Клиенты"
         INVENTORY = "inventory", "Склад"
         REPORTS = "reports", "Отчеты"
+        TASKS = "tasks", "Задачи"
+        FINANCE = "finance", "Финансы"
         SETTINGS = "settings", "Настройки"
         USERS = "users", "Пользователи"
 
@@ -118,8 +120,10 @@ class User(AbstractUser):
 
     def get_available_shops(self):
         """Получить доступные магазины для пользователя"""
-        if self.is_director:
-            return self.shops.filter(is_active=True)
+        from shops.models import Shop
+
+        if self.is_superuser or self.is_director:
+            return Shop.objects.filter(is_active=True)
         return self.shops.filter(is_active=True)
 
     def has_permission(self, permission_codename: str) -> bool:
@@ -137,6 +141,14 @@ class User(AbstractUser):
         if self.is_superuser or self.is_director:
             return True
         return self.shops.filter(id=shop.id).exists()
+
+    def can_view_global_statistics(self) -> bool:
+        """Может ли пользователь видеть сводку по всем филиалам."""
+        return (
+            self.is_superuser
+            or self.is_director
+            or self.has_permission("reports.view_all_shops")
+        )
 
 
 class UserShop(models.Model):

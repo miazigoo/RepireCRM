@@ -29,15 +29,28 @@ interface PermissionsByCategory {
   selector: 'app-role-management',
   standalone: true,
   imports: [
-    NgIf, NgFor, ReactiveFormsModule,
-    MatTableModule, MatPaginatorModule, MatSortModule, MatInputModule,
-    MatSelectModule, MatButtonModule, MatIconModule, MatCardModule,
-    MatProgressSpinnerModule, MatMenuModule, MatChipsModule,
-    MatSnackBarModule, MatCheckboxModule, MatExpansionModule, MatDividerModule
+    NgIf,
+    NgFor,
+    ReactiveFormsModule,
+    MatTableModule,
+    MatPaginatorModule,
+    MatSortModule,
+    MatInputModule,
+    MatSelectModule,
+    MatButtonModule,
+    MatIconModule,
+    MatCardModule,
+    MatProgressSpinnerModule,
+    MatMenuModule,
+    MatChipsModule,
+    MatSnackBarModule,
+    MatCheckboxModule,
+    MatExpansionModule,
+    MatDividerModule,
   ],
   templateUrl: './role-management.component.html',
   styleUrl: './role-management.component.css',
-  providers: [{ provide: MatPaginatorIntl, useClass: RussianPaginatorIntl }]
+  providers: [{ provide: MatPaginatorIntl, useClass: RussianPaginatorIntl }],
 })
 export class RoleManagementComponent implements OnInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -55,24 +68,48 @@ export class RoleManagementComponent implements OnInit {
   permissionsByCategory: PermissionsByCategory = {};
   selectedPermissions: Set<number> = new Set();
 
+  categoryOrder = [
+    'orders',
+    'customers',
+    'inventory',
+    'reports',
+    'tasks',
+    'finance',
+    'settings',
+    'users',
+  ];
+
   categoryLabels: { [key: string]: string } = {
-    'orders': 'Заказы',
-    'customers': 'Клиенты',
-    'inventory': 'Склад',
-    'reports': 'Отчеты',
-    'settings': 'Настройки',
-    'users': 'Пользователи'
+    orders: 'Заказы',
+    customers: 'Клиенты',
+    inventory: 'Склад',
+    reports: 'Отчеты',
+    tasks: 'Задачи',
+    finance: 'Финансы',
+    settings: 'Настройки',
+    users: 'Пользователи и доступ',
+  };
+
+  categoryDescriptions: { [key: string]: string } = {
+    orders: 'Приемка, ремонт, выдача и управление статусами заказов.',
+    customers: 'Просмотр и ведение клиентской базы выбранного филиала.',
+    inventory: 'Товары, остатки, закупки, продажи и складские операции.',
+    reports: 'Дашборды, финансовые отчеты, аналитика и экспорт.',
+    tasks: 'Назначение и контроль задач по сотрудникам, ролям и филиалам.',
+    finance: 'Платежи, оплаты заказов и розничных продаж.',
+    settings: 'Филиалы, настройки магазина и параметры системы.',
+    users: 'Сотрудники, роли, права и привязка пользователей к филиалам.',
   };
 
   constructor(
     private adminService: AdminService,
     private fb: FormBuilder,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
   ) {
     this.roleForm = this.fb.group({
       name: ['', [Validators.required, Validators.maxLength(50)]],
       code: ['', [Validators.required, Validators.maxLength(20), Validators.pattern(/^[a-z_]+$/)]],
-      description: ['', Validators.maxLength(200)]
+      description: ['', Validators.maxLength(200)],
     });
   }
 
@@ -97,7 +134,7 @@ export class RoleManagementComponent implements OnInit {
         console.error('Error loading roles:', error);
         this.snackBar.open('Ошибка загрузки ролей', 'Закрыть', { duration: 3000 });
         this.loading = false;
-      }
+      },
     });
   }
 
@@ -109,7 +146,7 @@ export class RoleManagementComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading permissions:', error);
-      }
+      },
     });
   }
 
@@ -121,6 +158,10 @@ export class RoleManagementComponent implements OnInit {
       acc[permission.category].push(permission);
       return acc;
     }, {} as PermissionsByCategory);
+
+    Object.values(this.permissionsByCategory).forEach((categoryPermissions) => {
+      categoryPermissions.sort((first, second) => first.name.localeCompare(second.name, 'ru'));
+    });
   }
 
   showCreateForm(): void {
@@ -136,22 +177,22 @@ export class RoleManagementComponent implements OnInit {
     this.roleForm.patchValue({
       name: role.name,
       code: role.code,
-      description: role.description
+      description: role.description,
     });
 
     // Load role permissions
     this.adminService.getRole(role.id).subscribe({
       next: (fullRole) => {
         this.selectedPermissions.clear();
-        if ((fullRole as any).permissions) {
-          (fullRole as any).permissions.forEach((permission: Permission) => {
+        if (fullRole.permissions) {
+          fullRole.permissions.forEach((permission: Permission) => {
             this.selectedPermissions.add(permission.id);
           });
         }
       },
       error: (error) => {
         console.error('Error loading role permissions:', error);
-      }
+      },
     });
   }
 
@@ -167,7 +208,7 @@ export class RoleManagementComponent implements OnInit {
       this.loading = true;
       const formData = {
         ...this.roleForm.value,
-        permission_ids: Array.from(this.selectedPermissions)
+        permission_ids: Array.from(this.selectedPermissions),
       };
 
       const request = this.editingRole
@@ -185,7 +226,7 @@ export class RoleManagementComponent implements OnInit {
           const errorMessage = error.error?.error || 'Ошибка сохранения роли';
           this.snackBar.open(errorMessage, 'Закрыть', { duration: 5000 });
           this.loading = false;
-        }
+        },
       });
     } else {
       this.markFormGroupTouched();
@@ -193,7 +234,9 @@ export class RoleManagementComponent implements OnInit {
   }
 
   deleteRole(role: Role): void {
-    if (confirm(`Удалить роль "${role.name}"? Пользователи с этой ролью потеряют свои права доступа.`)) {
+    if (
+      confirm(`Удалить роль "${role.name}"? Пользователи с этой ролью потеряют свои права доступа.`)
+    ) {
       this.adminService.deleteRole(role.id).subscribe({
         next: () => {
           this.snackBar.open('Роль удалена', 'Закрыть', { duration: 3000 });
@@ -202,7 +245,7 @@ export class RoleManagementComponent implements OnInit {
         error: (error) => {
           const errorMessage = error.error?.error || 'Ошибка удаления роли';
           this.snackBar.open(errorMessage, 'Закрыть', { duration: 5000 });
-        }
+        },
       });
     }
   }
@@ -221,30 +264,32 @@ export class RoleManagementComponent implements OnInit {
 
   selectAllInCategory(category: string): void {
     const categoryPermissions = this.permissionsByCategory[category];
-    const allSelected = categoryPermissions.every(p => this.selectedPermissions.has(p.id));
+    const allSelected = categoryPermissions.every((p) => this.selectedPermissions.has(p.id));
 
     if (allSelected) {
       // Deselect all in category
-      categoryPermissions.forEach(p => this.selectedPermissions.delete(p.id));
+      categoryPermissions.forEach((p) => this.selectedPermissions.delete(p.id));
     } else {
       // Select all in category
-      categoryPermissions.forEach(p => this.selectedPermissions.add(p.id));
+      categoryPermissions.forEach((p) => this.selectedPermissions.add(p.id));
     }
   }
 
   isCategoryFullySelected(category: string): boolean {
     const categoryPermissions = this.permissionsByCategory[category];
-    return categoryPermissions.every(p => this.selectedPermissions.has(p.id));
+    return categoryPermissions.every((p) => this.selectedPermissions.has(p.id));
   }
 
   isCategoryPartiallySelected(category: string): boolean {
     const categoryPermissions = this.permissionsByCategory[category];
-    const selectedCount = categoryPermissions.filter(p => this.selectedPermissions.has(p.id)).length;
+    const selectedCount = categoryPermissions.filter((p) =>
+      this.selectedPermissions.has(p.id),
+    ).length;
     return selectedCount > 0 && selectedCount < categoryPermissions.length;
   }
 
   private markFormGroupTouched(): void {
-    Object.keys(this.roleForm.controls).forEach(key => {
+    Object.keys(this.roleForm.controls).forEach((key) => {
       const control = this.roleForm.get(key);
       control?.markAsTouched();
     });
@@ -270,11 +315,28 @@ export class RoleManagementComponent implements OnInit {
     return this.categoryLabels[category] || category;
   }
 
+  getCategoryDescription(category: string): string {
+    return this.categoryDescriptions[category] || 'Разрешения этого раздела.';
+  }
+
   getPermissionsCount(role: Role): number {
-    return (role as any).permissions_count || 0;
+    return role.permissions_count || 0;
   }
 
   getObjectKeys(obj: any): string[] {
-    return Object.keys(obj);
+    return Object.keys(obj).sort((first, second) => {
+      const firstIndex = this.categoryOrder.indexOf(first);
+      const secondIndex = this.categoryOrder.indexOf(second);
+      if (firstIndex === -1 && secondIndex === -1) {
+        return first.localeCompare(second, 'ru');
+      }
+      if (firstIndex === -1) {
+        return 1;
+      }
+      if (secondIndex === -1) {
+        return -1;
+      }
+      return firstIndex - secondIndex;
+    });
   }
 }

@@ -1,5 +1,5 @@
 import json
-from datetime import timedelta
+from datetime import time, timedelta
 from io import StringIO
 
 import jwt
@@ -131,6 +131,22 @@ class SubscriptionApiTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual(response.json()[0]["name"], self.organization.name)
+
+    def test_shop_settings_serializes_work_hours_as_strings(self):
+        settings = self.shop.settings
+        settings.work_hours_start = time(9, 0)
+        settings.work_hours_end = time(21, 0)
+        settings.save(update_fields=["work_hours_start", "work_hours_end"])
+
+        response = self.client.get(
+            f"/api/shops/{self.shop.id}/settings",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        payload = response.json()
+        self.assertEqual(payload["work_hours_start"], "09:00")
+        self.assertEqual(payload["work_hours_end"], "21:00")
 
     def test_subscription_can_change_to_yearly_plan(self):
         response = self.client.post(

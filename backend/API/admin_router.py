@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db import models
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -7,6 +8,7 @@ from ninja import Router, Schema
 from orders.models import Order
 from shops.models import Shop
 from users.models import Permission, Role
+from users.permissions import CATEGORY_LABELS
 
 router = Router(tags=["Администрирование"])
 
@@ -17,11 +19,16 @@ class AdminPermissionSchema(Schema):
     code: str
     codename: str
     category: str
+    category_label: str = ""
     description: str = ""
 
     @staticmethod
     def resolve_code(obj):
         return obj.codename
+
+    @staticmethod
+    def resolve_category_label(obj):
+        return CATEGORY_LABELS.get(obj.category, obj.category)
 
 
 class AdminRoleSchema(Schema):
@@ -146,13 +153,63 @@ class RoleUpdateSchema(Schema):
     permission_ids: list[int] | None = None
 
 
-def _ensure_admin(request):
-    if not (request.auth.is_superuser or request.auth.is_director):
+def _has_admin_permission(request, *codenames):
+    user = request.auth
+    return (
+        user.is_superuser
+        or user.is_director
+        or any(user.has_permission(codename) for codename in codenames)
+    )
+
+
+def _ensure_admin_permission(request, *codenames):
+    if not _has_admin_permission(request, *codenames):
         raise PermissionError("Нет прав для администрирования")
 
 
-def _sync_user_shops(user, shop_ids):
-    shops = Shop.objects.filter(id__in=shop_ids)
+def _has_global_shop_admin(request):
+    user = request.auth
+    return (
+        user.is_superuser
+        or user.is_director
+        or user.has_permission("settings.view_all_shops")
+    )
+
+
+def _ensure_director_admin(request):
+    if not (request.auth.is_superuser or request.auth.is_director):
+        raise PermissionError("Только директор может назначать статус директора")
+
+
+def _get_assignable_shops(request):
+    if _has_global_shop_admin(request):
+        return Shop.objects.filter(is_active=True)
+    return request.auth.get_available_shops()
+
+
+def _get_manageable_users(request):
+    User = get_user_model()
+    queryset = (
+        User.objects.select_related("role", "current_shop")
+        .prefetch_related("shops", "role__permissions")
+        .order_by("username")
+    )
+    if _has_global_shop_admin(request):
+        return queryset
+
+    available_shops = request.auth.get_available_shops()
+    return queryset.filter(
+        models.Q(id=request.auth.id) | models.Q(shops__in=available_shops)
+    ).distinct()
+
+
+def _sync_user_shops(request, user, shop_ids):
+    _ensure_admin_permission(request, "users.manage_shop_access")
+    assignable_shops = _get_assignable_shops(request)
+    shops = assignable_shops.filter(id__in=shop_ids)
+    if len(set(shop_ids)) != shops.count():
+        raise PermissionError("Нет прав назначать один из выбранных филиалов")
+
     user.shops.set(shops)
     if user.current_shop_id not in set(shops.values_list("id", flat=True)):
         user.current_shop = shops.first()
@@ -161,19 +218,21 @@ def _sync_user_shops(user, shop_ids):
 
 @router.get("/users", response=list[AdminUserSchema])
 def list_users(request, page: int = 1, page_size: int = 20):
-    _ensure_admin(request)
+    _ensure_admin_permission(request, "users.view_user")
     offset = max(page - 1, 0) * page_size
-    return (
-        get_user_model()
-        .objects.select_related("role", "current_shop")
-        .prefetch_related("shops", "role__permissions")
-        .order_by("username")[offset : offset + page_size]
-    )
+    return _get_manageable_users(request)[offset : offset + page_size]
 
 
 @router.post("/users", response={201: AdminUserSchema, 400: dict})
 def create_user(request, data: UserCreateSchema):
-    _ensure_admin(request)
+    _ensure_admin_permission(request, "users.add_user")
+    if data.role_id:
+        _ensure_admin_permission(request, "users.manage_permissions")
+    if data.is_director:
+        _ensure_director_admin(request)
+    if data.shop_ids:
+        _ensure_admin_permission(request, "users.manage_shop_access")
+
     User = get_user_model()
     if User.objects.filter(username=data.username).exists():
         return 400, {"error": "Пользователь с таким логином уже существует"}
@@ -190,43 +249,42 @@ def create_user(request, data: UserCreateSchema):
         role=role,
         is_director=data.is_director,
     )
-    _sync_user_shops(user, data.shop_ids)
+    if data.shop_ids:
+        _sync_user_shops(request, user, data.shop_ids)
     return 201, user
 
 
 @router.get("/users/{user_id}", response=AdminUserSchema)
 def get_user(request, user_id: int):
-    _ensure_admin(request)
-    return get_object_or_404(
-        get_user_model()
-        .objects.select_related("role", "current_shop")
-        .prefetch_related("shops", "role__permissions"),
-        id=user_id,
-    )
+    _ensure_admin_permission(request, "users.view_user")
+    return get_object_or_404(_get_manageable_users(request), id=user_id)
 
 
 @router.put("/users/{user_id}", response=AdminUserSchema)
 def update_user(request, user_id: int, data: UserUpdateSchema):
-    _ensure_admin(request)
-    user = get_object_or_404(get_user_model(), id=user_id)
+    _ensure_admin_permission(request, "users.change_user")
+    user = get_object_or_404(_get_manageable_users(request), id=user_id)
     incoming = data.dict(exclude_unset=True)
     shop_ids = incoming.pop("shop_ids", None)
     role_id = incoming.pop("role_id", None)
     if role_id is not None:
+        _ensure_admin_permission(request, "users.manage_permissions")
         user.role = Role.objects.filter(id=role_id).first()
+    if "is_director" in incoming:
+        _ensure_director_admin(request)
     for field, value in incoming.items():
         if value is not None:
             setattr(user, field, value)
     user.save()
     if shop_ids is not None:
-        _sync_user_shops(user, shop_ids)
+        _sync_user_shops(request, user, shop_ids)
     return get_user(request, user.id)
 
 
 @router.delete("/users/{user_id}", response=dict)
 def delete_user(request, user_id: int):
-    _ensure_admin(request)
-    user = get_object_or_404(get_user_model(), id=user_id)
+    _ensure_admin_permission(request, "users.delete_user")
+    user = get_object_or_404(_get_manageable_users(request), id=user_id)
     if user.id == request.auth.id:
         return {"error": "Нельзя удалить текущего пользователя"}
     user.delete()
@@ -235,8 +293,8 @@ def delete_user(request, user_id: int):
 
 @router.post("/users/{user_id}/reset-password", response=dict)
 def reset_user_password(request, user_id: int, data: PasswordResetSchema):
-    _ensure_admin(request)
-    user = get_object_or_404(get_user_model(), id=user_id)
+    _ensure_admin_permission(request, "users.change_user")
+    user = get_object_or_404(_get_manageable_users(request), id=user_id)
     user.set_password(data.password)
     user.save(update_fields=["password"])
     return {"success": True}
@@ -244,13 +302,15 @@ def reset_user_password(request, user_id: int, data: PasswordResetSchema):
 
 @router.get("/shops", response=list[AdminShopSchema])
 def list_admin_shops(request):
-    _ensure_admin(request)
-    return Shop.objects.all().order_by("name")
+    _ensure_admin_permission(request, "settings.view_shop", "users.manage_shop_access")
+    if _has_global_shop_admin(request):
+        return Shop.objects.all().order_by("name")
+    return request.auth.get_available_shops().order_by("name")
 
 
 @router.post("/shops", response={201: AdminShopSchema, 400: dict})
 def create_shop(request, data: ShopCreateSchema):
-    _ensure_admin(request)
+    _ensure_admin_permission(request, "settings.add_shop")
     if Shop.objects.filter(code=data.code).exists():
         return 400, {"error": "Филиал с таким кодом уже существует"}
     shop = Shop.objects.create(**data.dict())
@@ -259,14 +319,14 @@ def create_shop(request, data: ShopCreateSchema):
 
 @router.get("/shops/{shop_id}", response=AdminShopSchema)
 def get_admin_shop(request, shop_id: int):
-    _ensure_admin(request)
-    return get_object_or_404(Shop, id=shop_id)
+    _ensure_admin_permission(request, "settings.view_shop")
+    return get_object_or_404(_get_assignable_shops(request), id=shop_id)
 
 
 @router.put("/shops/{shop_id}", response=AdminShopSchema)
 def update_shop(request, shop_id: int, data: ShopUpdateSchema):
-    _ensure_admin(request)
-    shop = get_object_or_404(Shop, id=shop_id)
+    _ensure_admin_permission(request, "settings.change_shop")
+    shop = get_object_or_404(_get_assignable_shops(request), id=shop_id)
     for field, value in data.dict(exclude_unset=True).items():
         if value is not None:
             setattr(shop, field, value)
@@ -276,8 +336,8 @@ def update_shop(request, shop_id: int, data: ShopUpdateSchema):
 
 @router.delete("/shops/{shop_id}", response=dict)
 def delete_shop(request, shop_id: int):
-    _ensure_admin(request)
-    shop = get_object_or_404(Shop, id=shop_id)
+    _ensure_admin_permission(request, "settings.delete_shop")
+    shop = get_object_or_404(_get_assignable_shops(request), id=shop_id)
     shop.is_active = False
     shop.save(update_fields=["is_active"])
     return {"success": True}
@@ -285,13 +345,13 @@ def delete_shop(request, shop_id: int):
 
 @router.get("/roles", response=list[AdminRoleSchema])
 def list_roles(request):
-    _ensure_admin(request)
+    _ensure_admin_permission(request, "users.manage_permissions")
     return Role.objects.prefetch_related("permissions").order_by("name")
 
 
 @router.post("/roles", response={201: AdminRoleSchema, 400: dict})
 def create_role(request, data: RoleCreateSchema):
-    _ensure_admin(request)
+    _ensure_admin_permission(request, "users.manage_permissions")
     if Role.objects.filter(code=data.code).exists():
         return 400, {"error": "Роль с таким кодом уже существует"}
     role = Role.objects.create(
@@ -305,13 +365,13 @@ def create_role(request, data: RoleCreateSchema):
 
 @router.get("/roles/{role_id}", response=AdminRoleSchema)
 def get_role(request, role_id: int):
-    _ensure_admin(request)
+    _ensure_admin_permission(request, "users.manage_permissions")
     return get_object_or_404(Role.objects.prefetch_related("permissions"), id=role_id)
 
 
 @router.put("/roles/{role_id}", response=AdminRoleSchema)
 def update_role(request, role_id: int, data: RoleUpdateSchema):
-    _ensure_admin(request)
+    _ensure_admin_permission(request, "users.manage_permissions")
     role = get_object_or_404(Role, id=role_id)
     incoming = data.dict(exclude_unset=True)
     permission_ids = incoming.pop("permission_ids", None)
@@ -326,7 +386,7 @@ def update_role(request, role_id: int, data: RoleUpdateSchema):
 
 @router.delete("/roles/{role_id}", response=dict)
 def delete_role(request, role_id: int):
-    _ensure_admin(request)
+    _ensure_admin_permission(request, "users.manage_permissions")
     role = get_object_or_404(Role, id=role_id)
     role.delete()
     return {"success": True}
@@ -334,39 +394,45 @@ def delete_role(request, role_id: int):
 
 @router.get("/permissions", response=list[AdminPermissionSchema])
 def list_permissions(request):
-    _ensure_admin(request)
+    _ensure_admin_permission(request, "users.manage_permissions")
     return Permission.objects.all().order_by("category", "name")
 
 
 @router.get("/statistics", response=dict)
-def get_system_statistics(request):
+def get_system_statistics(request, all_shops: bool = False):
     """Сводные показатели для главной страницы администрирования."""
     if not (
         request.auth.is_superuser
         or request.auth.is_director
         or request.auth.has_permission("users.view_user")
         or request.auth.has_permission("settings.view_shop")
+        or request.auth.has_permission("reports.view_dashboard")
     ):
         raise PermissionError("Нет прав для просмотра системной статистики")
 
     User = get_user_model()
     today = timezone.localdate()
     orders = Order.objects.filter(created_at__date=today)
+    global_stats = False
 
-    if not request.auth.is_director and not request.auth.has_permission(
-        "orders.view_all_shops"
-    ):
-        orders = orders.filter(shop__in=request.auth.get_available_shops())
+    if all_shops:
+        if not request.auth.can_view_global_statistics():
+            raise PermissionError("Нет прав для общей статистики по филиалам")
+        global_stats = True
     elif getattr(request, "current_shop", None) is not None:
         orders = orders.filter(shop=request.current_shop)
+    else:
+        orders = orders.filter(shop__in=request.auth.get_available_shops())
 
+    users = User.objects.all() if global_stats else _get_manageable_users(request)
+    shops = Shop.objects.all() if global_stats else request.auth.get_available_shops()
     today_revenue = orders.aggregate(total=Sum("final_cost"))["total"] or 0
 
     return {
-        "total_users": User.objects.count(),
-        "active_users": User.objects.filter(is_active=True).count(),
-        "total_shops": Shop.objects.count(),
-        "active_shops": Shop.objects.filter(is_active=True).count(),
+        "total_users": users.count(),
+        "active_users": users.filter(is_active=True).count(),
+        "total_shops": shops.count(),
+        "active_shops": shops.filter(is_active=True).count(),
         "total_orders_today": orders.count(),
         "total_revenue_today": float(today_revenue),
         "system_health": "good",

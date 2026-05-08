@@ -3,25 +3,62 @@ from decimal import Decimal
 
 from django.db import models
 from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Q, Sum
+from django.shortcuts import get_object_or_404
 
 from orders.models import Order, OrderService
+from shops.models import Shop
 
 
 class ReportService:
     """Сервис генерации отчетов"""
 
-    def generate_financial_report(self, date_from, date_to, shop_id=None, user=None):
+    def _apply_shop_scope(
+        self,
+        queryset,
+        shop_id=None,
+        user=None,
+        current_shop=None,
+        all_shops=False,
+    ):
+        if all_shops:
+            if user and user.can_view_global_statistics():
+                return queryset
+            raise PermissionError("Нет прав для общей статистики по филиалам")
+
+        if shop_id:
+            shop = get_object_or_404(Shop, id=shop_id, is_active=True)
+            if user and not user.can_access_shop(shop):
+                raise PermissionError("Нет доступа к выбранному филиалу")
+            return queryset.filter(shop=shop)
+
+        if current_shop:
+            return queryset.filter(shop=current_shop)
+
+        if user:
+            return queryset.filter(shop__in=user.get_available_shops())
+
+        return queryset.none()
+
+    def generate_financial_report(
+        self,
+        date_from,
+        date_to,
+        shop_id=None,
+        user=None,
+        current_shop=None,
+        all_shops=False,
+    ):
         """Генерация финансового отчета"""
 
         # Базовый queryset
         orders_qs = Order.objects.filter(created_at__range=[date_from, date_to])
-
-        # Фильтрация по магазину
-        if shop_id:
-            orders_qs = orders_qs.filter(shop_id=shop_id)
-        elif not user.is_director:
-            available_shops = user.get_available_shops()
-            orders_qs = orders_qs.filter(shop__in=available_shops)
+        orders_qs = self._apply_shop_scope(
+            orders_qs,
+            shop_id=shop_id,
+            user=user,
+            current_shop=current_shop,
+            all_shops=all_shops,
+        )
 
         # Основные метрики
         completed_orders = orders_qs.filter(status="completed")
@@ -94,16 +131,20 @@ class ReportService:
             ],
         }
 
-    def generate_performance_report(self, date_from, date_to, user=None):
+    def generate_performance_report(
+        self, date_from, date_to, user=None, current_shop=None, all_shops=False
+    ):
         """Отчет по производительности техников"""
 
         orders_qs = Order.objects.filter(
             assigned_to__isnull=False, created_at__range=[date_from, date_to]
         )
-
-        if not user.is_director:
-            available_shops = user.get_available_shops()
-            orders_qs = orders_qs.filter(shop__in=available_shops)
+        orders_qs = self._apply_shop_scope(
+            orders_qs,
+            user=user,
+            current_shop=current_shop,
+            all_shops=all_shops,
+        )
 
         # Статистика по техникам
         technicians_stats = orders_qs.values(
@@ -154,14 +195,24 @@ class ReportService:
             ],
         }
 
-    def generate_sla_report(self, date_from, date_to, shop_id=None, user=None):
+    def generate_sla_report(
+        self,
+        date_from,
+        date_to,
+        shop_id=None,
+        user=None,
+        current_shop=None,
+        all_shops=False,
+    ):
         """SLA: соблюдение плановых сроков (использует предрасчитанные поля)"""
         qs = Order.objects.filter(completed_at__range=[date_from, date_to])
-
-        if shop_id:
-            qs = qs.filter(shop_id=shop_id)
-        elif user and not user.is_director:
-            qs = qs.filter(shop__in=user.get_available_shops())
+        qs = self._apply_shop_scope(
+            qs,
+            shop_id=shop_id,
+            user=user,
+            current_shop=current_shop,
+            all_shops=all_shops,
+        )
 
         # Только те, где мы можем оценить SLA
         qs = qs.filter(sla_on_time__isnull=False)

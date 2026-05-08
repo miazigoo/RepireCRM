@@ -24,6 +24,20 @@ from .subscription_services import (
 router = Router(tags=["Магазины"])
 
 
+def _shops_for_user(request):
+    if (
+        request.auth.is_superuser
+        or request.auth.is_director
+        or request.auth.has_permission("settings.view_all_shops")
+    ):
+        return Shop.objects.all()
+    return request.auth.get_available_shops()
+
+
+def _get_shop_for_user(request, shop_id: int):
+    return get_object_or_404(_shops_for_user(request), id=shop_id)
+
+
 def _current_subscription_context(request):
     shop = getattr(request, "current_shop", None)
     if not shop:
@@ -67,7 +81,7 @@ def change_current_subscription(request, data: SubscriptionChangeSchema):
 def list_shops(request, active_only: bool = True):
     if not request.auth.has_permission("settings.view_shop"):
         raise PermissionError("Нет прав для просмотра магазинов")
-    qs = Shop.objects.all()
+    qs = _shops_for_user(request)
     if active_only:
         qs = qs.filter(is_active=True)
     return qs.order_by("name")
@@ -92,14 +106,14 @@ def create_organization(request, data: OrganizationSchema):
 def get_shop(request, shop_id: int):
     if not request.auth.has_permission("settings.view_shop"):
         raise PermissionError("Нет прав")
-    return get_object_or_404(Shop, id=shop_id)
+    return _get_shop_for_user(request, shop_id)
 
 
 @router.get("/{shop_id}/settings", response=ShopSettingsSchema)
 def get_shop_settings(request, shop_id: int):
-    if not request.auth.has_permission("settings.view_shop"):
+    if not request.auth.has_permission("settings.view_shop_settings"):
         raise PermissionError("Нет прав")
-    shop = get_object_or_404(Shop, id=shop_id)
+    shop = _get_shop_for_user(request, shop_id)
     settings = getattr(shop, "settings", None)
     if not settings:
         settings = ShopSettings.objects.create(shop=shop)
@@ -108,9 +122,9 @@ def get_shop_settings(request, shop_id: int):
 
 @router.put("/{shop_id}/settings", response=ShopSettingsSchema)
 def update_shop_settings(request, shop_id: int, data: ShopSettingsSchema):
-    if not request.auth.has_permission("settings.change_shop"):
+    if not request.auth.has_permission("settings.change_shop_settings"):
         raise PermissionError("Нет прав")
-    shop = get_object_or_404(Shop, id=shop_id)
+    shop = _get_shop_for_user(request, shop_id)
     settings = getattr(shop, "settings", None)
     if not settings:
         settings = ShopSettings.objects.create(shop=shop)
@@ -125,7 +139,7 @@ def update_shop_settings(request, shop_id: int, data: ShopSettingsSchema):
 def link_shop_organization(request, shop_id: int, organization_id: int):
     if not request.auth.has_permission("settings.change_shop"):
         raise PermissionError("Нет прав")
-    shop = get_object_or_404(Shop, id=shop_id)
+    shop = _get_shop_for_user(request, shop_id)
     org = get_object_or_404(Organization, id=organization_id)
     settings = getattr(shop, "settings", None) or ShopSettings.objects.create(shop=shop)
     settings.organization = org

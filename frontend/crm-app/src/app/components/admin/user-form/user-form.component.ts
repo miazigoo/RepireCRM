@@ -13,20 +13,33 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
-import { AdminService, UserCreateRequest, UserUpdateRequest } from '../../../services/admin.service';
+import {
+  AdminService,
+  UserCreateRequest,
+  UserUpdateRequest,
+} from '../../../services/admin.service';
 import { User, Role, Shop } from '../../../core/models/models';
 
 @Component({
   selector: 'app-user-form',
   standalone: true,
   imports: [
-    NgIf, NgFor, ReactiveFormsModule,
-    MatCardModule, MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatButtonModule, MatIconModule, MatCheckboxModule, MatChipsModule,
-    MatProgressSpinnerModule, MatSnackBarModule
+    NgIf,
+    NgFor,
+    ReactiveFormsModule,
+    MatCardModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatButtonModule,
+    MatIconModule,
+    MatCheckboxModule,
+    MatChipsModule,
+    MatProgressSpinnerModule,
+    MatSnackBarModule,
   ],
   templateUrl: './user-form.component.html',
-  styleUrl: './user-form.component.css'
+  styleUrl: './user-form.component.css',
 })
 export class UserFormComponent implements OnInit {
   userForm: FormGroup;
@@ -43,26 +56,29 @@ export class UserFormComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private adminService: AdminService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
   ) {
-    this.userForm = this.fb.group({
-      username: ['', [Validators.required, Validators.minLength(3)]],
-      password: ['', [Validators.required, Validators.minLength(6)]],
-      confirm_password: ['', Validators.required],
-      first_name: ['', [Validators.required, Validators.maxLength(50)]],
-      last_name: ['', [Validators.required, Validators.maxLength(50)]],
-      middle_name: ['', Validators.maxLength(50)],
-      email: ['', [Validators.required, Validators.email]],
-      phone: ['', Validators.pattern(/^\+?[1-9]\d{1,14}$/)],
-      role_id: [''],
-      is_director: [false],
-      shop_ids: [[]],
-      is_active: [true]
-    }, { validators: this.passwordMatchValidator });
+    this.userForm = this.fb.group(
+      {
+        username: ['', [Validators.required, Validators.minLength(3)]],
+        password: ['', [Validators.required, Validators.minLength(6)]],
+        confirm_password: ['', Validators.required],
+        first_name: ['', [Validators.required, Validators.maxLength(50)]],
+        last_name: ['', [Validators.required, Validators.maxLength(50)]],
+        middle_name: ['', Validators.maxLength(50)],
+        email: ['', [Validators.required, Validators.email]],
+        phone: ['', Validators.pattern(/^\+?[1-9]\d{1,14}$/)],
+        role_id: [''],
+        is_director: [false],
+        shop_ids: [[]],
+        is_active: [true],
+      },
+      { validators: this.passwordMatchValidator },
+    );
   }
 
   ngOnInit(): void {
-    this.route.params.subscribe(params => {
+    this.route.params.subscribe((params) => {
       if (params['id']) {
         this.isEditMode = true;
         this.userId = +params['id'];
@@ -99,7 +115,7 @@ export class UserFormComponent implements OnInit {
       error: (error) => {
         this.snackBar.open('Ошибка загрузки пользователя', 'Закрыть', { duration: 3000 });
         this.loading = false;
-      }
+      },
     });
   }
 
@@ -113,14 +129,14 @@ export class UserFormComponent implements OnInit {
       phone: user.phone,
       role_id: user.role?.id,
       is_director: user.is_director,
-      is_active: user.is_active
+      is_active: user.is_active,
     });
 
     // Set selected shops
-    if ((user as any).shops) {
-      this.selectedShops = (user as any).shops;
+    if (user.shops) {
+      this.selectedShops = user.shops;
       this.userForm.patchValue({
-        shop_ids: this.selectedShops.map(shop => shop.id)
+        shop_ids: this.selectedShops.map((shop) => shop.id),
       });
     }
   }
@@ -132,7 +148,7 @@ export class UserFormComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading roles:', error);
-      }
+      },
     });
   }
 
@@ -143,19 +159,38 @@ export class UserFormComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading shops:', error);
-      }
+      },
     });
   }
 
   onShopSelectionChange(selectedShopIds: number[]): void {
-    this.selectedShops = this.shops.filter(shop => selectedShopIds.includes(shop.id));
+    this.selectedShops = this.shops.filter((shop) => selectedShopIds.includes(shop.id));
     this.userForm.patchValue({ shop_ids: selectedShopIds });
   }
 
+  toggleShop(shop: Shop, checked: boolean): void {
+    const currentIds = new Set<number>(this.userForm.get('shop_ids')?.value || []);
+    if (checked) {
+      currentIds.add(shop.id);
+    } else {
+      currentIds.delete(shop.id);
+    }
+
+    const selectedIds = Array.from(currentIds);
+    this.selectedShops = this.shops.filter((item) => selectedIds.includes(item.id));
+    this.userForm.patchValue({ shop_ids: selectedIds });
+    this.userForm.get('shop_ids')?.markAsDirty();
+  }
+
+  isShopSelected(shop: Shop): boolean {
+    const selectedIds: number[] = this.userForm.get('shop_ids')?.value || [];
+    return selectedIds.includes(shop.id);
+  }
+
   removeShop(shop: Shop): void {
-    this.selectedShops = this.selectedShops.filter(s => s.id !== shop.id);
+    this.selectedShops = this.selectedShops.filter((s) => s.id !== shop.id);
     this.userForm.patchValue({
-      shop_ids: this.selectedShops.map(s => s.id)
+      shop_ids: this.selectedShops.map((s) => s.id),
     });
   }
 
@@ -175,7 +210,7 @@ export class UserFormComponent implements OnInit {
           role_id: formData.role_id,
           is_director: formData.is_director,
           shop_ids: formData.shop_ids,
-          is_active: formData.is_active
+          is_active: formData.is_active,
         };
 
         this.adminService.updateUser(this.userId!, updateData).subscribe({
@@ -185,7 +220,7 @@ export class UserFormComponent implements OnInit {
           },
           error: (error) => {
             this.handleError(error);
-          }
+          },
         });
       } else {
         const createData: UserCreateRequest = {
@@ -198,7 +233,7 @@ export class UserFormComponent implements OnInit {
           phone: formData.phone,
           role_id: formData.role_id,
           shop_ids: formData.shop_ids,
-          is_director: formData.is_director
+          is_director: formData.is_director,
         };
 
         this.adminService.createUser(createData).subscribe({
@@ -208,7 +243,7 @@ export class UserFormComponent implements OnInit {
           },
           error: (error) => {
             this.handleError(error);
-          }
+          },
         });
       }
     } else {
@@ -232,7 +267,7 @@ export class UserFormComponent implements OnInit {
   }
 
   private markFormGroupTouched(): void {
-    Object.keys(this.userForm.controls).forEach(key => {
+    Object.keys(this.userForm.controls).forEach((key) => {
       const control = this.userForm.get(key);
       control?.markAsTouched();
     });

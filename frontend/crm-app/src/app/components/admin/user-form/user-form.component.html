@@ -1,4 +1,3 @@
-
 <div class="user-form-container">
   <div class="header">
     <h1>{{ isEditMode ? 'Редактирование пользователя' : 'Новый пользователь' }}</h1>
@@ -11,27 +10,19 @@
   <mat-card class="form-card">
     <mat-card-content>
       <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
-
-
         <div class="form-section">
           <h3>Учетная запись</h3>
 
           <div class="form-row">
             <mat-form-field>
               <mat-label>Логин *</mat-label>
-              <input matInput
-                     formControlName="username"
-                     [readonly]="isEditMode"
-                     required>
+              <input matInput formControlName="username" [readonly]="isEditMode" required />
               <mat-error>{{ getFieldError('username') }}</mat-error>
             </mat-form-field>
 
             <mat-form-field>
               <mat-label>Email *</mat-label>
-              <input matInput
-                     type="email"
-                     formControlName="email"
-                     required>
+              <input matInput type="email" formControlName="email" required />
               <mat-error>{{ getFieldError('email') }}</mat-error>
             </mat-form-field>
           </div>
@@ -39,24 +30,17 @@
           <div class="form-row" *ngIf="!isEditMode">
             <mat-form-field>
               <mat-label>Пароль *</mat-label>
-              <input matInput
-                     type="password"
-                     formControlName="password"
-                     required>
+              <input matInput type="password" formControlName="password" required />
               <mat-error>{{ getFieldError('password') }}</mat-error>
             </mat-form-field>
 
             <mat-form-field>
               <mat-label>Подтверждение пароля *</mat-label>
-              <input matInput
-                     type="password"
-                     formControlName="confirm_password"
-                     required>
+              <input matInput type="password" formControlName="confirm_password" required />
               <mat-error>{{ getFieldError('confirm_password') }}</mat-error>
             </mat-form-field>
           </div>
         </div>
-
 
         <div class="form-section">
           <h3>Личная информация</h3>
@@ -64,13 +48,13 @@
           <div class="form-row">
             <mat-form-field>
               <mat-label>Фамилия *</mat-label>
-              <input matInput formControlName="last_name" required>
+              <input matInput formControlName="last_name" required />
               <mat-error>{{ getFieldError('last_name') }}</mat-error>
             </mat-form-field>
 
             <mat-form-field>
               <mat-label>Имя *</mat-label>
-              <input matInput formControlName="first_name" required>
+              <input matInput formControlName="first_name" required />
               <mat-error>{{ getFieldError('first_name') }}</mat-error>
             </mat-form-field>
           </div>
@@ -78,20 +62,17 @@
           <div class="form-row">
             <mat-form-field>
               <mat-label>Отчество</mat-label>
-              <input matInput formControlName="middle_name">
+              <input matInput formControlName="middle_name" />
               <mat-error>{{ getFieldError('middle_name') }}</mat-error>
             </mat-form-field>
 
             <mat-form-field>
               <mat-label>Телефон</mat-label>
-              <input matInput
-                     formControlName="phone"
-                     placeholder="+7 (999) 123-45-67">
+              <input matInput formControlName="phone" placeholder="+7 (999) 123-45-67" />
               <mat-error>{{ getFieldError('phone') }}</mat-error>
             </mat-form-field>
           </div>
         </div>
-
 
         <div class="form-section">
           <h3>Роль и права доступа</h3>
@@ -116,23 +97,28 @@
 
           <div class="shops-section">
             <h4>Доступ к магазинам</h4>
+            <p class="help-text">
+              Отмеченные филиалы будут доступны сотруднику в переключателе магазина. Данные заказов,
+              клиентов, склада и отчетов будут показываться только по выбранному филиалу.
+            </p>
 
-            <mat-form-field class="full-width">
-              <mat-label>Выберите магазины</mat-label>
-              <mat-select formControlName="shop_ids"
-                          multiple
-                          (selectionChange)="onShopSelectionChange($event.value)">
-                <mat-option *ngFor="let shop of shops" [value]="shop.id">
-                  {{ shop.name }} ({{ shop.code }})
-                </mat-option>
-              </mat-select>
-            </mat-form-field>
+            <div class="shop-access-grid">
+              <label class="shop-access-card" *ngFor="let shop of shops">
+                <mat-checkbox
+                  [checked]="isShopSelected(shop)"
+                  (change)="toggleShop(shop, $event.checked)"
+                >
+                  <span class="shop-access-name">{{ shop.name }}</span>
+                  <span class="shop-access-code">{{ shop.code }}</span>
+                </mat-checkbox>
+                <span class="shop-access-address" *ngIf="shop.address">{{ shop.address }}</span>
+              </label>
+            </div>
 
             <div class="selected-shops" *ngIf="selectedShops.length > 0">
               <h5>Выбранные магазины:</h5>
               <mat-chip-set>
-                <mat-chip *ngFor="let shop of selectedShops"
-                          (removed)="removeShop(shop)">
+                <mat-chip *ngFor="let shop of selectedShops" (removed)="removeShop(shop)">
                   {{ shop.name }}
                   <mat-icon matChipRemove>cancel</mat-icon>
                 </mat-chip>
@@ -141,31 +127,22 @@
           </div>
         </div>
 
-
         <div class="form-section" *ngIf="isEditMode">
           <h3>Статус</h3>
 
           <div class="checkbox-field">
-            <mat-checkbox formControlName="is_active">
-              Активный пользователь
-            </mat-checkbox>
-            <p class="help-text">
-              Неактивные пользователи не могут войти в систему
-            </p>
+            <mat-checkbox formControlName="is_active"> Активный пользователь </mat-checkbox>
+            <p class="help-text">Неактивные пользователи не могут войти в систему</p>
           </div>
         </div>
 
-
         <div class="form-actions">
-          <button mat-button type="button" (click)="cancel()">
-            Отмена
-          </button>
-          <button mat-raised-button
-                  color="primary"
-                  type="submit"
-                  [disabled]="loading">
+          <button mat-button type="button" (click)="cancel()">Отмена</button>
+          <button mat-raised-button color="primary" type="submit" [disabled]="loading">
             <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
-            <span *ngIf="!loading">{{ isEditMode ? 'Сохранить изменения' : 'Создать пользователя' }}</span>
+            <span *ngIf="!loading">{{
+              isEditMode ? 'Сохранить изменения' : 'Создать пользователя'
+            }}</span>
           </button>
         </div>
       </form>
