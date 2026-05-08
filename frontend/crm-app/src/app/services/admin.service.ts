@@ -8,7 +8,7 @@ import {
   Shop,
   SubscriptionPlan,
   SubscriptionStatus,
-  User
+  User,
 } from '../core/models/models';
 
 export interface UserCreateRequest {
@@ -47,7 +47,7 @@ export interface ShopCreateRequest {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AdminService {
   constructor(private apiService: ApiService) {}
@@ -107,11 +107,24 @@ export class AdminService {
     return this.apiService.get<Role>(`/admin/roles/${id}`);
   }
 
-  createRole(roleData: { name: string; code: string; description?: string; permission_ids: number[] }): Observable<Role> {
+  createRole(roleData: {
+    name: string;
+    code: string;
+    description?: string;
+    permission_ids: number[];
+  }): Observable<Role> {
     return this.apiService.post<Role>('/admin/roles', roleData);
   }
 
-  updateRole(id: number, roleData: Partial<{ name: string; code: string; description?: string; permission_ids: number[] }>): Observable<Role> {
+  updateRole(
+    id: number,
+    roleData: Partial<{
+      name: string;
+      code: string;
+      description?: string;
+      permission_ids: number[];
+    }>,
+  ): Observable<Role> {
     return this.apiService.put<Role>(`/admin/roles/${id}`, roleData);
   }
 
@@ -125,7 +138,11 @@ export class AdminService {
   }
 
   // System Statistics
-  getSystemStatistics(): Observable<any> {
+  getSystemStatistics(allShops = false): Observable<any> {
+    if (allShops) {
+      return this.apiService.get<any>('/admin/statistics', { all_shops: true });
+    }
+
     return this.apiService.get<any>('/admin/statistics');
   }
 
@@ -139,7 +156,7 @@ export class AdminService {
 
   changeSubscription(planCode: string): Observable<SubscriptionStatus> {
     return this.apiService.post<SubscriptionStatus>('/shops/subscription/change', {
-      plan_code: planCode
+      plan_code: planCode,
     });
   }
 }

@@ -27,10 +27,43 @@
           </svg>
           {{ getHealthStatusText(stats.system_health) }}
         </span>
+        <span>
+          <svg class="pulse-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4.5 8.5h15" />
+            <path d="M7 8.5v11" />
+            <path d="M17 8.5v11" />
+            <path d="M9.5 5h5l2.5 3.5h-10Z" />
+          </svg>
+          {{ getStatsScopeLabel() }}
+        </span>
       </div>
     </div>
 
     <div class="hero-actions">
+      <div
+        class="scope-switch"
+        *ngIf="canViewGlobalStats"
+        role="group"
+        aria-label="Масштаб статистики"
+      >
+        <button
+          type="button"
+          class="scope-option"
+          [class.active]="statsScope === 'current'"
+          (click)="setStatsScope('current')"
+        >
+          Филиал
+        </button>
+        <button
+          type="button"
+          class="scope-option"
+          [class.active]="statsScope === 'all'"
+          (click)="setStatsScope('all')"
+        >
+          Все точки
+        </button>
+      </div>
+
       <a mat-flat-button routerLink="/admin/users">
         <svg class="button-svg" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M9 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
@@ -42,7 +75,9 @@
       <a mat-stroked-button routerLink="/admin/settings">
         <svg class="button-svg" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" />
-          <path d="M4 13.5v-3l2.1-.6.8-1.8-1.1-2L8.2 4.6l1.8 1.2h2l1.8-1.2 2.4 1.5-1.1 2 .8 1.8 2.1.6v3l-2.1.6-.8 1.8 1.1 2-2.4 1.5-1.8-1.2h-2l-1.8 1.2-2.4-1.5 1.1-2-.8-1.8Z" />
+          <path
+            d="M4 13.5v-3l2.1-.6.8-1.8-1.1-2L8.2 4.6l1.8 1.2h2l1.8-1.2 2.4 1.5-1.1 2 .8 1.8 2.1.6v3l-2.1.6-.8 1.8 1.1 2-2.4 1.5-1.8-1.2h-2l-1.8 1.2-2.4-1.5 1.1-2-.8-1.8Z"
+          />
         </svg>
         Настройки
       </a>
@@ -115,10 +150,12 @@
   </section>
 
   <section class="admin-grid" *ngIf="stats">
-    <article class="panel health-panel"
-             [class.good]="stats.system_health === 'good'"
-             [class.warning]="stats.system_health === 'warning'"
-             [class.error]="stats.system_health === 'error'">
+    <article
+      class="panel health-panel"
+      [class.good]="stats.system_health === 'good'"
+      [class.warning]="stats.system_health === 'warning'"
+      [class.error]="stats.system_health === 'error'"
+    >
       <header class="panel-header">
         <div>
           <span class="panel-kicker">Контроль</span>
@@ -158,23 +195,27 @@
 
       <div class="subscription-meta">
         <span>{{ subscription.remaining_percent }}% срока осталось</span>
-        <span>до {{ subscription.expires_at | date:'dd.MM.yyyy' }}</span>
+        <span>до {{ subscription.expires_at | date: 'dd.MM.yyyy' }}</span>
         <span>bucket {{ subscription.color_bucket }}%</span>
       </div>
 
       <div class="subscription-scale">
-        <span *ngFor="let step of [100,90,80,70,60,50,40,30,20,10,0]"
-              [class.active]="subscription.color_bucket === step">
+        <span
+          *ngFor="let step of [100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 0]"
+          [class.active]="subscription.color_bucket === step"
+        >
           {{ step }}
         </span>
       </div>
 
       <div class="subscription-actions">
-        <button mat-stroked-button
-                *ngFor="let plan of subscriptionPlans"
-                type="button"
-                [disabled]="subscriptionLoading"
-                (click)="changeSubscription(plan.code)">
+        <button
+          mat-stroked-button
+          *ngFor="let plan of subscriptionPlans"
+          type="button"
+          [disabled]="subscriptionLoading"
+          (click)="changeSubscription(plan.code)"
+        >
           {{ plan.name }} · {{ formatCurrency(plan.price) }}
         </button>
       </div>
@@ -188,13 +229,15 @@
     </header>
 
     <div class="actions-grid">
-      <a *ngFor="let action of quickActions"
-         class="action-card"
-         [class.users]="action.tone === 'users'"
-         [class.shops]="action.tone === 'shops'"
-         [class.roles]="action.tone === 'roles'"
-         [class.settings]="action.tone === 'settings'"
-         [routerLink]="action.route">
+      <a
+        *ngFor="let action of quickActions"
+        class="action-card"
+        [class.users]="action.tone === 'users'"
+        [class.shops]="action.tone === 'shops'"
+        [class.roles]="action.tone === 'roles'"
+        [class.settings]="action.tone === 'settings'"
+        [routerLink]="action.route"
+      >
         <span class="action-icon">
           <svg class="action-svg" viewBox="0 0 32 32" aria-hidden="true">
             <path d="M8 9h16" />

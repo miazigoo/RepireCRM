@@ -25,7 +25,16 @@
             <path d="M5 16v-5h5" />
             <path d="M12 8v4l2.7 1.7" />
           </svg>
-          {{ lastUpdated | date:'HH:mm' }}
+          {{ lastUpdated | date: 'HH:mm' }}
+        </span>
+        <span>
+          <svg class="pulse-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4.5 8.5h15" />
+            <path d="M7 8.5v11" />
+            <path d="M17 8.5v11" />
+            <path d="M9.5 5h5l2.5 3.5h-10Z" />
+          </svg>
+          {{ getScopeLabel() }}
         </span>
       </div>
     </div>
@@ -40,7 +49,12 @@
         </svg>
         Обновить
       </button>
-      <button mat-stroked-button type="button" (click)="exportReport('pdf')" [disabled]="loading || !metrics">
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="exportReport('pdf')"
+        [disabled]="loading || !metrics"
+      >
         <svg class="button-svg" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M7 3.5h7l4 4v13H7Z" />
           <path d="M14 3.5v4h4" />
@@ -48,7 +62,12 @@
         </svg>
         PDF
       </button>
-      <button mat-flat-button type="button" (click)="exportReport('excel')" [disabled]="loading || !metrics">
+      <button
+        mat-flat-button
+        type="button"
+        (click)="exportReport('excel')"
+        [disabled]="loading || !metrics"
+      >
         <svg class="button-svg" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 4v10" />
           <path d="m8 10 4 4 4-4" />
@@ -60,6 +79,25 @@
   </section>
 
   <section class="filters-panel" [formGroup]="filtersForm">
+    <div class="scope-filter" *ngIf="canViewGlobalStats" role="group" aria-label="Масштаб отчетов">
+      <button
+        type="button"
+        class="scope-option"
+        [class.active]="!isAllShopsScope()"
+        (click)="setReportsScope(false)"
+      >
+        Филиал
+      </button>
+      <button
+        type="button"
+        class="scope-option"
+        [class.active]="isAllShopsScope()"
+        (click)="setReportsScope(true)"
+      >
+        Все точки
+      </button>
+    </div>
+
     <mat-form-field appearance="outline">
       <mat-label>Период</mat-label>
       <mat-select formControlName="period">
@@ -75,14 +113,24 @@
 
     <mat-form-field appearance="outline">
       <mat-label>Начало</mat-label>
-      <input matInput [matDatepicker]="dateFromPicker" formControlName="date_from" (dateChange)="onCustomDateChange()">
+      <input
+        matInput
+        [matDatepicker]="dateFromPicker"
+        formControlName="date_from"
+        (dateChange)="onCustomDateChange()"
+      />
       <mat-datepicker-toggle matIconSuffix [for]="dateFromPicker"></mat-datepicker-toggle>
       <mat-datepicker #dateFromPicker></mat-datepicker>
     </mat-form-field>
 
     <mat-form-field appearance="outline">
       <mat-label>Конец</mat-label>
-      <input matInput [matDatepicker]="dateToPicker" formControlName="date_to" (dateChange)="onCustomDateChange()">
+      <input
+        matInput
+        [matDatepicker]="dateToPicker"
+        formControlName="date_to"
+        (dateChange)="onCustomDateChange()"
+      />
       <mat-datepicker-toggle matIconSuffix [for]="dateToPicker"></mat-datepicker-toggle>
       <mat-datepicker #dateToPicker></mat-datepicker>
     </mat-form-field>
@@ -182,10 +230,7 @@
         </header>
 
         <div class="chart-frame large" *ngIf="revenueChartData && !chartLoading; else revenueEmpty">
-          <canvas baseChart
-                  [data]="revenueChartData"
-                  [options]="revenueChartOptions"
-                  type="line">
+          <canvas baseChart [data]="revenueChartData" [options]="revenueChartOptions" type="line">
           </canvas>
         </div>
       </article>
@@ -201,15 +246,21 @@
         <div class="summary-stack">
           <div class="summary-row">
             <span>Выручка</span>
-            <strong>{{ formatCurrency(financialSummary?.total_revenue || metrics.revenue.current) }}</strong>
+            <strong>{{
+              formatCurrency(financialSummary?.total_revenue || metrics.revenue.current)
+            }}</strong>
           </div>
           <div class="summary-row">
             <span>Заказов</span>
-            <strong>{{ formatNumber(financialSummary?.total_orders || metrics.orders.completed) }}</strong>
+            <strong>{{
+              formatNumber(financialSummary?.total_orders || metrics.orders.completed)
+            }}</strong>
           </div>
           <div class="summary-row">
             <span>Средний чек</span>
-            <strong>{{ formatCurrency(financialSummary?.avg_check || metrics.avg_check.current) }}</strong>
+            <strong>{{
+              formatCurrency(financialSummary?.avg_check || metrics.avg_check.current)
+            }}</strong>
           </div>
           <div class="summary-row">
             <span>Дней</span>
@@ -229,10 +280,12 @@
 
         <div class="services-layout" *ngIf="metrics.top_services.length > 0; else servicesEmpty">
           <div class="chart-frame doughnut" *ngIf="servicesChartData">
-            <canvas baseChart
-                    [data]="servicesChartData"
-                    [options]="servicesChartOptions"
-                    type="doughnut">
+            <canvas
+              baseChart
+              [data]="servicesChartData"
+              [options]="servicesChartOptions"
+              type="doughnut"
+            >
             </canvas>
           </div>
 
@@ -261,10 +314,12 @@
         </header>
 
         <div class="chart-frame medium" *ngIf="performanceChartData; else performanceEmpty">
-          <canvas baseChart
-                  [data]="performanceChartData"
-                  [options]="performanceChartOptions"
-                  type="bar">
+          <canvas
+            baseChart
+            [data]="performanceChartData"
+            [options]="performanceChartOptions"
+            type="bar"
+          >
           </canvas>
         </div>
       </article>

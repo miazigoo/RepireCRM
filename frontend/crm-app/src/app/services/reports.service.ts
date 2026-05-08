@@ -58,7 +58,7 @@ export interface FinancialReport {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ReportsService {
   constructor(private apiService: ApiService) {}
@@ -76,24 +76,32 @@ export class ReportsService {
   getFinancialReport(
     dateFrom: string,
     dateTo: string,
-    shopId?: number
+    shopId?: number,
+    allShops = false,
   ): Observable<FinancialReport> {
-    return this.apiService.get<FinancialReport>('/reports/financial', this.cleanParams({
-      date_from: dateFrom,
-      date_to: dateTo,
-      shop_id: shopId
-    }));
+    return this.apiService.get<FinancialReport>(
+      '/reports/financial',
+      this.cleanParams({
+        date_from: dateFrom,
+        date_to: dateTo,
+        shop_id: shopId,
+        all_shops: allShops ? true : undefined,
+      }),
+    );
   }
 
   exportReport(
     reportType: string,
     format: 'pdf' | 'excel',
-    params: Record<string, unknown>
+    params: Record<string, unknown>,
   ): Observable<Blob> {
-    return this.apiService.getBlob(`/reports/export/${reportType}`, this.cleanParams({
-      ...params,
-      format
-    }));
+    return this.apiService.getBlob(
+      `/reports/export/${reportType}`,
+      this.cleanParams({
+        ...params,
+        format,
+      }),
+    );
   }
 
   exportDashboard(format: 'pdf' | 'excel', params: Record<string, unknown>): Observable<Blob> {

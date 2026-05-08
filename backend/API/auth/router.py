@@ -37,20 +37,28 @@ def login(request, credentials: LoginSchema):
     token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
     # Загружаем полные данные пользователя с relational fields
-    user = User.objects.select_related("role", "current_shop").get(id=user.id)
+    user = (
+        User.objects.select_related("role", "current_shop")
+        .prefetch_related("role__permissions")
+        .get(id=user.id)
+    )
 
     return {
         "access_token": token,
         "token_type": "Bearer",
         "expires_in": 7 * 24 * 60 * 60,
-        "user": UserSchema.from_orm(user) if hasattr(UserSchema, "from_orm") else user,
+        "user": user,
     }
 
 
 @router.get("/me", response=UserSchema)
 def get_current_user(request):
     """Получение информации о текущем пользователе"""
-    user = User.objects.select_related("role", "current_shop").get(id=request.auth.id)
+    user = (
+        User.objects.select_related("role", "current_shop")
+        .prefetch_related("role__permissions")
+        .get(id=request.auth.id)
+    )
     return user
 
 
@@ -93,7 +101,11 @@ def switch_shop(request, shop_id: int):
         request.session["current_shop_id"] = shop.id
 
         # Возвращаем обновленного пользователя с relational fields
-        user = User.objects.select_related("role", "current_shop").get(id=user.id)
+        user = (
+            User.objects.select_related("role", "current_shop")
+            .prefetch_related("role__permissions")
+            .get(id=user.id)
+        )
         return user
 
     except Shop.DoesNotExist:

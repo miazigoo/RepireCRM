@@ -11,10 +11,7 @@ describe('ReportsService', () => {
     apiService = jasmine.createSpyObj<ApiService>('ApiService', ['get', 'getBlob']);
 
     TestBed.configureTestingModule({
-      providers: [
-        ReportsService,
-        { provide: ApiService, useValue: apiService },
-      ],
+      providers: [ReportsService, { provide: ApiService, useValue: apiService }],
     });
 
     service = TestBed.inject(ReportsService);
@@ -36,5 +33,30 @@ describe('ReportsService', () => {
     });
 
     expect(apiService.get).toHaveBeenCalledOnceWith('/reports/dashboard-metrics');
+  });
+
+  it('adds all_shops only when a global financial report is requested', () => {
+    const report = {
+      summary: {
+        total_revenue: 0,
+        total_orders: 0,
+        avg_check: 0,
+        period_days: 1,
+      },
+      daily_revenue: [],
+      services_breakdown: [],
+      shops_breakdown: [],
+    };
+    apiService.get.and.returnValue(of(report));
+
+    service
+      .getFinancialReport('2026-05-01T00:00:00.000Z', '2026-05-01T23:59:59.999Z', undefined, true)
+      .subscribe();
+
+    expect(apiService.get).toHaveBeenCalledOnceWith('/reports/financial', {
+      date_from: '2026-05-01T00:00:00.000Z',
+      date_to: '2026-05-01T23:59:59.999Z',
+      all_shops: true,
+    });
   });
 });

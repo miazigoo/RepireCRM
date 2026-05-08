@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,11 +13,14 @@ import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData } from 'chart.js';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Subscription } from 'rxjs';
 import {
   DashboardMetrics,
   FinancialReport,
-  ReportsService
+  ReportsService,
 } from '../../../services/reports.service';
+import { AuthService } from '../../../services/auth.service';
+import { User } from '../../../core/models/models';
 import { ensureChartComponentsRegistered } from '../../../core/charts/register-chart-components';
 
 ensureChartComponentsRegistered();
@@ -45,6 +48,7 @@ interface ReportFilterParams extends Record<string, unknown> {
   date_from: string | null;
   date_to: string | null;
   shop_id: number | null;
+  all_shops: boolean | null;
 }
 
 @Component({
@@ -61,20 +65,20 @@ interface ReportFilterParams extends Record<string, unknown> {
     MatInputModule,
     MatSelectModule,
     MatProgressSpinnerModule,
-    BaseChartDirective
+    BaseChartDirective,
   ],
   providers: [provideNativeDateAdapter()],
   templateUrl: './reports-dashboard.component.html',
-  styleUrl: './reports-dashboard.component.scss'
+  styleUrl: './reports-dashboard.component.scss',
 })
-export class ReportsDashboardComponent implements OnInit {
+export class ReportsDashboardComponent implements OnInit, OnDestroy {
   readonly periodOptions: ReportPeriodOption[] = [
     { value: 'today', label: 'Сегодня', hint: 'Текущий день' },
     { value: '7_days', label: '7 дней', hint: 'Неделя' },
     { value: '30_days', label: '30 дней', hint: 'Месяц' },
     { value: '90_days', label: '90 дней', hint: 'Квартал' },
     { value: 'month', label: 'Этот месяц', hint: 'С начала месяца' },
-    { value: 'custom', label: 'Свой период', hint: 'Ручной диапазон' }
+    { value: 'custom', label: 'Свой период', hint: 'Ручной диапазон' },
   ];
 
   metrics: DashboardMetrics | null = null;
@@ -83,6 +87,8 @@ export class ReportsDashboardComponent implements OnInit {
   loading = false;
   chartLoading = false;
   lastUpdated: Date | null = null;
+  canViewGlobalStats = false;
+  private userSubscription?: Subscription;
 
   revenueChartData: ChartData<'line'> | null = null;
   servicesChartData: ChartData<'doughnut'> | null = null;
@@ -95,29 +101,62 @@ export class ReportsDashboardComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private reportsService: ReportsService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private authService: AuthService,
   ) {
     this.filtersForm = this.fb.group({
       period: ['30_days'],
       date_from: [null],
       date_to: [null],
-      shop_id: [null]
+      shop_id: [null],
+      all_shops: [false],
     });
   }
 
   ngOnInit(): void {
+    this.updateGlobalStatsPermission(this.authService.currentUser);
+    this.userSubscription = this.authService.currentUser$.subscribe((user) => {
+      this.updateGlobalStatsPermission(user);
+    });
     this.applyPresetPeriod('30_days', false);
     this.loadMetrics();
 
-    this.filtersForm.get('period')?.valueChanges.subscribe(period => {
+    this.filtersForm.get('period')?.valueChanges.subscribe((period) => {
       if (period && period !== 'custom') {
         this.applyPresetPeriod(period);
       }
     });
   }
 
+  ngOnDestroy(): void {
+    this.userSubscription?.unsubscribe();
+  }
+
   applyFilters(): void {
     this.loadMetrics();
+  }
+
+  setReportsScope(allShops: boolean): void {
+    if (allShops && !this.canViewGlobalStats) {
+      return;
+    }
+
+    if (this.filtersForm.get('all_shops')?.value === allShops) {
+      return;
+    }
+
+    this.filtersForm.patchValue(
+      {
+        all_shops: allShops,
+        shop_id: allShops ? null : this.filtersForm.get('shop_id')?.value,
+      },
+      { emitEvent: false },
+    );
+    this.loadMetrics();
+  }
+
+  isAllShopsScope(): boolean {
+    return Boolean(this.filtersForm.get('all_shops')?.value && this.canViewGlobalStats);
   }
 
   onCustomDateChange(): void {
@@ -145,7 +184,7 @@ export class ReportsDashboardComponent implements OnInit {
         console.error('Error exporting report:', error);
         this.snackBar.open('Ошибка экспорта отчета', 'Закрыть', { duration: 3000 });
         this.loading = false;
-      }
+      },
     });
   }
 
@@ -169,7 +208,7 @@ export class ReportsDashboardComponent implements OnInit {
 
   getPeriodLabel(): string {
     const period = this.filtersForm.get('period')?.value;
-    return this.periodOptions.find(option => option.value === period)?.label || 'Период';
+    return this.periodOptions.find((option) => option.value === period)?.label || 'Период';
   }
 
   getDateRangeLabel(): string {
@@ -180,6 +219,10 @@ export class ReportsDashboardComponent implements OnInit {
     }
 
     return `${this.formatShortDate(dateFrom)} - ${this.formatShortDate(dateTo)}`;
+  }
+
+  getScopeLabel(): string {
+    return this.isAllShopsScope() ? 'Все филиалы' : 'Текущий филиал';
   }
 
   getCompletionRate(): number {
@@ -195,18 +238,18 @@ export class ReportsDashboardComponent implements OnInit {
       return 0;
     }
 
-    return this.metrics.avg_check.current / this.metrics.revenue.previous * 100;
+    return (this.metrics.avg_check.current / this.metrics.revenue.previous) * 100;
   }
 
   formatCurrency(value: number | null | undefined): string {
     return `${new Intl.NumberFormat('ru-RU', {
-      maximumFractionDigits: 0
+      maximumFractionDigits: 0,
     }).format(value || 0)} ₽`;
   }
 
   formatNumber(value: number | null | undefined): string {
     return new Intl.NumberFormat('ru-RU', {
-      maximumFractionDigits: 0
+      maximumFractionDigits: 0,
     }).format(value || 0);
   }
 
@@ -231,7 +274,7 @@ export class ReportsDashboardComponent implements OnInit {
         this.snackBar.open('Ошибка загрузки метрик', 'Закрыть', { duration: 3000 });
         this.loading = false;
         this.chartLoading = false;
-      }
+      },
     });
   }
 
@@ -251,20 +294,22 @@ export class ReportsDashboardComponent implements OnInit {
     }
 
     this.servicesChartData = {
-      labels: this.metrics.top_services.map(service => service.name),
-      datasets: [{
-        data: this.metrics.top_services.map(service => service.revenue),
-        backgroundColor: [
-          palette.primary,
-          palette.accent,
-          palette.success,
-          palette.warning,
-          palette.danger
-        ],
-        borderColor: palette.surface,
-        borderWidth: 3,
-        hoverOffset: 8
-      }]
+      labels: this.metrics.top_services.map((service) => service.name),
+      datasets: [
+        {
+          data: this.metrics.top_services.map((service) => service.revenue),
+          backgroundColor: [
+            palette.primary,
+            palette.accent,
+            palette.success,
+            palette.warning,
+            palette.danger,
+          ],
+          borderColor: palette.surface,
+          borderWidth: 3,
+          hoverOffset: 8,
+        },
+      ],
     };
   }
 
@@ -275,23 +320,27 @@ export class ReportsDashboardComponent implements OnInit {
     }
 
     this.performanceChartData = {
-      labels: this.metrics.technician_performance.map(technician => technician.name.trim() || 'Без имени'),
+      labels: this.metrics.technician_performance.map(
+        (technician) => technician.name.trim() || 'Без имени',
+      ),
       datasets: [
         {
           label: 'Заказы',
-          data: this.metrics.technician_performance.map(technician => technician.completed_orders),
+          data: this.metrics.technician_performance.map(
+            (technician) => technician.completed_orders,
+          ),
           backgroundColor: palette.primary,
           borderRadius: 8,
-          yAxisID: 'y'
+          yAxisID: 'y',
         },
         {
           label: 'Выручка, тыс. ₽',
-          data: this.metrics.technician_performance.map(technician => technician.revenue / 1000),
+          data: this.metrics.technician_performance.map((technician) => technician.revenue / 1000),
           backgroundColor: palette.accent,
           borderRadius: 8,
-          yAxisID: 'y1'
-        }
-      ]
+          yAxisID: 'y1',
+        },
+      ],
     };
   }
 
@@ -299,38 +348,47 @@ export class ReportsDashboardComponent implements OnInit {
     this.chartLoading = true;
     const params = this.getFilterParams();
 
-    this.reportsService.getFinancialReport(
-      params.date_from as string,
-      params.date_to as string,
-      params.shop_id || undefined
-    ).subscribe({
-      next: (report) => {
-        this.financialSummary = report.summary;
-        this.revenueChartData = report.daily_revenue.length ? {
-          labels: report.daily_revenue.map(item => new Date(item.date).toLocaleDateString('ru-RU', {
-            day: '2-digit',
-            month: 'short'
-          })),
-          datasets: [{
-            label: 'Выручка',
-            data: report.daily_revenue.map(item => item.revenue),
-            borderColor: palette.primary,
-            backgroundColor: this.withAlpha(palette.primary, 0.14),
-            pointBackgroundColor: palette.primary,
-            pointBorderColor: palette.surface,
-            pointHoverRadius: 5,
-            fill: true,
-            tension: 0.38
-          }]
-        } : null;
-        this.chartLoading = false;
-      },
-      error: (error) => {
-        console.error('Error loading revenue chart:', error);
-        this.revenueChartData = null;
-        this.chartLoading = false;
-      }
-    });
+    this.reportsService
+      .getFinancialReport(
+        params.date_from as string,
+        params.date_to as string,
+        params.shop_id || undefined,
+        Boolean(params.all_shops),
+      )
+      .subscribe({
+        next: (report) => {
+          this.financialSummary = report.summary;
+          this.revenueChartData = report.daily_revenue.length
+            ? {
+                labels: report.daily_revenue.map((item) =>
+                  new Date(item.date).toLocaleDateString('ru-RU', {
+                    day: '2-digit',
+                    month: 'short',
+                  }),
+                ),
+                datasets: [
+                  {
+                    label: 'Выручка',
+                    data: report.daily_revenue.map((item) => item.revenue),
+                    borderColor: palette.primary,
+                    backgroundColor: this.withAlpha(palette.primary, 0.14),
+                    pointBackgroundColor: palette.primary,
+                    pointBorderColor: palette.surface,
+                    pointHoverRadius: 5,
+                    fill: true,
+                    tension: 0.38,
+                  },
+                ],
+              }
+            : null;
+          this.chartLoading = false;
+        },
+        error: (error) => {
+          console.error('Error loading revenue chart:', error);
+          this.revenueChartData = null;
+          this.chartLoading = false;
+        },
+      });
   }
 
   private configureChartOptions(): void {
@@ -343,28 +401,28 @@ export class ReportsDashboardComponent implements OnInit {
       plugins: {
         legend: {
           display: false,
-          labels: { color: palette.text }
+          labels: { color: palette.text },
         },
         tooltip: {
           callbacks: {
-            label: context => ` ${this.formatCurrency(Number(context.parsed.y || 0))}`
-          }
-        }
+            label: (context) => ` ${this.formatCurrency(Number(context.parsed.y || 0))}`,
+          },
+        },
       },
       scales: {
         x: {
           ticks: { color: palette.muted },
-          grid: { color: palette.grid }
+          grid: { color: palette.grid },
         },
         y: {
           beginAtZero: true,
           ticks: {
             color: palette.muted,
-            callback: moneyTick
+            callback: moneyTick,
           },
-          grid: { color: palette.grid }
-        }
-      }
+          grid: { color: palette.grid },
+        },
+      },
     };
 
     this.servicesChartOptions = {
@@ -378,15 +436,16 @@ export class ReportsDashboardComponent implements OnInit {
             color: palette.text,
             boxWidth: 10,
             boxHeight: 10,
-            usePointStyle: true
-          }
+            usePointStyle: true,
+          },
         },
         tooltip: {
           callbacks: {
-            label: context => ` ${context.label}: ${this.formatCurrency(Number(context.parsed || 0))}`
-          }
-        }
-      }
+            label: (context) =>
+              ` ${context.label}: ${this.formatCurrency(Number(context.parsed || 0))}`,
+          },
+        },
+      },
     };
 
     this.performanceChartOptions = {
@@ -395,36 +454,39 @@ export class ReportsDashboardComponent implements OnInit {
       plugins: {
         legend: {
           position: 'top',
-          labels: { color: palette.text }
-        }
+          labels: { color: palette.text },
+        },
       },
       scales: {
         x: {
           ticks: { color: palette.muted },
-          grid: { display: false }
+          grid: { display: false },
         },
         y: {
           beginAtZero: true,
           ticks: { color: palette.muted },
-          grid: { color: palette.grid }
+          grid: { color: palette.grid },
         },
         y1: {
           beginAtZero: true,
           position: 'right',
           ticks: { color: palette.muted },
-          grid: { drawOnChartArea: false }
-        }
-      }
+          grid: { drawOnChartArea: false },
+        },
+      },
     };
   }
 
   private applyPresetPeriod(period: string, shouldLoad = true): void {
     const { start, end } = this.getPresetRange(period);
-    this.filtersForm.patchValue({
-      period,
-      date_from: start,
-      date_to: end
-    }, { emitEvent: false });
+    this.filtersForm.patchValue(
+      {
+        period,
+        date_from: start,
+        date_to: end,
+      },
+      { emitEvent: false },
+    );
 
     if (shouldLoad) {
       this.loadMetrics();
@@ -456,12 +518,14 @@ export class ReportsDashboardComponent implements OnInit {
 
   private getFilterParams(): ReportFilterParams {
     const filters = this.filtersForm.value;
+    const allShops = Boolean(filters.all_shops && this.canViewGlobalStats);
 
     return {
       period: filters.period || '30_days',
       date_from: this.toApiDate(filters.date_from, false),
       date_to: this.toApiDate(filters.date_to, true),
-      shop_id: filters.shop_id
+      shop_id: allShops ? null : filters.shop_id,
+      all_shops: allShops ? true : null,
     };
   }
 
@@ -483,13 +547,14 @@ export class ReportsDashboardComponent implements OnInit {
   private formatShortDate(value: Date | string): string {
     return new Date(value).toLocaleDateString('ru-RU', {
       day: '2-digit',
-      month: 'short'
+      month: 'short',
     });
   }
 
   private getChartPalette(): ChartPalette {
     const styles = getComputedStyle(document.body);
-    const read = (name: string, fallback: string) => styles.getPropertyValue(name).trim() || fallback;
+    const read = (name: string, fallback: string) =>
+      styles.getPropertyValue(name).trim() || fallback;
 
     return {
       text: read('--color-text-primary', '#111827'),
@@ -500,16 +565,20 @@ export class ReportsDashboardComponent implements OnInit {
       success: read('--color-success', '#15803d'),
       warning: read('--color-warning', '#b45309'),
       danger: read('--color-danger', '#b91c1c'),
-      surface: read('--panel-background', '#ffffff')
+      surface: read('--panel-background', '#ffffff'),
     };
   }
 
   private withAlpha(color: string, alpha: number): string {
     if (color.startsWith('#')) {
       const hex = color.replace('#', '');
-      const value = hex.length === 3
-        ? hex.split('').map(part => part + part).join('')
-        : hex;
+      const value =
+        hex.length === 3
+          ? hex
+              .split('')
+              .map((part) => part + part)
+              .join('')
+          : hex;
       const red = parseInt(value.slice(0, 2), 16);
       const green = parseInt(value.slice(2, 4), 16);
       const blue = parseInt(value.slice(4, 6), 16);
@@ -517,5 +586,23 @@ export class ReportsDashboardComponent implements OnInit {
     }
 
     return color;
+  }
+
+  private updateGlobalStatsPermission(user: User | null): void {
+    const permissionCodes = [
+      ...(user?.role?.permission_codes || []),
+      ...(user?.role?.permissions?.map((permission) => permission.codename) || []),
+    ];
+
+    this.canViewGlobalStats = Boolean(
+      user?.is_director ||
+      user?.role?.code === 'admin' ||
+      permissionCodes.includes('reports.view_all_shops'),
+    );
+
+    if (!this.canViewGlobalStats && this.filtersForm.get('all_shops')?.value) {
+      this.filtersForm.patchValue({ all_shops: false, shop_id: null }, { emitEvent: false });
+      this.loadMetrics();
+    }
   }
 }

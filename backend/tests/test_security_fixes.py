@@ -233,6 +233,12 @@ class AuthenticationTests(TestCase):
         self.user.current_shop = self.shop
         self.user.shops.add(self.shop)
         self.user.save()
+        self.permission = Permission.objects.create(
+            name="Просмотр всех филиалов",
+            codename="reports.view_all_shops",
+            category="reports",
+        )
+        self.role.permissions.add(self.permission)
 
     def test_login_returns_user_with_role_and_shop(self):
         """Login должен возвращать user с role и current_shop"""
@@ -252,6 +258,7 @@ class AuthenticationTests(TestCase):
         self.assertEqual(user_data["username"], "testuser")
         self.assertIsNotNone(user_data["role"])
         self.assertEqual(user_data["role"]["code"], "manager")
+        self.assertIn("reports.view_all_shops", user_data["role"]["permission_codes"])
         self.assertIsNotNone(user_data["current_shop"])
         self.assertEqual(user_data["current_shop"]["code"], "TEST")
 
@@ -276,6 +283,7 @@ class AuthenticationTests(TestCase):
 
         self.assertIsNotNone(user_data["role"])
         self.assertEqual(user_data["role"]["code"], "manager")
+        self.assertIn("reports.view_all_shops", user_data["role"]["permission_codes"])
         self.assertIsNotNone(user_data["current_shop"])
         self.assertEqual(user_data["current_shop"]["code"], "TEST")
 
@@ -309,3 +317,4 @@ class AuthenticationTests(TestCase):
         self.assertIsNotNone(user_data["current_shop"])
         self.assertEqual(user_data["current_shop"]["code"], "SH02")
         self.assertIsNotNone(user_data["role"])
+        self.assertIn("reports.view_all_shops", user_data["role"]["permission_codes"])

@@ -37,6 +37,11 @@ class RoleSchema(Schema):
     name: str
     code: str
     description: Optional[str] = None
+    permission_codes: list[str] = []
+
+    @staticmethod
+    def resolve_permission_codes(obj):
+        return list(obj.permissions.values_list("codename", flat=True))
 
 
 class UserSchema(Schema):

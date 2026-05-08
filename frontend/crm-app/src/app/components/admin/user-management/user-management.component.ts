@@ -27,15 +27,30 @@ import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl'
   selector: 'app-user-management',
   standalone: true,
   imports: [
-    NgIf, NgFor, DatePipe, RouterModule, ReactiveFormsModule,
-    MatTableModule, MatPaginatorModule, MatSortModule, MatInputModule,
-    MatSelectModule, MatButtonModule, MatIconModule, MatCardModule,
-    MatProgressSpinnerModule, MatMenuModule, MatChipsModule,
-    MatDialogModule, MatSnackBarModule, MatSlideToggleModule, MatDividerModule
+    NgIf,
+    NgFor,
+    DatePipe,
+    RouterModule,
+    ReactiveFormsModule,
+    MatTableModule,
+    MatPaginatorModule,
+    MatSortModule,
+    MatInputModule,
+    MatSelectModule,
+    MatButtonModule,
+    MatIconModule,
+    MatCardModule,
+    MatProgressSpinnerModule,
+    MatMenuModule,
+    MatChipsModule,
+    MatDialogModule,
+    MatSnackBarModule,
+    MatSlideToggleModule,
+    MatDividerModule,
   ],
   templateUrl: './user-management.component.html',
   styleUrl: './user-management.component.css',
-  providers: [{ provide: MatPaginatorIntl, useClass: RussianPaginatorIntl }]
+  providers: [{ provide: MatPaginatorIntl, useClass: RussianPaginatorIntl }],
 })
 export class UserManagementComponent implements OnInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -49,7 +64,7 @@ export class UserManagementComponent implements OnInit {
     'shops',
     'is_active',
     'last_login',
-    'actions'
+    'actions',
   ];
 
   dataSource = new MatTableDataSource<User>();
@@ -63,13 +78,13 @@ export class UserManagementComponent implements OnInit {
     private adminService: AdminService,
     private fb: FormBuilder,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
   ) {
     this.filtersForm = this.fb.group({
       search: [''],
       role_id: [''],
       shop_id: [''],
-      is_active: ['']
+      is_active: [''],
     });
   }
 
@@ -96,7 +111,7 @@ export class UserManagementComponent implements OnInit {
         console.error('Error loading users:', error);
         this.snackBar.open('Ошибка загрузки пользователей', 'Закрыть', { duration: 3000 });
         this.loading = false;
-      }
+      },
     });
   }
 
@@ -107,7 +122,7 @@ export class UserManagementComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading roles:', error);
-      }
+      },
     });
   }
 
@@ -118,19 +133,14 @@ export class UserManagementComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading shops:', error);
-      }
+      },
     });
   }
 
   private setupFilters(): void {
-    this.filtersForm.valueChanges
-      .pipe(
-        debounceTime(300),
-        distinctUntilChanged()
-      )
-      .subscribe(() => {
-        this.applyFilters();
-      });
+    this.filtersForm.valueChanges.pipe(debounceTime(300), distinctUntilChanged()).subscribe(() => {
+      this.applyFilters();
+    });
   }
 
   private applyFilters(): void {
@@ -139,20 +149,21 @@ export class UserManagementComponent implements OnInit {
 
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
-      filteredData = filteredData.filter(user =>
-        user.first_name.toLowerCase().includes(searchTerm) ||
-        user.last_name.toLowerCase().includes(searchTerm) ||
-        user.username.toLowerCase().includes(searchTerm) ||
-        user.email.toLowerCase().includes(searchTerm)
+      filteredData = filteredData.filter(
+        (user) =>
+          user.first_name.toLowerCase().includes(searchTerm) ||
+          user.last_name.toLowerCase().includes(searchTerm) ||
+          user.username.toLowerCase().includes(searchTerm) ||
+          user.email.toLowerCase().includes(searchTerm),
       );
     }
 
     if (filters.role_id) {
-      filteredData = filteredData.filter(user => user.role?.id === +filters.role_id);
+      filteredData = filteredData.filter((user) => user.role?.id === +filters.role_id);
     }
 
     if (filters.is_active !== '') {
-      filteredData = filteredData.filter(user => user.is_active === filters.is_active);
+      filteredData = filteredData.filter((user) => user.is_active === filters.is_active);
     }
 
     this.dataSource.data = filteredData;
@@ -173,20 +184,22 @@ export class UserManagementComponent implements OnInit {
       },
       error: (error) => {
         this.snackBar.open('Ошибка изменения статуса пользователя', 'Закрыть', { duration: 3000 });
-      }
+      },
     });
   }
 
   resetPassword(user: User): void {
     const newPassword = this.generateRandomPassword();
-    if (confirm(`Сбросить пароль для пользователя ${user.username}?\nНовый пароль: ${newPassword}`)) {
+    if (
+      confirm(`Сбросить пароль для пользователя ${user.username}?\nНовый пароль: ${newPassword}`)
+    ) {
       this.adminService.resetUserPassword(user.id, newPassword).subscribe({
         next: () => {
           this.snackBar.open('Пароль сброшен', 'Закрыть', { duration: 3000 });
         },
         error: (error) => {
           this.snackBar.open('Ошибка сброса пароля', 'Закрыть', { duration: 3000 });
-        }
+        },
       });
     }
   }
@@ -200,7 +213,7 @@ export class UserManagementComponent implements OnInit {
         },
         error: (error) => {
           this.snackBar.open('Ошибка удаления пользователя', 'Закрыть', { duration: 3000 });
-        }
+        },
       });
     }
   }
@@ -219,7 +232,6 @@ export class UserManagementComponent implements OnInit {
   }
 
   getShopsNames(user: User): string {
-    // Assuming user has shops property
-    return (user as any).shops?.map((shop: Shop) => shop.name).join(', ') || 'Нет доступа';
+    return user.shops?.map((shop: Shop) => shop.name).join(', ') || 'Нет доступа';
   }
 }

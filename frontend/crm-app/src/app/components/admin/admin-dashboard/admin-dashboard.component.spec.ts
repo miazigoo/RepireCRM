@@ -2,14 +2,16 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
-import { SubscriptionPlan, SubscriptionStatus } from '../../../core/models/models';
+import { SubscriptionPlan, SubscriptionStatus, User } from '../../../core/models/models';
 import { AdminService } from '../../../services/admin.service';
+import { AuthService } from '../../../services/auth.service';
 import { AdminDashboardComponent } from './admin-dashboard.component';
 
 describe('AdminDashboardComponent', () => {
   let fixture: ComponentFixture<AdminDashboardComponent>;
   let component: AdminDashboardComponent;
   let adminService: jasmine.SpyObj<AdminService>;
+  let authUser: User;
 
   const subscription = {
     organization_id: 1,
@@ -39,6 +41,21 @@ describe('AdminDashboardComponent', () => {
   ] as SubscriptionPlan[];
 
   beforeEach(async () => {
+    authUser = {
+      id: 1,
+      username: 'director',
+      first_name: 'Главный',
+      last_name: 'Директор',
+      email: 'director@example.com',
+      is_active: true,
+      is_director: true,
+      role: {
+        id: 1,
+        name: 'Директор',
+        code: 'director',
+        permission_codes: ['reports.view_all_shops'],
+      },
+    } as User;
     adminService = jasmine.createSpyObj<AdminService>('AdminService', [
       'getSystemStatistics',
       'getSubscriptionStatus',
@@ -54,7 +71,7 @@ describe('AdminDashboardComponent', () => {
         total_orders_today: 3,
         total_revenue_today: 12000,
         system_health: 'good',
-      })
+      }),
     );
     adminService.getSubscriptionStatus.and.returnValue(of(subscription));
     adminService.getSubscriptionPlans.and.returnValue(of(plans));
@@ -65,6 +82,15 @@ describe('AdminDashboardComponent', () => {
         provideRouter([]),
         provideNoopAnimations(),
         { provide: AdminService, useValue: adminService },
+        {
+          provide: AuthService,
+          useValue: {
+            currentUser$: of(authUser),
+            get currentUser() {
+              return authUser;
+            },
+          },
+        },
       ],
     }).compileComponents();
 
@@ -77,10 +103,7 @@ describe('AdminDashboardComponent', () => {
 
     expect(component.subscription).toEqual(subscription);
     expect(component.subscriptionLoading).toBeFalse();
-    expect(component.subscriptionPlans.map((plan) => plan.code)).toEqual([
-      'monthly',
-      'yearly',
-    ]);
+    expect(component.subscriptionPlans.map((plan) => plan.code)).toEqual(['monthly', 'yearly']);
   });
 
   it('renders redesigned admin shell with ruble formatting', () => {
@@ -96,6 +119,17 @@ describe('AdminDashboardComponent', () => {
     expect(component.formatCurrency(12000)).not.toContain('RUB');
   });
 
+  it('switches system statistics between current shop and all shops', () => {
+    fixture.detectChanges();
+    adminService.getSystemStatistics.calls.reset();
+
+    component.setStatsScope('all');
+
+    expect(component.statsScope).toBe('all');
+    expect(adminService.getSystemStatistics).toHaveBeenCalledOnceWith(true);
+    expect(component.getStatsScopeLabel()).toBe('Все филиалы');
+  });
+
   it('builds progress gradient from backend color and remaining percent', () => {
     component.subscription = {
       ...subscription,
@@ -104,7 +138,7 @@ describe('AdminDashboardComponent', () => {
     };
 
     expect(component.getSubscriptionGradient()).toBe(
-      'linear-gradient(90deg, #ef842f 30%, #e5e7eb 0)'
+      'linear-gradient(90deg, #ef842f 30%, #e5e7eb 0)',
     );
   });
 
@@ -124,9 +158,7 @@ describe('AdminDashboardComponent', () => {
   });
 
   it('clears loading flag when plan change fails', () => {
-    adminService.changeSubscription.and.returnValue(
-      throwError(() => new Error('network'))
-    );
+    adminService.changeSubscription.and.returnValue(throwError(() => new Error('network')));
 
     component.changeSubscription('yearly');
 

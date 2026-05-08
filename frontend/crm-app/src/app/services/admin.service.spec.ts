@@ -12,10 +12,7 @@ describe('AdminService', () => {
     apiService = jasmine.createSpyObj<ApiService>('ApiService', ['get', 'post']);
 
     TestBed.configureTestingModule({
-      providers: [
-        AdminService,
-        { provide: ApiService, useValue: apiService },
-      ],
+      providers: [AdminService, { provide: ApiService, useValue: apiService }],
     });
 
     service = TestBed.inject(AdminService);
@@ -41,9 +38,7 @@ describe('AdminService', () => {
   });
 
   it('loads subscription plans from shops API', () => {
-    const plans = [
-      { code: 'monthly', name: 'CRM на месяц', price: 1490 },
-    ] as SubscriptionPlan[];
+    const plans = [{ code: 'monthly', name: 'CRM на месяц', price: 1490 }] as SubscriptionPlan[];
     apiService.get.and.returnValue(of(plans));
 
     service.getSubscriptionPlans().subscribe((result) => {
@@ -70,6 +65,27 @@ describe('AdminService', () => {
     });
 
     expect(apiService.get).toHaveBeenCalledOnceWith('/admin/statistics');
+  });
+
+  it('loads global system statistics when requested', () => {
+    const stats = {
+      total_users: 6,
+      active_users: 5,
+      total_shops: 3,
+      active_shops: 3,
+      total_orders_today: 9,
+      total_revenue_today: 34000,
+      system_health: 'good',
+    };
+    apiService.get.and.returnValue(of(stats));
+
+    service.getSystemStatistics(true).subscribe((result) => {
+      expect(result).toEqual(stats);
+    });
+
+    expect(apiService.get).toHaveBeenCalledOnceWith('/admin/statistics', {
+      all_shops: true,
+    });
   });
 
   it('changes subscription using backend plan_code contract', () => {
