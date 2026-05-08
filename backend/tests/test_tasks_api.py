@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 
 import jwt
 from django.conf import settings
@@ -57,10 +57,14 @@ class TasksApiTestCase(TestCase):
         Task.objects.create(
             title="Проверить заказ",
             description="Контрольная задача",
+            status=Task.Status.IN_PROGRESS,
             assignment_type=Task.AssignmentType.INDIVIDUAL,
             assigned_to=self.user,
             created_by=self.user,
-            due_date=timezone.now() + timedelta(hours=2),
+            due_date=timezone.make_aware(
+                datetime.combine(timezone.now().date(), time(hour=12)),
+                timezone.get_current_timezone(),
+            ),
         )
 
         response = self.client.get(

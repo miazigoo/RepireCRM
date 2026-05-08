@@ -11,6 +11,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
@@ -21,6 +22,8 @@ import * as AuthActions from '../../../store/auth/auth.actions';
 import { User, Shop } from '../../../core/models/models';
 import { HelpGuideDialogComponent } from '../../help/help-guide-dialog/help-guide-dialog.component';
 import { NotificationService } from '../../../services/notification.service';
+import { AdminService } from '../../../services/admin.service';
+import { OrdersService } from '../../../services/orders.service';
 
 interface NavigationItem {
   label: string;
@@ -54,6 +57,7 @@ interface NavigationGroup {
     MatListModule,
     MatTooltipModule,
     MatDialogModule,
+    MatSnackBarModule,
   ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss'
@@ -68,7 +72,7 @@ export class MainLayoutComponent implements OnInit {
   currentUser: User | null = null;
   currentShop: Shop | null = null;
 
-  availableShops: Shop[] = []; // Будет загружаться из API
+  availableShops: Shop[] = [];
   pendingOrdersCount = 0;
   notificationsCount = 0;
   currentRouteTitle = 'Панель управления';
@@ -117,6 +121,8 @@ export class MainLayoutComponent implements OnInit {
     '/inventory/purchase-orders/new': 'Заказ поставщику',
     '/notifications': 'Уведомления',
     '/reports': 'Отчеты',
+    '/finance': 'Финансы',
+    '/tasks': 'Задачи',
     '/admin': 'Администрирование',
     '/admin/users': 'Пользователи',
     '/admin/users/new': 'Новый пользователь',
@@ -131,7 +137,10 @@ export class MainLayoutComponent implements OnInit {
     private store: Store<AppState>,
     private router: Router,
     private dialog: MatDialog,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private adminService: AdminService,
+    private ordersService: OrdersService,
+    private snackBar: MatSnackBar
   ) {
     this.isHandset$ = this.breakpointObserver.observe(Breakpoints.Handset)
       .pipe(
@@ -159,6 +168,7 @@ export class MainLayoutComponent implements OnInit {
 
     this.currentShop$.subscribe(shop => {
       this.currentShop = shop;
+      this.loadPendingOrdersCount();
     });
 
     this.notificationService.unreadCount$.subscribe(count => {
@@ -183,6 +193,12 @@ export class MainLayoutComponent implements OnInit {
       maxHeight: 'calc(100vh - 32px)',
       panelClass: 'guide-dialog-panel',
       autoFocus: false
+    });
+  }
+
+  openProfileNotice(): void {
+    this.snackBar.open('Профиль пользователя будет подключен отдельным экраном', 'Закрыть', {
+      duration: 3000
     });
   }
 
@@ -223,17 +239,25 @@ export class MainLayoutComponent implements OnInit {
   }
 
   private loadAvailableShops(): void {
-    // Здесь будет загрузка доступных магазинов через сервис
-    // Временно заглушка
-    this.availableShops = [
-      { id: 1, name: 'Ремонт+ Москва Центр', code: 'MSK01', is_active: true, timezone: 'Europe/Moscow', currency: 'RUB' },
-      { id: 2, name: 'Ремонт+ СПб Невский', code: 'SPB01', is_active: true, timezone: 'Europe/Moscow', currency: 'RUB' }
-    ];
+    this.adminService.getShops().subscribe({
+      next: shops => {
+        this.availableShops = shops.filter(shop => shop.is_active);
+      },
+      error: () => {
+        this.availableShops = this.currentShop ? [this.currentShop] : [];
+      }
+    });
   }
 
   private loadPendingOrdersCount(): void {
-    // Загрузка количества ожидающих заказов
-    this.pendingOrdersCount = 5;
+    this.ordersService.getOrdersPage(1, 1, { status: 'received' }).subscribe({
+      next: response => {
+        this.pendingOrdersCount = response.count;
+      },
+      error: () => {
+        this.pendingOrdersCount = 0;
+      }
+    });
   }
 
   private updateRouteTitle(url: string): void {

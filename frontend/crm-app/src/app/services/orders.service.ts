@@ -25,7 +25,11 @@ export class OrdersService {
 
   constructor(private apiService: ApiService) {}
 
-  getOrders(page: number = 1, pageSize: number = 20, filters?: OrderFilters): Observable<Order[]> {
+  getOrdersPage(
+    page: number = 1,
+    pageSize: number = 20,
+    filters?: OrderFilters
+  ): Observable<PaginatedResponse<Order>> {
     const rawParams = {
       page,
       page_size: pageSize,
@@ -36,7 +40,21 @@ export class OrdersService {
     );
 
     return this.apiService.get<OrderListResponse>(this.endpoint, params).pipe(
-      map(response => Array.isArray(response) ? response : response.items)
+      map(response => Array.isArray(response)
+        ? {
+          items: response,
+          count: response.length,
+          page,
+          page_size: pageSize,
+          total_pages: 1
+        }
+        : response)
+    );
+  }
+
+  getOrders(page: number = 1, pageSize: number = 20, filters?: OrderFilters): Observable<Order[]> {
+    return this.getOrdersPage(page, pageSize, filters).pipe(
+      map(response => response.items)
     );
   }
 

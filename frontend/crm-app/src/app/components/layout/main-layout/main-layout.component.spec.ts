@@ -1,12 +1,15 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { provideRouter, Router, RouterLink } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { of } from 'rxjs';
+import { AdminService } from '../../../services/admin.service';
 import { NotificationService } from '../../../services/notification.service';
+import { OrdersService } from '../../../services/orders.service';
 import { selectCurrentShop, selectCurrentUser } from '../../../store/auth/auth.selectors';
 import { MainLayoutComponent } from './main-layout.component';
 
@@ -49,6 +52,34 @@ describe('MainLayoutComponent', () => {
         { provide: Store, useValue: store },
         { provide: BreakpointObserver, useValue: { observe: () => of({ matches: false }) } },
         { provide: MatDialog, useValue: { open: jasmine.createSpy('open') } },
+        { provide: MatSnackBar, useValue: { open: jasmine.createSpy('open') } },
+        {
+          provide: AdminService,
+          useValue: {
+            getShops: jasmine.createSpy('getShops').and.returnValue(of([
+              {
+                id: 1,
+                name: 'Ремонт+ Москва Центр',
+                code: 'MSK01',
+                is_active: true,
+                timezone: 'Europe/Moscow',
+                currency: 'RUB',
+              },
+            ])),
+          },
+        },
+        {
+          provide: OrdersService,
+          useValue: {
+            getOrdersPage: jasmine.createSpy('getOrdersPage').and.returnValue(of({
+              items: [],
+              count: 2,
+              page: 1,
+              page_size: 1,
+              total_pages: 2,
+            })),
+          },
+        },
         {
           provide: NotificationService,
           useValue: {
@@ -82,6 +113,7 @@ describe('MainLayoutComponent', () => {
     expect(targets).toContain('/admin');
     expect(targets).toContain('/admin/settings');
     expect(targets).toContain('/themes');
+    expect(targets).not.toContain('/profile');
   });
 
   it('moves theme controls out of the top navbar and into the sidebar', () => {
