@@ -16,24 +16,38 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { finalize } from 'rxjs';
 import { OrdersService } from '../../../services/orders.service';
+import { OnlinePaymentMethodType, PaymentsService } from '../../../services/payments.service';
 import {
   Order,
   OrderApproval,
   OrderAuditLog,
   OrderStatusHistory,
   OrderStatus,
-  RepairStage
+  RepairStage,
 } from '../../../core/models/models';
 
 @Component({
   selector: 'app-order-detail',
   standalone: true,
   imports: [
-    NgIf, NgFor, NgClass, NgTemplateOutlet, DatePipe, RouterModule, ReactiveFormsModule,
-    MatButtonModule, MatIconModule,
-    MatDividerModule, MatMenuModule, MatSnackBarModule,
-    MatProgressSpinnerModule, MatTabsModule, MatFormFieldModule,
-    MatInputModule, MatCheckboxModule, MatDialogModule
+    NgIf,
+    NgFor,
+    NgClass,
+    NgTemplateOutlet,
+    DatePipe,
+    RouterModule,
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatIconModule,
+    MatDividerModule,
+    MatMenuModule,
+    MatSnackBarModule,
+    MatProgressSpinnerModule,
+    MatTabsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatCheckboxModule,
+    MatDialogModule,
   ],
   templateUrl: './order-detail.component.html',
   styleUrl: './order-detail.component.scss',
@@ -42,10 +56,10 @@ import {
       provide: MAT_FORM_FIELD_DEFAULT_OPTIONS,
       useValue: {
         appearance: 'outline',
-        floatLabel: 'always'
-      }
-    }
-  ]
+        floatLabel: 'always',
+      },
+    },
+  ],
 })
 export class OrderDetailComponent implements OnInit {
   @ViewChild('handoverDialog') handoverDialog?: TemplateRef<void>;
@@ -57,6 +71,7 @@ export class OrderDetailComponent implements OnInit {
   statusSaving = false;
   handoverSaving = false;
   handoverNeedsAttention = false;
+  onlinePaymentLoading: OnlinePaymentMethodType | null = null;
   orderId: number;
 
   statusHistory: OrderStatusHistory[] = [];
@@ -78,77 +93,53 @@ export class OrderDetailComponent implements OnInit {
     { value: 'testing', label: 'Тестирование', icon: 'fact_check' },
     { value: 'ready', label: 'Готов', icon: 'task_alt' },
     { value: 'completed', label: 'Выдан', icon: 'done_all' },
-    { value: 'cancelled', label: 'Отменен', icon: 'cancel' }
+    { value: 'cancelled', label: 'Отменен', icon: 'cancel' },
   ];
 
   private readonly statusIconPaths: Record<string, string[]> = {
-    received: [
-      'M6 10h20v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2Z',
-      'M10 10l2-4h8l2 4',
-      'M11 18h10'
-    ],
-    diagnosed: [
-      'M14 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z',
-      'm20 20 6 6',
-      'M11 14h6M14 11v6'
-    ],
+    received: ['M6 10h20v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2Z', 'M10 10l2-4h8l2 4', 'M11 18h10'],
+    diagnosed: ['M14 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z', 'm20 20 6 6', 'M11 14h6M14 11v6'],
     waiting_parts: [
       'M10 5h12M10 27h12',
       'M11 5c0 5 10 6 10 11s-10 6-10 11',
       'M21 5c0 5-10 6-10 11s10 6 10 11',
-      'M13 22h6'
+      'M13 22h6',
     ],
-    in_repair: [
-      'M20 6l6 6-4 4-6-6Z',
-      'M5 25l10.5-10.5',
-      'M8 22l2 2'
-    ],
-    testing: [
-      'M9 6h14v20H9Z',
-      'M13 11h6M13 16h6M13 21h4',
-      'M6 10h3M6 16h3M6 22h3'
-    ],
-    ready: [
-      'M16 27a11 11 0 1 0 0-22 11 11 0 0 0 0 22Z',
-      'm10.5 16 3.5 3.5L22 12'
-    ],
-    completed: [
-      'm5 16 4 4 8-10',
-      'm16 19 2.5 2.5L27 12'
-    ],
-    cancelled: [
-      'M16 27a11 11 0 1 0 0-22 11 11 0 0 0 0 22Z',
-      'm12 12 8 8M20 12l-8 8'
-    ]
+    in_repair: ['M20 6l6 6-4 4-6-6Z', 'M5 25l10.5-10.5', 'M8 22l2 2'],
+    testing: ['M9 6h14v20H9Z', 'M13 11h6M13 16h6M13 21h4', 'M6 10h3M6 16h3M6 22h3'],
+    ready: ['M16 27a11 11 0 1 0 0-22 11 11 0 0 0 0 22Z', 'm10.5 16 3.5 3.5L22 12'],
+    completed: ['m5 16 4 4 8-10', 'm16 19 2.5 2.5L27 12'],
+    cancelled: ['M16 27a11 11 0 1 0 0-22 11 11 0 0 0 0 22Z', 'm12 12 8 8M20 12l-8 8'],
   };
 
   private readonly moneyFormatter = new Intl.NumberFormat('ru-RU', {
-    maximumFractionDigits: 0
+    maximumFractionDigits: 0,
   });
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private ordersService: OrdersService,
+    private paymentsService: PaymentsService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-    private fb: FormBuilder
+    private fb: FormBuilder,
   ) {
     this.orderId = +this.route.snapshot.params['id'];
     this.stageForm = this.fb.group({
       title: ['', [Validators.required, Validators.maxLength(120)]],
       description: [''],
-      customer_visible: [true]
+      customer_visible: [true],
     });
     this.approvalForm = this.fb.group({
       title: ['Согласование стоимости ремонта', [Validators.required, Validators.maxLength(160)]],
       description: [''],
-      amount: [0, [Validators.required, Validators.min(0)]]
+      amount: [0, [Validators.required, Validators.min(0)]],
     });
     this.handoverForm = this.fb.group({
       final_cost: [0, [Validators.required, Validators.min(0)]],
       prepayment: [0, [Validators.required, Validators.min(0)]],
-      status_comment: ['Заказ выдан клиенту', [Validators.maxLength(255)]]
+      status_comment: ['Заказ выдан клиенту', [Validators.maxLength(255)]],
     });
   }
 
@@ -172,35 +163,39 @@ export class OrderDetailComponent implements OnInit {
       error: (error) => {
         this.snackBar.open('Ошибка загрузки заказа', 'Закрыть', { duration: 3000 });
         this.loading = false;
-      }
+      },
     });
   }
 
   private loadStatusHistory(): void {
     this.ordersService.getStatusHistory(this.orderId).subscribe({
-      next: (items) => this.statusHistory = items,
-      error: () => this.snackBar.open('Ошибка загрузки истории статусов', 'Закрыть', { duration: 3000 })
+      next: (items) => (this.statusHistory = items),
+      error: () =>
+        this.snackBar.open('Ошибка загрузки истории статусов', 'Закрыть', { duration: 3000 }),
     });
   }
 
   private loadRepairStages(): void {
     this.ordersService.getRepairStages(this.orderId).subscribe({
-      next: (items) => this.repairStages = items,
-      error: () => this.snackBar.open('Ошибка загрузки этапов ремонта', 'Закрыть', { duration: 3000 })
+      next: (items) => (this.repairStages = items),
+      error: () =>
+        this.snackBar.open('Ошибка загрузки этапов ремонта', 'Закрыть', { duration: 3000 }),
     });
   }
 
   private loadAuditLog(): void {
     this.ordersService.getAuditLog(this.orderId).subscribe({
-      next: (items) => this.auditLogs = items,
-      error: () => this.snackBar.open('Ошибка загрузки журнала действий', 'Закрыть', { duration: 3000 })
+      next: (items) => (this.auditLogs = items),
+      error: () =>
+        this.snackBar.open('Ошибка загрузки журнала действий', 'Закрыть', { duration: 3000 }),
     });
   }
 
   private loadApprovals(): void {
     this.ordersService.getApprovals(this.orderId).subscribe({
-      next: (items) => this.approvals = items,
-      error: () => this.snackBar.open('Ошибка загрузки согласований', 'Закрыть', { duration: 3000 })
+      next: (items) => (this.approvals = items),
+      error: () =>
+        this.snackBar.open('Ошибка загрузки согласований', 'Закрыть', { duration: 3000 }),
     });
   }
 
@@ -212,8 +207,8 @@ export class OrderDetailComponent implements OnInit {
         type: 'receipt',
         name: 'Квитанция о приеме',
         created_at: new Date('2024-01-15T10:00:00'),
-        file_url: '/documents/receipt_001.pdf'
-      }
+        file_url: '/documents/receipt_001.pdf',
+      },
     ];
   }
 
@@ -255,8 +250,9 @@ export class OrderDetailComponent implements OnInit {
     }
 
     this.stageSaving = true;
-    this.ordersService.addRepairStage(this.orderId, data)
-      .pipe(finalize(() => this.stageSaving = false))
+    this.ordersService
+      .addRepairStage(this.orderId, data)
+      .pipe(finalize(() => (this.stageSaving = false)))
       .subscribe({
         next: () => {
           this.snackBar.open('Этап ремонта добавлен', 'Закрыть', { duration: 2500 });
@@ -268,7 +264,7 @@ export class OrderDetailComponent implements OnInit {
         error: (error) => {
           const message = error.error?.error || 'Не удалось добавить этап ремонта';
           this.snackBar.open(message, 'Закрыть', { duration: 3500 });
-        }
+        },
       });
   }
 
@@ -278,15 +274,16 @@ export class OrderDetailComponent implements OnInit {
     }
 
     this.approvalSaving = true;
-    this.ordersService.requestApproval(this.orderId, this.approvalForm.getRawValue())
-      .pipe(finalize(() => this.approvalSaving = false))
+    this.ordersService
+      .requestApproval(this.orderId, this.approvalForm.getRawValue())
+      .pipe(finalize(() => (this.approvalSaving = false)))
       .subscribe({
         next: () => {
           this.snackBar.open('Согласование отправлено клиенту', 'Закрыть', { duration: 2500 });
           this.approvalForm.reset({
             title: 'Согласование стоимости ремонта',
             description: '',
-            amount: 0
+            amount: 0,
           });
           this.loadApprovals();
           this.loadAuditLog();
@@ -294,7 +291,7 @@ export class OrderDetailComponent implements OnInit {
         error: (error) => {
           const message = error.error?.error || 'Не удалось отправить согласование';
           this.snackBar.open(message, 'Закрыть', { duration: 3500 });
-        }
+        },
       });
   }
 
@@ -312,10 +309,12 @@ export class OrderDetailComponent implements OnInit {
 
     const previousStatus = this.order.status;
     this.statusSaving = true;
-    this.ordersService.updateOrder(this.orderId, {
-      status,
-      status_comment: 'Изменено из карточки заказа'
-    }).pipe(finalize(() => this.statusSaving = false))
+    this.ordersService
+      .updateOrder(this.orderId, {
+        status,
+        status_comment: 'Изменено из карточки заказа',
+      })
+      .pipe(finalize(() => (this.statusSaving = false)))
       .subscribe({
         next: (order) => {
           this.order = order;
@@ -329,7 +328,7 @@ export class OrderDetailComponent implements OnInit {
           if (this.order) {
             this.order = { ...this.order, status: previousStatus };
           }
-        }
+        },
       });
   }
 
@@ -342,7 +341,7 @@ export class OrderDetailComponent implements OnInit {
       this.handoverForm.markAllAsTouched();
       this.handoverNeedsAttention = true;
       this.snackBar.open('Проверьте итоговую стоимость и предоплату', 'Закрыть', {
-        duration: 3000
+        duration: 3000,
       });
       return;
     }
@@ -353,12 +352,14 @@ export class OrderDetailComponent implements OnInit {
     const statusComment = String(value.status_comment || '').trim() || 'Заказ выдан клиенту';
 
     this.handoverSaving = true;
-    this.ordersService.updateOrder(this.orderId, {
-      status: 'completed',
-      final_cost: finalCost,
-      prepayment,
-      status_comment: statusComment
-    }).pipe(finalize(() => this.handoverSaving = false))
+    this.ordersService
+      .updateOrder(this.orderId, {
+        status: 'completed',
+        final_cost: finalCost,
+        prepayment,
+        status_comment: statusComment,
+      })
+      .pipe(finalize(() => (this.handoverSaving = false)))
       .subscribe({
         next: (order) => {
           this.order = order;
@@ -373,44 +374,74 @@ export class OrderDetailComponent implements OnInit {
         error: (error) => {
           const message = error.error?.error || 'Не удалось выдать заказ';
           this.snackBar.open(message, 'Закрыть', { duration: 3500 });
-        }
+        },
+      });
+  }
+
+  startOnlinePayment(method: OnlinePaymentMethodType): void {
+    if (!this.order || this.onlinePaymentLoading) {
+      return;
+    }
+
+    const amount = this.getDisplayRemainingPayment(this.order);
+    if (amount <= 0) {
+      this.snackBar.open('Заказ уже полностью оплачен', 'Закрыть', { duration: 2500 });
+      return;
+    }
+
+    this.onlinePaymentLoading = method;
+    this.paymentsService
+      .createOrderPayment(this.order.id, method, amount)
+      .pipe(finalize(() => (this.onlinePaymentLoading = null)))
+      .subscribe({
+        next: (payment) => {
+          if (payment.confirmation_url) {
+            window.location.href = payment.confirmation_url;
+            return;
+          }
+          this.snackBar.open('Платеж создан без ссылки на оплату', 'Закрыть', { duration: 3000 });
+        },
+        error: (error) => {
+          const message = error?.error?.error || 'Не удалось создать онлайн-оплату';
+          this.snackBar.open(message, 'Закрыть', { duration: 3500 });
+        },
       });
   }
 
   getStatusLabel(status: string): string {
-    const statusLabels: {[key: string]: string} = {
-      'received': 'Принят',
-      'diagnosed': 'Диагностирован',
-      'waiting_parts': 'Ожидание запчастей',
-      'in_repair': 'В ремонте',
-      'testing': 'Тестирование',
-      'ready': 'Готов',
-      'completed': 'Выдан',
-      'cancelled': 'Отменен'
+    const statusLabels: { [key: string]: string } = {
+      received: 'Принят',
+      diagnosed: 'Диагностирован',
+      waiting_parts: 'Ожидание запчастей',
+      in_repair: 'В ремонте',
+      testing: 'Тестирование',
+      ready: 'Готов',
+      completed: 'Выдан',
+      cancelled: 'Отменен',
     };
     return statusLabels[status] || status;
   }
 
   getPriorityLabel(priority: string): string {
-    const priorityLabels: {[key: string]: string} = {
-      'low': 'Низкий',
-      'normal': 'Обычный',
-      'high': 'Высокий',
-      'urgent': 'Срочный'
+    const priorityLabels: { [key: string]: string } = {
+      low: 'Низкий',
+      normal: 'Обычный',
+      high: 'Высокий',
+      urgent: 'Срочный',
     };
     return priorityLabels[priority] || priority;
   }
 
   getStatusIcon(status: string): string {
-    const statusIcons: {[key: string]: string} = {
-      'received': 'inbox',
-      'diagnosed': 'search',
-      'waiting_parts': 'hourglass_empty',
-      'in_repair': 'build',
-      'testing': 'bug_report',
-      'ready': 'check_circle',
-      'completed': 'done_all',
-      'cancelled': 'cancel'
+    const statusIcons: { [key: string]: string } = {
+      received: 'inbox',
+      diagnosed: 'search',
+      waiting_parts: 'hourglass_empty',
+      in_repair: 'build',
+      testing: 'bug_report',
+      ready: 'check_circle',
+      completed: 'done_all',
+      cancelled: 'cancel',
     };
     return statusIcons[status] || 'help';
   }
@@ -427,7 +458,7 @@ export class OrderDetailComponent implements OnInit {
     this.handoverDialogRef = this.dialog.open(this.handoverDialog, {
       width: 'min(620px, calc(100vw - 32px))',
       panelClass: 'handover-dialog-panel',
-      autoFocus: 'first-tabbable'
+      autoFocus: 'first-tabbable',
     });
     this.handoverDialogRef.afterClosed().subscribe(() => {
       this.handoverDialogRef = null;
@@ -451,12 +482,16 @@ export class OrderDetailComponent implements OnInit {
   }
 
   getDeviceMeta(order: Order): string {
-    return [
-      order.device.color,
-      order.device.storage_capacity,
-      order.device.serial_number ? `SN ${order.device.serial_number}` : '',
-      order.device.imei ? `IMEI ${order.device.imei}` : ''
-    ].filter(Boolean).join(' · ') || 'Без уточнений';
+    return (
+      [
+        order.device.color,
+        order.device.storage_capacity,
+        order.device.serial_number ? `SN ${order.device.serial_number}` : '',
+        order.device.imei ? `IMEI ${order.device.imei}` : '',
+      ]
+        .filter(Boolean)
+        .join(' · ') || 'Без уточнений'
+    );
   }
 
   getOrderAmount(order: Order): number {
@@ -464,10 +499,12 @@ export class OrderDetailComponent implements OnInit {
   }
 
   getOrderServicesAmount(order: Order): number {
-    return order.additional_services?.reduce(
-      (sum, service) => sum + Number(service.total_price || 0),
-      0
-    ) || 0;
+    return (
+      order.additional_services?.reduce(
+        (sum, service) => sum + Number(service.total_price || 0),
+        0,
+      ) || 0
+    );
   }
 
   getOrderWorkAmount(order: Order): number {
@@ -493,7 +530,12 @@ export class OrderDetailComponent implements OnInit {
   }
 
   getWorkSummary(order: Order): string {
-    return order.diagnosis || order.work_description || order.problem_description || 'Описание пока не заполнено';
+    return (
+      order.diagnosis ||
+      order.work_description ||
+      order.problem_description ||
+      'Описание пока не заполнено'
+    );
   }
 
   getCompletionLabel(order: Order): string {
@@ -514,7 +556,7 @@ export class OrderDetailComponent implements OnInit {
   }
 
   getStatusIndex(status: OrderStatus): number {
-    return this.statusOptions.findIndex(option => option.value === status);
+    return this.statusOptions.findIndex((option) => option.value === status);
   }
 
   isStatusDone(status: OrderStatus): boolean {
@@ -541,10 +583,13 @@ export class OrderDetailComponent implements OnInit {
     const finalCost = Number(order.final_cost ?? order.cost_estimate ?? 0);
     const prepayment = Number(order.prepayment || 0);
 
-    this.handoverForm.patchValue({
-      final_cost: finalCost,
-      prepayment,
-      status_comment: 'Заказ выдан клиенту'
-    }, { emitEvent: false });
+    this.handoverForm.patchValue(
+      {
+        final_cost: finalCost,
+        prepayment,
+        status_comment: 'Заказ выдан клиенту',
+      },
+      { emitEvent: false },
+    );
   }
 }

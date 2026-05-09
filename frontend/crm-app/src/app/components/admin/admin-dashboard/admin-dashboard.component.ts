@@ -4,10 +4,12 @@ import { NgIf, NgFor, DatePipe } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Subscription } from 'rxjs';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { finalize, Subscription } from 'rxjs';
 import { AdminService } from '../../../services/admin.service';
 import { AuthService } from '../../../services/auth.service';
 import { SubscriptionPlan, SubscriptionStatus, User } from '../../../core/models/models';
+import { OnlinePaymentMethodType } from '../../../services/payments.service';
 
 interface SystemStats {
   total_users: number;
@@ -22,7 +24,15 @@ interface SystemStats {
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [NgIf, NgFor, DatePipe, RouterModule, MatButtonModule, MatProgressSpinnerModule],
+  imports: [
+    NgIf,
+    NgFor,
+    DatePipe,
+    RouterModule,
+    MatButtonModule,
+    MatProgressSpinnerModule,
+    MatSnackBarModule,
+  ],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.scss',
 })
@@ -32,6 +42,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   subscriptionPlans: SubscriptionPlan[] = [];
   loading = false;
   subscriptionLoading = false;
+  subscriptionPaymentLoadingKey: string | null = null;
   statsScope: 'current' | 'all' = 'current';
   canViewGlobalStats = false;
   private userSubscription?: Subscription;
@@ -70,6 +81,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   constructor(
     private adminService: AdminService,
     private authService: AuthService,
+    private snackBar: MatSnackBar,
   ) {}
 
   ngOnInit(): void {
@@ -164,6 +176,31 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       },
       error: () => (this.subscriptionLoading = false),
     });
+  }
+
+  startSubscriptionPayment(plan: SubscriptionPlan, method: OnlinePaymentMethodType): void {
+    const key = `${plan.code}:${method}`;
+    this.subscriptionPaymentLoadingKey = key;
+    this.adminService
+      .createSubscriptionPayment(plan.code, method)
+      .pipe(finalize(() => (this.subscriptionPaymentLoadingKey = null)))
+      .subscribe({
+        next: (payment) => {
+          if (payment.confirmation_url) {
+            window.location.href = payment.confirmation_url;
+            return;
+          }
+          this.snackBar.open('Платеж создан без ссылки на оплату', 'Закрыть', { duration: 3000 });
+        },
+        error: (error) => {
+          const message = error?.error?.error || 'Не удалось создать оплату подписки';
+          this.snackBar.open(message, 'Закрыть', { duration: 3500 });
+        },
+      });
+  }
+
+  isSubscriptionPaymentLoading(planCode: string, method: OnlinePaymentMethodType): boolean {
+    return this.subscriptionPaymentLoadingKey === `${planCode}:${method}`;
   }
 
   getSubscriptionBackground(): string {

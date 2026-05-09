@@ -209,15 +209,38 @@
       </div>
 
       <div class="subscription-actions">
-        <button
-          mat-stroked-button
-          *ngFor="let plan of subscriptionPlans"
-          type="button"
-          [disabled]="subscriptionLoading"
-          (click)="changeSubscription(plan.code)"
-        >
-          {{ plan.name }} · {{ formatCurrency(plan.price) }}
-        </button>
+        <div class="subscription-pay-row" *ngFor="let plan of subscriptionPlans">
+          <div>
+            <strong>{{ plan.name }}</strong>
+            <span>{{ formatCurrency(plan.price) }}</span>
+          </div>
+
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="subscriptionLoading || !!subscriptionPaymentLoadingKey"
+            (click)="startSubscriptionPayment(plan, 'bank_card')"
+          >
+            <mat-spinner
+              *ngIf="isSubscriptionPaymentLoading(plan.code, 'bank_card')"
+              diameter="16"
+            ></mat-spinner>
+            Карта
+          </button>
+
+          <button
+            mat-flat-button
+            type="button"
+            [disabled]="subscriptionLoading || !!subscriptionPaymentLoadingKey"
+            (click)="startSubscriptionPayment(plan, 'sbp')"
+          >
+            <mat-spinner
+              *ngIf="isSubscriptionPaymentLoading(plan.code, 'sbp')"
+              diameter="16"
+            ></mat-spinner>
+            СБП
+          </button>
+        </div>
       </div>
     </article>
   </section>

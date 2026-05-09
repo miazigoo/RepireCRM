@@ -69,6 +69,12 @@ class SubscriptionChangeSchema(Schema):
     plan_code: str
 
 
+class SubscriptionPaymentCreateSchema(Schema):
+    plan_code: str
+    payment_method_type: str = "bank_card"
+    return_url: Optional[str] = None
+
+
 class SubscriptionStatusSchema(Schema):
     organization_id: int
     organization_name: str

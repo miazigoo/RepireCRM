@@ -3,6 +3,7 @@ import { of } from 'rxjs';
 import { SubscriptionPlan, SubscriptionStatus } from '../core/models/models';
 import { ApiService } from './api.service';
 import { AdminService } from './admin.service';
+import { OnlinePayment } from './payments.service';
 
 describe('AdminService', () => {
   let service: AdminService;
@@ -98,6 +99,31 @@ describe('AdminService', () => {
 
     expect(apiService.post).toHaveBeenCalledOnceWith('/shops/subscription/change', {
       plan_code: 'yearly',
+    });
+  });
+
+  it('creates subscription payment using YooKassa contract', () => {
+    const payment = {
+      id: 4,
+      provider: 'yookassa',
+      purpose: 'subscription',
+      status: 'pending',
+      payment_method_type: 'sbp',
+      amount: 1490,
+      currency: 'RUB',
+      confirmation_url: 'http://127.0.0.1:8030/api/finance/online-payments/4/test-checkout',
+      provider_payment_id: 'test_4',
+      is_test: true,
+    } as OnlinePayment;
+    apiService.post.and.returnValue(of(payment));
+
+    service.createSubscriptionPayment('monthly', 'sbp').subscribe((result) => {
+      expect(result).toEqual(payment);
+    });
+
+    expect(apiService.post).toHaveBeenCalledOnceWith('/shops/subscription/pay', {
+      plan_code: 'monthly',
+      payment_method_type: 'sbp',
     });
   });
 });

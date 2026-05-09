@@ -4,7 +4,11 @@
 
 .order-detail-page {
   --order-panel: color-mix(in srgb, var(--panel-background) 94%, transparent);
-  --order-panel-strong: color-mix(in srgb, var(--color-surface-strong) 88%, var(--panel-background));
+  --order-panel-strong: color-mix(
+    in srgb,
+    var(--color-surface-strong) 88%,
+    var(--panel-background)
+  );
   --order-border: color-mix(in srgb, var(--color-border) 84%, transparent);
   --order-muted: var(--color-text-secondary);
   --order-shadow: var(--panel-shadow);
@@ -39,8 +43,16 @@
   margin-bottom: 18px;
   padding: 24px 26px;
   background:
-    linear-gradient(125deg, color-mix(in srgb, var(--color-primary) 13%, transparent), transparent 44%),
-    linear-gradient(145deg, var(--order-panel), color-mix(in srgb, var(--color-accent) 8%, var(--order-panel)));
+    linear-gradient(
+      125deg,
+      color-mix(in srgb, var(--color-primary) 13%, transparent),
+      transparent 44%
+    ),
+    linear-gradient(
+      145deg,
+      var(--order-panel),
+      color-mix(in srgb, var(--color-accent) 8%, var(--order-panel))
+    );
 }
 
 .hero-main,
@@ -272,7 +284,6 @@
   button:disabled {
     cursor: default;
   }
-
 }
 
 .order-workspace {
@@ -637,6 +648,27 @@
 
   .danger {
     color: var(--color-danger);
+  }
+}
+
+.online-payment-box {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--order-border);
+  border-radius: 8px;
+  background: var(--order-panel-strong);
+  color: var(--color-text-primary);
+  font-weight: 900;
+}
+
+.online-payment-actions {
+  display: flex;
+  gap: 8px;
+
+  button {
+    flex: 1;
   }
 }
 

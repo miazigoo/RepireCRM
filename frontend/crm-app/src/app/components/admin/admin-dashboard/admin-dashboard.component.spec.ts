@@ -61,6 +61,7 @@ describe('AdminDashboardComponent', () => {
       'getSubscriptionStatus',
       'getSubscriptionPlans',
       'changeSubscription',
+      'createSubscriptionPayment',
     ]);
     adminService.getSystemStatistics.and.returnValue(
       of({
@@ -163,5 +164,27 @@ describe('AdminDashboardComponent', () => {
     component.changeSubscription('yearly');
 
     expect(component.subscriptionLoading).toBeFalse();
+  });
+
+  it('creates subscription payment instead of changing paid plan directly', () => {
+    adminService.createSubscriptionPayment.and.returnValue(
+      of({
+        id: 7,
+        provider: 'yookassa',
+        purpose: 'subscription',
+        status: 'pending',
+        payment_method_type: 'bank_card',
+        amount: 1490,
+        currency: 'RUB',
+        confirmation_url: '',
+        provider_payment_id: 'test_7',
+        is_test: true,
+      }),
+    );
+
+    component.startSubscriptionPayment(plans[1], 'bank_card');
+
+    expect(adminService.createSubscriptionPayment).toHaveBeenCalledOnceWith('monthly', 'bank_card');
+    expect(component.subscriptionPaymentLoadingKey).toBeNull();
   });
 });

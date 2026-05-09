@@ -1,7 +1,10 @@
 from typing import List
 
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from ninja import Router
+
+from finance.online_payments import create_subscription_online_payment
 
 from .models import Organization, Shop, ShopSettings, SubscriptionPlan
 from .schemas import (
@@ -9,6 +12,7 @@ from .schemas import (
     ShopSchema,
     ShopSettingsSchema,
     SubscriptionChangeSchema,
+    SubscriptionPaymentCreateSchema,
     SubscriptionPlanSchema,
     SubscriptionStatusSchema,
 )
@@ -75,6 +79,41 @@ def change_current_subscription(request, data: SubscriptionChangeSchema):
     subscription = change_subscription_plan(organization, data.plan_code)
     notify_subscription_if_needed(subscription)
     return serialize_subscription_status(subscription)
+
+
+@router.post("/subscription/pay", response=dict)
+def create_subscription_payment(request, data: SubscriptionPaymentCreateSchema):
+    """Создать онлайн-оплату подписки через ЮKassa/тестовый checkout."""
+    if not request.auth.has_permission("settings.change_shop"):
+        raise PermissionError("Нет прав")
+
+    organization, _ = _current_subscription_context(request)
+    ensure_default_subscription_plans()
+    plan = get_object_or_404(
+        SubscriptionPlan,
+        code=data.plan_code,
+        is_active=True,
+    )
+    return_url = data.return_url or f"{settings.FRONTEND_URL.rstrip('/')}/admin"
+    payment = create_subscription_online_payment(
+        organization=organization,
+        plan=plan,
+        method_type=data.payment_method_type,
+        created_by=request.auth,
+        return_url=return_url,
+    )
+    return {
+        "id": payment.id,
+        "provider": payment.provider,
+        "purpose": payment.purpose,
+        "status": payment.status,
+        "payment_method_type": payment.payment_method_type,
+        "amount": float(payment.amount),
+        "currency": payment.currency,
+        "confirmation_url": payment.confirmation_url,
+        "provider_payment_id": payment.provider_payment_id,
+        "is_test": bool(settings.YOOKASSA_MOCK),
+    }
 
 
 @router.get("/", response=List[ShopSchema])

@@ -183,6 +183,19 @@ STATIC_ROOT = os.path.join(BASE_DIR, "static")
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
+# Public URLs used in payment redirects. In production set both to HTTPS domains.
+FRONTEND_URL = config("FRONTEND_URL", default="http://127.0.0.1:4200")
+BACKEND_PUBLIC_URL = config("BACKEND_PUBLIC_URL", default="http://127.0.0.1:8030")
+
+# YooKassa/Yandex Kassa credentials. Local development defaults to a mock
+# checkout page so payments can be tested without real secrets.
+YOOKASSA_SHOP_ID = config("YOOKASSA_SHOP_ID", default="")
+YOOKASSA_SECRET_KEY = config("YOOKASSA_SECRET_KEY", default="")
+YOOKASSA_API_URL = config("YOOKASSA_API_URL", default="https://api.yookassa.ru/v3")
+_yookassa_default_mock = "false" if YOOKASSA_SHOP_ID and YOOKASSA_SECRET_KEY else "true"
+YOOKASSA_MOCK = config("YOOKASSA_MOCK", default=_yookassa_default_mock, cast=bool)
+YOOKASSA_CAPTURE = config("YOOKASSA_CAPTURE", default=True, cast=bool)
+
 # Custom user model
 AUTH_USER_MODEL = "users.User"
 

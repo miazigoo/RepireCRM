@@ -431,10 +431,58 @@ h1 {
 }
 
 .subscription-actions {
+  display: grid;
+  gap: 10px;
   margin-top: 18px;
 
   button {
     font-weight: 850;
+  }
+}
+
+.subscription-pay-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-panel-strong);
+
+  div {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+  }
+
+  strong {
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-size: 14px;
+    font-weight: 900;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  span {
+    color: var(--admin-muted);
+    font-size: 12px;
+    font-weight: 780;
+  }
+
+  button[mat-flat-button] {
+    --mdc-filled-button-container-color: var(--color-primary);
+    --mdc-filled-button-label-text-color: #ffffff;
+    --mat-filled-button-state-layer-color: #ffffff;
+
+    color: #ffffff !important;
+  }
+
+  mat-spinner {
+    display: inline-block;
+    margin-right: 6px;
+    vertical-align: middle;
   }
 }
 
@@ -583,5 +631,9 @@ h1 {
 
   .subscription-days {
     text-align: left;
+  }
+
+  .subscription-pay-row {
+    grid-template-columns: 1fr;
   }
 }

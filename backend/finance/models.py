@@ -1,3 +1,4 @@
+import uuid
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -330,3 +331,122 @@ class FinancialReport(models.Model):
         verbose_name = "Финансовый отчет"
         verbose_name_plural = "Финансовые отчеты"
         ordering = ["-generated_at"]
+
+
+class OnlinePayment(models.Model):
+    """Онлайн-платеж через внешний платежный шлюз."""
+
+    class Provider(models.TextChoices):
+        YOOKASSA = "yookassa", "ЮKassa"
+
+    class Purpose(models.TextChoices):
+        ORDER = "order", "Оплата заказа"
+        SUBSCRIPTION = "subscription", "Оплата подписки"
+
+    class PaymentMethodType(models.TextChoices):
+        ANY = "any", "Платежная форма"
+        BANK_CARD = "bank_card", "Банковская карта"
+        SBP = "sbp", "СБП"
+        YOO_MONEY = "yoo_money", "ЮMoney"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Ожидает оплаты"
+        WAITING_FOR_CAPTURE = "waiting_for_capture", "Ожидает подтверждения"
+        SUCCEEDED = "succeeded", "Оплачен"
+        CANCELED = "canceled", "Отменен"
+        FAILED = "failed", "Ошибка"
+
+    provider = models.CharField(
+        "Провайдер",
+        max_length=20,
+        choices=Provider.choices,
+        default=Provider.YOOKASSA,
+    )
+    purpose = models.CharField("Назначение", max_length=20, choices=Purpose.choices)
+    status = models.CharField(
+        "Статус",
+        max_length=30,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
+    payment_method_type = models.CharField(
+        "Тип способа оплаты",
+        max_length=30,
+        choices=PaymentMethodType.choices,
+        default=PaymentMethodType.BANK_CARD,
+    )
+
+    amount = models.DecimalField(
+        "Сумма", max_digits=15, decimal_places=2, validators=[MinValueValidator(0)]
+    )
+    currency = models.CharField("Валюта", max_length=3, default="RUB")
+    description = models.CharField("Описание", max_length=255)
+
+    provider_payment_id = models.CharField(
+        "ID платежа у провайдера", max_length=120, blank=True, db_index=True
+    )
+    idempotence_key = models.UUIDField(
+        "Ключ идемпотентности", default=uuid.uuid4, unique=True
+    )
+    confirmation_url = models.URLField("Ссылка на оплату", max_length=1000, blank=True)
+    return_url = models.URLField("Ссылка возврата", max_length=1000, blank=True)
+    test_token = models.UUIDField("Токен тестовой оплаты", default=uuid.uuid4)
+    raw_payload = models.JSONField("Данные провайдера", default=dict, blank=True)
+
+    order = models.ForeignKey(
+        "orders.Order",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="online_payments",
+        verbose_name="Заказ",
+    )
+    organization = models.ForeignKey(
+        "shops.Organization",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="online_payments",
+        verbose_name="Организация",
+    )
+    subscription_plan = models.ForeignKey(
+        "shops.SubscriptionPlan",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="online_payments",
+        verbose_name="Тариф подписки",
+    )
+    local_payment = models.OneToOneField(
+        Payment,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="online_payment",
+        verbose_name="Локальный платеж",
+    )
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="online_payments",
+        verbose_name="Создал",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    paid_at = models.DateTimeField("Дата оплаты", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Онлайн-платеж"
+        verbose_name_plural = "Онлайн-платежи"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["purpose", "status"]),
+            models.Index(fields=["provider", "provider_payment_id"]),
+        ]
+
+    def __str__(self):
+        return f"{self.get_purpose_display()} {self.amount} {self.currency}"

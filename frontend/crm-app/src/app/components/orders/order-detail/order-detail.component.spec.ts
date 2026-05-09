@@ -6,12 +6,14 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { of } from 'rxjs';
 import { Order } from '../../../core/models/models';
 import { OrdersService } from '../../../services/orders.service';
+import { PaymentsService } from '../../../services/payments.service';
 import { OrderDetailComponent } from './order-detail.component';
 
 describe('OrderDetailComponent', () => {
   let fixture: ComponentFixture<OrderDetailComponent>;
   let component: OrderDetailComponent;
   let ordersService: jasmine.SpyObj<OrdersService>;
+  let paymentsService: jasmine.SpyObj<PaymentsService>;
 
   const order = {
     id: 2,
@@ -81,7 +83,24 @@ describe('OrderDetailComponent', () => {
     ordersService.getApprovals.and.returnValue(of([]));
     ordersService.getAuditLog.and.returnValue(of([]));
     ordersService.updateOrder.and.callFake((_: number, payload: any) =>
-      of({ ...order, ...payload } as Order)
+      of({ ...order, ...payload } as Order),
+    );
+    paymentsService = jasmine.createSpyObj<PaymentsService>('PaymentsService', [
+      'createOrderPayment',
+    ]);
+    paymentsService.createOrderPayment.and.returnValue(
+      of({
+        id: 12,
+        provider: 'yookassa',
+        purpose: 'order',
+        status: 'pending',
+        payment_method_type: 'sbp',
+        amount: 1800,
+        currency: 'RUB',
+        confirmation_url: '',
+        provider_payment_id: 'test_12',
+        is_test: true,
+      }),
     );
 
     await TestBed.configureTestingModule({
@@ -91,7 +110,11 @@ describe('OrderDetailComponent', () => {
         provideNoopAnimations(),
         { provide: ActivatedRoute, useValue: { snapshot: { params: { id: 2 } } } },
         { provide: OrdersService, useValue: ordersService },
-        { provide: MatSnackBar, useValue: jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']) },
+        { provide: PaymentsService, useValue: paymentsService },
+        {
+          provide: MatSnackBar,
+          useValue: jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']),
+        },
       ],
     }).compileComponents();
 
@@ -201,6 +224,13 @@ describe('OrderDetailComponent', () => {
     expect(text).toContain('3 900 ₽');
     expect(text).toContain('3 400 ₽');
     expect(text).toContain('Услуги');
+  });
+
+  it('creates online payment for remaining order amount', () => {
+    component.startOnlinePayment('sbp');
+
+    expect(paymentsService.createOrderPayment).toHaveBeenCalledOnceWith(2, 'sbp', 1800);
+    expect(component.onlinePaymentLoading).toBeNull();
   });
 
   function normalizeText(element: HTMLElement): string {

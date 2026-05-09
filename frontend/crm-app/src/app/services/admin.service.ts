@@ -2,6 +2,7 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
+import { OnlinePayment, OnlinePaymentMethodType } from './payments.service';
 import {
   Permission,
   Role,
@@ -157,6 +158,16 @@ export class AdminService {
   changeSubscription(planCode: string): Observable<SubscriptionStatus> {
     return this.apiService.post<SubscriptionStatus>('/shops/subscription/change', {
       plan_code: planCode,
+    });
+  }
+
+  createSubscriptionPayment(
+    planCode: string,
+    paymentMethodType: OnlinePaymentMethodType,
+  ): Observable<OnlinePayment> {
+    return this.apiService.post<OnlinePayment>('/shops/subscription/pay', {
+      plan_code: planCode,
+      payment_method_type: paymentMethodType,
     });
   }
 }

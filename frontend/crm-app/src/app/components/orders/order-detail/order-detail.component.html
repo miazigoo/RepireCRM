@@ -5,7 +5,17 @@
         <mat-icon>arrow_back</mat-icon>
       </a>
       <span class="order-avatar">
-        <svg viewBox="0 0 32 32" width="30" height="30" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" aria-hidden="true">
+        <svg
+          viewBox="0 0 32 32"
+          width="30"
+          height="30"
+          fill="none"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2.4"
+          aria-hidden="true"
+        >
           <path *ngFor="let path of getStatusIconPaths(order.status)" [attr.d]="path"></path>
         </svg>
       </span>
@@ -13,15 +23,24 @@
         <span class="eyebrow">Карточка заказа</span>
         <h1>{{ order.order_number }}</h1>
         <div class="hero-tags">
-          <span class="status-chip" [ngClass]="order.status">{{ getStatusLabel(order.status) }}</span>
-          <span class="priority-chip" [ngClass]="order.priority">{{ getPriorityLabel(order.priority) }}</span>
+          <span class="status-chip" [ngClass]="order.status">{{
+            getStatusLabel(order.status)
+          }}</span>
+          <span class="priority-chip" [ngClass]="order.priority">{{
+            getPriorityLabel(order.priority)
+          }}</span>
           <span>ID {{ order.id }}</span>
         </div>
       </div>
     </div>
 
     <div class="hero-actions">
-      <button mat-stroked-button type="button" class="secondary-action" [matMenuTriggerFor]="statusMenu">
+      <button
+        mat-stroked-button
+        type="button"
+        class="secondary-action"
+        [matMenuTriggerFor]="statusMenu"
+      >
         <mat-icon>swap_horiz</mat-icon>
         Статус
       </button>
@@ -30,15 +49,31 @@
           mat-menu-item
           *ngFor="let option of statusOptions"
           (click)="setOrderStatus(option.value)"
-          [disabled]="statusSaving || option.value === order.status">
-          <svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.3" aria-hidden="true">
+          [disabled]="statusSaving || option.value === order.status"
+        >
+          <svg
+            viewBox="0 0 32 32"
+            width="22"
+            height="22"
+            fill="none"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2.3"
+            aria-hidden="true"
+          >
             <path *ngFor="let path of getStatusIconPaths(option.value)" [attr.d]="path"></path>
           </svg>
           <span>{{ option.label }}</span>
         </button>
       </mat-menu>
 
-      <button mat-stroked-button type="button" class="secondary-action" [matMenuTriggerFor]="actionsMenu">
+      <button
+        mat-stroked-button
+        type="button"
+        class="secondary-action"
+        [matMenuTriggerFor]="actionsMenu"
+      >
         <mat-icon>more_horiz</mat-icon>
         Действия
       </button>
@@ -124,8 +159,8 @@
       </span>
       <div>
         <small>{{ getCompletionLabel(order) }}</small>
-        <strong>{{ getCompletionValue(order) | date:'dd.MM.yyyy' }}</strong>
-        <span>{{ getCompletionValue(order) | date:'HH:mm' }}</span>
+        <strong>{{ getCompletionValue(order) | date: 'dd.MM.yyyy' }}</strong>
+        <span>{{ getCompletionValue(order) | date: 'HH:mm' }}</span>
       </div>
     </article>
   </section>
@@ -137,8 +172,19 @@
       [class.active]="option.value === order.status"
       [class.done]="isStatusDone(option.value)"
       [disabled]="statusSaving || option.value === order.status"
-      (click)="setOrderStatus(option.value)">
-      <svg viewBox="0 0 32 32" width="24" height="24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" aria-hidden="true">
+      (click)="setOrderStatus(option.value)"
+    >
+      <svg
+        viewBox="0 0 32 32"
+        width="24"
+        height="24"
+        fill="none"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2.4"
+        aria-hidden="true"
+      >
         <path *ngFor="let path of getStatusIconPaths(option.value)" [attr.d]="path"></path>
       </svg>
       <span>{{ option.label }}</span>
@@ -154,7 +200,7 @@
             <h2>Детали заказа</h2>
           </div>
           <div class="panel-meta">
-            <span>{{ order.created_at | date:'dd.MM.yyyy HH:mm' }}</span>
+            <span>{{ order.created_at | date: 'dd.MM.yyyy HH:mm' }}</span>
           </div>
         </header>
 
@@ -199,13 +245,18 @@
             </div>
           </mat-tab>
 
-          <mat-tab label="Услуги" *ngIf="order.additional_services && order.additional_services.length > 0">
+          <mat-tab
+            label="Услуги"
+            *ngIf="order.additional_services && order.additional_services.length > 0"
+          >
             <div class="tab-content service-list">
               <article class="service-item" *ngFor="let orderService of order.additional_services">
                 <div>
                   <span class="eyebrow">{{ orderService.service.category }}</span>
                   <h3>{{ orderService.service.name }}</h3>
-                  <p *ngIf="orderService.service.description">{{ orderService.service.description }}</p>
+                  <p *ngIf="orderService.service.description">
+                    {{ orderService.service.description }}
+                  </p>
                   <div class="service-meta">
                     <span>{{ orderService.quantity }} шт.</span>
                     <span>{{ formatMoney(orderService.price) }} за единицу</span>
@@ -222,7 +273,7 @@
                 <div class="stage-form-grid">
                   <mat-form-field>
                     <mat-label>Что сделали</mat-label>
-                    <input matInput formControlName="title" maxlength="120">
+                    <input matInput formControlName="title" maxlength="120" />
                   </mat-form-field>
 
                   <mat-form-field class="stage-description-field">
@@ -231,7 +282,7 @@
                   </mat-form-field>
 
                   <label class="photo-picker">
-                    <input type="file" accept="image/*" (change)="onStagePhotoSelected($event)">
+                    <input type="file" accept="image/*" (change)="onStagePhotoSelected($event)" />
                     <mat-icon>add_a_photo</mat-icon>
                     <span>{{ selectedStagePhoto ? selectedStagePhoto.name : 'Фото этапа' }}</span>
                   </label>
@@ -241,7 +292,12 @@
                   </mat-checkbox>
                 </div>
 
-                <button mat-flat-button class="primary-action" type="submit" [disabled]="stageForm.invalid || stageSaving">
+                <button
+                  mat-flat-button
+                  class="primary-action"
+                  type="submit"
+                  [disabled]="stageForm.invalid || stageSaving"
+                >
                   <mat-spinner *ngIf="stageSaving" diameter="18"></mat-spinner>
                   <mat-icon *ngIf="!stageSaving">add</mat-icon>
                   Добавить этап
@@ -254,9 +310,12 @@
               </div>
 
               <div class="repair-stages">
-                <article class="repair-stage" *ngFor="let stage of repairStages; trackBy: trackById">
+                <article
+                  class="repair-stage"
+                  *ngFor="let stage of repairStages; trackBy: trackById"
+                >
                   <div class="stage-photo" *ngIf="stage.photo_url">
-                    <img [src]="stage.photo_url" [alt]="stage.title">
+                    <img [src]="stage.photo_url" [alt]="stage.title" />
                   </div>
                   <div class="stage-body">
                     <div class="stage-header">
@@ -268,7 +327,7 @@
                     <p *ngIf="stage.description">{{ stage.description }}</p>
                     <div class="stage-meta">
                       <span>{{ stage.created_by_name || 'Сотрудник' }}</span>
-                      <span>{{ stage.created_at | date:'dd.MM.yyyy HH:mm' }}</span>
+                      <span>{{ stage.created_at | date: 'dd.MM.yyyy HH:mm' }}</span>
                     </div>
                   </div>
                 </article>
@@ -284,16 +343,32 @@
               </div>
 
               <div class="status-timeline">
-                <article class="timeline-item" *ngFor="let item of statusHistory; trackBy: trackById">
+                <article
+                  class="timeline-item"
+                  *ngFor="let item of statusHistory; trackBy: trackById"
+                >
                   <span class="timeline-marker" [ngClass]="item.new_status">
-                    <svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" aria-hidden="true">
-                      <path *ngFor="let path of getStatusIconPaths(item.new_status)" [attr.d]="path"></path>
+                    <svg
+                      viewBox="0 0 32 32"
+                      width="22"
+                      height="22"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2.4"
+                      aria-hidden="true"
+                    >
+                      <path
+                        *ngFor="let path of getStatusIconPaths(item.new_status)"
+                        [attr.d]="path"
+                      ></path>
                     </svg>
                   </span>
                   <div>
                     <div class="timeline-header">
                       <strong>{{ getStatusLabel(item.new_status) }}</strong>
-                      <span>{{ item.changed_at | date:'dd.MM.yyyy HH:mm' }}</span>
+                      <span>{{ item.changed_at | date: 'dd.MM.yyyy HH:mm' }}</span>
                     </div>
                     <p>{{ item.changed_by_name || 'Система' }}</p>
                     <p *ngIf="item.comment">{{ item.comment }}</p>
@@ -308,12 +383,12 @@
               <form class="approval-form" [formGroup]="approvalForm" (ngSubmit)="requestApproval()">
                 <mat-form-field>
                   <mat-label>Тема</mat-label>
-                  <input matInput formControlName="title" maxlength="160">
+                  <input matInput formControlName="title" maxlength="160" />
                 </mat-form-field>
 
                 <mat-form-field>
                   <mat-label>Сумма, ₽</mat-label>
-                  <input matInput type="number" min="0" formControlName="amount">
+                  <input matInput type="number" min="0" formControlName="amount" />
                 </mat-form-field>
 
                 <mat-form-field class="approval-description-field">
@@ -321,7 +396,12 @@
                   <textarea matInput rows="3" formControlName="description"></textarea>
                 </mat-form-field>
 
-                <button mat-flat-button class="primary-action" type="submit" [disabled]="approvalForm.invalid || approvalSaving">
+                <button
+                  mat-flat-button
+                  class="primary-action"
+                  type="submit"
+                  [disabled]="approvalForm.invalid || approvalSaving"
+                >
                   <mat-spinner *ngIf="approvalSaving" diameter="18"></mat-spinner>
                   <mat-icon *ngIf="!approvalSaving">task_alt</mat-icon>
                   Отправить клиенту
@@ -334,7 +414,10 @@
               </div>
 
               <div class="approval-list">
-                <article class="approval-item" *ngFor="let approval of approvals; trackBy: trackById">
+                <article
+                  class="approval-item"
+                  *ngFor="let approval of approvals; trackBy: trackById"
+                >
                   <div>
                     <h3>{{ approval.title }}</h3>
                     <p *ngIf="approval.description">{{ approval.description }}</p>
@@ -343,7 +426,7 @@
                     </p>
                     <div class="stage-meta">
                       <span>{{ approval.requested_by_name || 'Сотрудник' }}</span>
-                      <span>{{ approval.created_at | date:'dd.MM.yyyy HH:mm' }}</span>
+                      <span>{{ approval.created_at | date: 'dd.MM.yyyy HH:mm' }}</span>
                     </div>
                   </div>
                   <div class="approval-side">
@@ -363,7 +446,10 @@
                 <mat-icon>history</mat-icon>
                 <div>
                   <h3>{{ log.message }}</h3>
-                  <p>{{ log.actor_name || 'Система' }} · {{ log.created_at | date:'dd.MM.yyyy HH:mm' }}</p>
+                  <p>
+                    {{ log.actor_name || 'Система' }} ·
+                    {{ log.created_at | date: 'dd.MM.yyyy HH:mm' }}
+                  </p>
                 </div>
               </article>
             </div>
@@ -375,9 +461,13 @@
                 <mat-icon>description</mat-icon>
                 <div>
                   <h3>{{ doc.name }}</h3>
-                  <p>{{ doc.created_at | date:'dd.MM.yyyy HH:mm' }}</p>
+                  <p>{{ doc.created_at | date: 'dd.MM.yyyy HH:mm' }}</p>
                 </div>
-                <button mat-icon-button (click)="openDocument(doc.file_url)" aria-label="Открыть документ">
+                <button
+                  mat-icon-button
+                  (click)="openDocument(doc.file_url)"
+                  aria-label="Открыть документ"
+                >
                   <mat-icon>download</mat-icon>
                 </button>
               </article>
@@ -422,9 +512,11 @@
         <p>{{ getDeviceMeta(order) }}</p>
       </section>
 
-      <section class="sidebar-panel handover-panel"
-               [class.needs-attention]="handoverNeedsAttention"
-               *ngIf="order.status !== 'completed'; else completedHandover">
+      <section
+        class="sidebar-panel handover-panel"
+        [class.needs-attention]="handoverNeedsAttention"
+        *ngIf="order.status !== 'completed'; else completedHandover"
+      >
         <form [formGroup]="handoverForm" (ngSubmit)="completeOrder()">
           <span class="eyebrow">Выдача</span>
           <h2>Финальная стоимость</h2>
@@ -432,7 +524,12 @@
 
           <ng-container *ngTemplateOutlet="handoverFields"></ng-container>
 
-          <button mat-flat-button class="primary-action handover-action" type="submit" [disabled]="handoverForm.invalid || handoverSaving">
+          <button
+            mat-flat-button
+            class="primary-action handover-action"
+            type="submit"
+            [disabled]="handoverForm.invalid || handoverSaving"
+          >
             <mat-spinner *ngIf="handoverSaving" diameter="18"></mat-spinner>
             <mat-icon *ngIf="!handoverSaving">done_all</mat-icon>
             Выдать заказ
@@ -478,6 +575,32 @@
             <strong class="danger">{{ formatMoney(getDisplayRemainingPayment(order)) }}</strong>
           </div>
         </div>
+
+        <div class="online-payment-box" *ngIf="getDisplayRemainingPayment(order) > 0">
+          <span>Онлайн-оплата через ЮKassa</span>
+          <div class="online-payment-actions">
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="!!onlinePaymentLoading"
+              (click)="startOnlinePayment('bank_card')"
+            >
+              <mat-spinner *ngIf="onlinePaymentLoading === 'bank_card'" diameter="16"></mat-spinner>
+              Карта
+            </button>
+
+            <button
+              mat-flat-button
+              class="primary-action"
+              type="button"
+              [disabled]="!!onlinePaymentLoading"
+              (click)="startOnlinePayment('sbp')"
+            >
+              <mat-spinner *ngIf="onlinePaymentLoading === 'sbp'" diameter="16"></mat-spinner>
+              СБП
+            </button>
+          </div>
+        </div>
       </section>
 
       <section class="sidebar-panel">
@@ -488,17 +611,17 @@
           <div>
             <mat-icon>event</mat-icon>
             <span>Создан</span>
-            <strong>{{ order.created_at | date:'dd.MM.yyyy HH:mm' }}</strong>
+            <strong>{{ order.created_at | date: 'dd.MM.yyyy HH:mm' }}</strong>
           </div>
           <div *ngIf="order.estimated_completion">
             <mat-icon>event_available</mat-icon>
             <span>План готовности</span>
-            <strong>{{ order.estimated_completion | date:'dd.MM.yyyy HH:mm' }}</strong>
+            <strong>{{ order.estimated_completion | date: 'dd.MM.yyyy HH:mm' }}</strong>
           </div>
           <div *ngIf="order.completed_at">
             <mat-icon>done_all</mat-icon>
             <span>Завершен</span>
-            <strong>{{ order.completed_at | date:'dd.MM.yyyy HH:mm' }}</strong>
+            <strong>{{ order.completed_at | date: 'dd.MM.yyyy HH:mm' }}</strong>
           </div>
         </div>
       </section>
@@ -510,13 +633,13 @@
   <ng-container [formGroup]="handoverForm">
     <mat-form-field>
       <mat-label>Стоимость работ</mat-label>
-      <input matInput type="number" min="0" formControlName="final_cost">
+      <input matInput type="number" min="0" formControlName="final_cost" />
       <span matSuffix>₽</span>
     </mat-form-field>
 
     <mat-form-field>
       <mat-label>Предоплата</mat-label>
-      <input matInput type="number" min="0" formControlName="prepayment">
+      <input matInput type="number" min="0" formControlName="prepayment" />
       <span matSuffix>₽</span>
     </mat-form-field>
 
@@ -546,12 +669,19 @@
   <form class="handover-dialog" [formGroup]="handoverForm" (ngSubmit)="completeOrder()">
     <h2 mat-dialog-title>Выдать заказ</h2>
     <mat-dialog-content>
-      <p>Проверьте стоимость работ, услуги и оплату клиента перед переводом заказа в статус «Выдан».</p>
+      <p>
+        Проверьте стоимость работ, услуги и оплату клиента перед переводом заказа в статус «Выдан».
+      </p>
       <ng-container *ngTemplateOutlet="handoverFields"></ng-container>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" mat-dialog-close>Отмена</button>
-      <button mat-flat-button class="primary-action" type="submit" [disabled]="handoverForm.invalid || handoverSaving">
+      <button
+        mat-flat-button
+        class="primary-action"
+        type="submit"
+        [disabled]="handoverForm.invalid || handoverSaving"
+      >
         <mat-spinner *ngIf="handoverSaving" diameter="18"></mat-spinner>
         Выдать заказ
       </button>
