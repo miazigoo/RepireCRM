@@ -26,6 +26,16 @@ def _current_task_shops(request):
     return request.auth.get_available_shops()
 
 
+def _task_shop_scope_query(request):
+    shops = _current_task_shops(request)
+    return (
+        Q(assignment_type=Task.AssignmentType.SHOP, assigned_shop__in=shops)
+        | Q(assignment_type=Task.AssignmentType.ALL_SHOPS)
+        | Q(assigned_to__shops__in=shops)
+        | Q(assignment_type=Task.AssignmentType.ROLE, assigned_role=request.auth.role)
+    )
+
+
 def _can_manage_paid_tasks(user):
     return user.is_director or user.has_permission("users.manage_compensation")
 
@@ -78,6 +88,7 @@ def list_tasks(
     search: str = None,
     assigned_to_me: bool = False,
     created_by_me: bool = False,
+    all_shops: bool = False,
 ):
     """Список задач"""
     if not request.auth.has_permission("tasks.view_task"):
@@ -86,6 +97,11 @@ def list_tasks(
     queryset = Task.objects.select_related(
         "category", "assigned_to", "assigned_shop", "assigned_role", "created_by"
     ).prefetch_related("comments")
+
+    if all_shops and not (
+        request.auth.is_director or request.auth.has_permission("tasks.view_all_tasks")
+    ):
+        raise PermissionError("Нет прав смотреть задачи всех филиалов")
 
     if assigned_to_me:
         # Задачи, назначенные текущему пользователю
@@ -103,6 +119,11 @@ def list_tasks(
 
         queryset = queryset.filter(user_tasks | shop_tasks | all_tasks | role_tasks)
 
+    elif all_shops and (
+        request.auth.is_director or request.auth.has_permission("tasks.view_all_tasks")
+    ):
+        pass
+
     elif not (
         request.auth.is_director or request.auth.has_permission("tasks.view_all_tasks")
     ):
@@ -119,6 +140,8 @@ def list_tasks(
                 assignment_type="role", assigned_role=request.auth.role
             )  # Задачи роли
         )
+    else:
+        queryset = queryset.filter(_task_shop_scope_query(request)).distinct()
 
     if status:
         queryset = queryset.filter(status=status)
@@ -231,6 +254,7 @@ def get_tasks_statistics(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     employee_id: int | None = None,
+    all_shops: bool = False,
 ):
     """Статистика по задачам за период."""
     if not request.auth.has_permission("tasks.view_task"):
@@ -238,6 +262,11 @@ def get_tasks_statistics(
 
     start_date, end_date = resolve_period_range(period, date_from, date_to)
     queryset = Task.objects.all()
+
+    if all_shops and not (
+        request.auth.is_director or request.auth.has_permission("tasks.view_all_tasks")
+    ):
+        raise PermissionError("Нет прав смотреть задачи всех филиалов")
 
     if employee_id:
         if not (
@@ -249,6 +278,10 @@ def get_tasks_statistics(
         queryset = queryset.filter(
             Q(assigned_to_id=employee_id) | Q(completed_by_id=employee_id)
         )
+        if not all_shops:
+            queryset = queryset.filter(_task_shop_scope_query(request)).distinct()
+    elif all_shops:
+        pass
     elif not (
         request.auth.is_director or request.auth.has_permission("tasks.view_all_tasks")
     ):
@@ -260,6 +293,8 @@ def get_tasks_statistics(
             | Q(assignment_type="all_shops")
             | Q(assignment_type="role", assigned_role=request.auth.role)
         )
+    else:
+        queryset = queryset.filter(_task_shop_scope_query(request)).distinct()
 
     period_tasks = queryset.filter(created_at__range=[start_date, end_date])
     completed_tasks = queryset.filter(

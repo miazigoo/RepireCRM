@@ -105,6 +105,17 @@ def _record_status_history(
     )
 
 
+def _get_available_additional_service(request, service_id: int) -> AdditionalService:
+    queryset = AdditionalService.objects.filter(id=service_id, is_active=True)
+    current_shop = getattr(request, "current_shop", None)
+    if current_shop:
+        queryset = queryset.filter(Q(shops__isnull=True) | Q(shops=current_shop))
+    service = queryset.distinct().first()
+    if not service:
+        raise Http404("Услуга недоступна в выбранном филиале")
+    return service
+
+
 @router.get("/", response=List[OrderSchema])
 @paginate(OrderPagination)
 def list_orders(request, filters: OrderFilterSchema = Query(...)):
@@ -176,12 +187,17 @@ def list_orders(request, filters: OrderFilterSchema = Query(...)):
 
 
 @router.get("/additional-services", response=List[AdditionalServiceSchema])
-def list_additional_services(request):
+def list_additional_services(request, include_inactive: bool = False):
     """Получение списка дополнительных услуг"""
     if not request.auth.has_permission("orders.view_order"):
         raise PermissionError("Нет прав для просмотра услуг")
 
-    queryset = AdditionalService.objects.filter(is_active=True)
+    if include_inactive:
+        if not request.auth.has_permission("orders.change_order"):
+            raise PermissionError("Нет прав для управления услугами")
+        queryset = AdditionalService.objects.all()
+    else:
+        queryset = AdditionalService.objects.filter(is_active=True)
 
     # Фильтруем по доступным в текущем магазине
     if hasattr(request, "current_shop") and request.current_shop:
@@ -504,13 +520,16 @@ def create_order(request, data: OrderCreateSchema):
             # Добавляем дополнительные услуги
             if data.additional_services:
                 for service_data in data.additional_services:
-                    service = get_object_or_404(
-                        AdditionalService, id=service_data["service_id"]
+                    quantity = int(service_data.get("quantity", 1))
+                    if quantity < 1:
+                        return 400, {"error": "Количество услуги должно быть больше 0"}
+                    service = _get_available_additional_service(
+                        request, service_data["service_id"]
                     )
                     OrderService.objects.create(
                         order=order,
                         service=service,
-                        quantity=service_data.get("quantity", 1),
+                        quantity=quantity,
                         price=service.price,
                     )
 
@@ -548,8 +567,8 @@ def create_order(request, data: OrderCreateSchema):
 
             return 201, order
 
-    except Http404:
-        return 400, {"error": "Некорректные данные заказа"}
+    except Http404 as e:
+        return 400, {"error": str(e) or "Некорректные данные заказа"}
     except Exception as e:
         return 400, {"error": str(e)}
 
@@ -588,6 +607,10 @@ def update_order(request, order_id: int, data: OrderUpdateSchema):
             if field == "assigned_to_id":
                 if value:
                     assigned_user = get_object_or_404(User, id=value)
+                    if not assigned_user.can_access_shop(order.shop):
+                        return 400, {
+                            "error": ("Исполнитель не привязан к филиалу этого заказа")
+                        }
                     order.assigned_to = assigned_user
                 else:
                     order.assigned_to = None

@@ -206,3 +206,155 @@ class WorkerShopFlowTestCase(TestCase):
         self.assertEqual(worker_stats["sales"]["revenue"], 1000.0)
         self.assertEqual(worker_stats["tasks"]["paid_amount"], 300.0)
         self.assertEqual(worker_stats["compensation"]["estimated_salary"], 500.0)
+
+    def test_profile_statistics_uses_current_shop_by_default(self):
+        for shop, cost in ((self.shop, 1000), (self.other_shop, 2000)):
+            Order.objects.create(
+                shop=shop,
+                customer=self.customer,
+                device=Device.objects.create(model=self.model),
+                problem_description=f"Готов {shop.code}",
+                cost_estimate=cost,
+                final_cost=cost,
+                status=Order.StatusChoices.COMPLETED,
+                assigned_to=self.worker,
+                created_by=self.worker,
+                completed_at=timezone.now(),
+            )
+
+        scoped_response = self.client.get(
+            "/api/auth/profile/statistics",
+            data={"period": "30_days"},
+            **self.auth_headers(shop=self.shop),
+        )
+        all_shops_response = self.client.get(
+            "/api/auth/profile/statistics",
+            data={"period": "30_days", "all_shops": True},
+            **self.auth_headers(shop=self.shop),
+        )
+
+        self.assertEqual(scoped_response.status_code, 200, scoped_response.content)
+        self.assertEqual(scoped_response.json()["orders"]["completed"], 1)
+        self.assertEqual(scoped_response.json()["orders"]["repair_revenue"], 1000.0)
+        self.assertEqual(
+            all_shops_response.status_code, 200, all_shops_response.content
+        )
+        self.assertEqual(all_shops_response.json()["orders"]["completed"], 2)
+
+    def test_order_creation_rejects_service_from_another_shop(self):
+        service = AdditionalService.objects.create(
+            name="Пленка только Север",
+            category=AdditionalService.ServiceCategory.PROTECTION,
+            price=700,
+        )
+        service.shops.add(self.other_shop)
+
+        response = self.client.post(
+            "/api/orders/",
+            data=json.dumps(
+                {
+                    "customer_id": self.customer.id,
+                    "device": {"model_id": self.model.id},
+                    "problem_description": "Проверка услуг",
+                    "cost_estimate": 1500,
+                    "priority": "normal",
+                    "additional_services": [{"service_id": service.id, "quantity": 1}],
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers(shop=self.shop),
+        )
+
+        self.assertEqual(response.status_code, 400, response.content)
+        self.assertIn("недоступна", response.json()["error"])
+        self.assertFalse(OrderService.objects.filter(service=service).exists())
+
+    def test_service_catalog_management_can_show_inactive_services(self):
+        inactive = AdditionalService.objects.create(
+            name="Старая услуга",
+            category=AdditionalService.ServiceCategory.OTHER,
+            price=100,
+            is_active=False,
+        )
+
+        default_response = self.client.get(
+            "/api/orders/additional-services",
+            **self.auth_headers(shop=self.shop),
+        )
+        management_response = self.client.get(
+            "/api/orders/additional-services",
+            data={"include_inactive": True},
+            **self.auth_headers(shop=self.shop),
+        )
+
+        self.assertEqual(default_response.status_code, 200, default_response.content)
+        self.assertNotIn(inactive.id, [item["id"] for item in default_response.json()])
+        self.assertEqual(
+            management_response.status_code, 200, management_response.content
+        )
+        self.assertIn(inactive.id, [item["id"] for item in management_response.json()])
+
+    def test_order_assignment_requires_worker_shop_access(self):
+        external_worker = User.objects.create_user(
+            username="external-worker",
+            password="pass12345",
+            first_name="Петр",
+            last_name="Север",
+            role=self.role,
+            current_shop=self.other_shop,
+        )
+        external_worker.shops.add(self.other_shop)
+        order = Order.objects.create(
+            shop=self.shop,
+            customer=self.customer,
+            device=Device.objects.create(model=self.model),
+            problem_description="Назначение",
+            cost_estimate=1000,
+            created_by=self.worker,
+        )
+
+        response = self.client.put(
+            f"/api/orders/{order.id}",
+            data=json.dumps({"assigned_to_id": external_worker.id}),
+            content_type="application/json",
+            **self.auth_headers(shop=self.shop),
+        )
+
+        self.assertEqual(response.status_code, 400, response.content)
+        order.refresh_from_db()
+        self.assertIsNone(order.assigned_to)
+
+    def test_tasks_list_is_scoped_to_current_shop_by_default(self):
+        Task.objects.create(
+            title="Задача Центр",
+            description="Только текущий филиал",
+            assignment_type=Task.AssignmentType.SHOP,
+            assigned_shop=self.shop,
+            created_by=self.worker,
+        )
+        Task.objects.create(
+            title="Задача Север",
+            description="Другой филиал",
+            assignment_type=Task.AssignmentType.SHOP,
+            assigned_shop=self.other_shop,
+            created_by=self.worker,
+        )
+
+        scoped_response = self.client.get(
+            "/api/tasks/",
+            data={"page": 1, "page_size": 100},
+            **self.auth_headers(shop=self.shop),
+        )
+        all_shops_response = self.client.get(
+            "/api/tasks/",
+            data={"page": 1, "page_size": 100, "all_shops": True},
+            **self.auth_headers(shop=self.shop),
+        )
+
+        self.assertEqual(scoped_response.status_code, 200, scoped_response.content)
+        self.assertEqual(scoped_response.json()["count"], 1)
+        self.assertEqual(scoped_response.json()["items"][0]["title"], "Задача Центр")
+        self.assertEqual(
+            all_shops_response.status_code, 200, all_shops_response.content
+        )
+        self.assertEqual(all_shops_response.json()["count"], 2)

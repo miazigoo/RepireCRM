@@ -97,8 +97,9 @@ export class OrdersService {
     return this.apiService.post<OrderApproval>(`${this.endpoint}/${id}/approvals`, data);
   }
 
-  getAdditionalServices(): Observable<AdditionalService[]> {
-    return this.apiService.get<AdditionalService[]>(`${this.endpoint}/additional-services`);
+  getAdditionalServices(includeInactive = false): Observable<AdditionalService[]> {
+    const params = includeInactive ? { include_inactive: true } : undefined;
+    return this.apiService.get<AdditionalService[]>(`${this.endpoint}/additional-services`, params);
   }
 
   createAdditionalService(data: Partial<AdditionalService> & { shop_ids?: number[] }): Observable<AdditionalService> {

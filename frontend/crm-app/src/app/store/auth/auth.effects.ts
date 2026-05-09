@@ -101,4 +101,16 @@ export class AuthEffects {
       )
     )
   );
+
+  reloadAfterSwitchShop$ = createEffect(
+    () =>
+      this.actions$.pipe(
+        ofType(AuthActions.switchShopSuccess),
+        tap(() => {
+          // Филиал влияет почти на все рабочие таблицы; reload убирает stale data.
+          window.location.reload();
+        })
+      ),
+    { dispatch: false }
+  );
 }

@@ -127,14 +127,22 @@ def get_profile_statistics(
     period: str = "month",
     date_from: datetime | None = None,
     date_to: datetime | None = None,
+    all_shops: bool = False,
 ):
     """Личная статистика и расчет примерной зарплаты сотрудника."""
     start_date, end_date = resolve_period_range(period, date_from, date_to)
+    if all_shops:
+        shops = request.auth.get_available_shops()
+    elif getattr(request, "current_shop", None) is not None:
+        shops = [request.current_shop]
+    else:
+        shops = request.auth.get_available_shops()
+
     return employee_statistics(
         request.auth,
         start_date,
         end_date,
-        shops=request.auth.get_available_shops(),
+        shops=shops,
     )
 
 

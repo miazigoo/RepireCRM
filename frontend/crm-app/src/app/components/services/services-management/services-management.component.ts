@@ -79,7 +79,7 @@ export class ServicesManagementComponent implements OnInit {
 
   loadServices(): void {
     this.loading = true;
-    this.ordersService.getAdditionalServices().subscribe({
+    this.ordersService.getAdditionalServices(true).subscribe({
       next: (services) => {
         this.services = services;
         this.loading = false;

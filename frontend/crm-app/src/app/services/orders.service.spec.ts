@@ -178,4 +178,14 @@ describe('OrdersService', () => {
     expect(apiService.put).toHaveBeenCalledWith('/orders/additional-services/10', { price: 600 });
     expect(apiService.delete).toHaveBeenCalledWith('/orders/additional-services/10');
   });
+
+  it('can include inactive services for catalog management', () => {
+    apiService.get.and.returnValue(of([]));
+
+    service.getAdditionalServices(true).subscribe();
+
+    expect(apiService.get).toHaveBeenCalledOnceWith('/orders/additional-services', {
+      include_inactive: true,
+    });
+  });
 });
