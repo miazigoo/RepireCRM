@@ -69,7 +69,20 @@ class BootstrapCommandsTestCase(TestCase):
             verbosity=0,
         )
 
-        self.assertEqual(Order.objects.filter(notes__startswith="[demo]").count(), 8)
+        self.assertEqual(
+            Order.objects.filter(
+                notes__startswith="[demo]",
+                is_warranty_case=False,
+            ).count(),
+            8,
+        )
+        self.assertTrue(
+            Order.objects.filter(
+                notes__startswith="[demo][warranty]",
+                is_warranty_case=True,
+                warranty_parent__isnull=False,
+            ).exists()
+        )
         self.assertEqual(Customer.objects.filter(phone__startswith="+7908").count(), 6)
         self.assertTrue(
             Payment.objects.filter(description__startswith="[demo]").exists()

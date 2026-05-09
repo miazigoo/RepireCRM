@@ -145,6 +145,7 @@
                     <strong>{{ order.order_number }}</strong>
                     <small>{{ order.created_at | date:'dd.MM.yyyy HH:mm' }}</small>
                   </span>
+                  <span class="warranty-mini-chip" *ngIf="order.is_warranty_case">Гарантия</span>
                   <mat-icon>{{ isOrderExpanded(order) ? 'expand_less' : 'expand_more' }}</mat-icon>
                 </button>
               </td>
@@ -202,6 +203,9 @@
                     <span class="eyebrow">Устройство в заказе</span>
                     <h3>{{ getDeviceTitle(order) }}</h3>
                     <p>{{ getProblemSummary(order) }}</p>
+                    <p class="warranty-summary" *ngIf="getWarrantySummary(order)">
+                      {{ getWarrantySummary(order) }}
+                    </p>
 
                     <div class="device-facts" *ngIf="getDeviceFacts(order).length > 0">
                       <div class="device-fact" *ngFor="let fact of getDeviceFacts(order)">
@@ -267,6 +271,7 @@
                     <strong>{{ order.order_number }}</strong>
                     <small>{{ order.created_at | date:'dd.MM.yyyy HH:mm' }}</small>
                   </span>
+                  <span class="warranty-mini-chip" *ngIf="order.is_warranty_case">Гарантия</span>
                   <mat-icon>{{ isOrderExpanded(order) ? 'expand_less' : 'expand_more' }}</mat-icon>
                 </button>
                 <span class="status-chip" [ngClass]="order.status">
@@ -278,6 +283,9 @@
                 <strong>{{ getCustomerFullName(order) }}</strong>
                 <span>{{ getDeviceTitle(order) }}</span>
                 <small>{{ getDeviceMeta(order) }}</small>
+                <small class="warranty-summary" *ngIf="getWarrantySummary(order)">
+                  {{ getWarrantySummary(order) }}
+                </small>
               </div>
 
               <div class="card-stats">

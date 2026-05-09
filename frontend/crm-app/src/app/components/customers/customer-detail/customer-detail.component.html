@@ -140,6 +140,9 @@
                 <span class="status-chip" [ngClass]="order.status">
                   {{ getStatusLabel(order.status) }}
                 </span>
+                <span class="warranty-chip" *ngIf="getWarrantyLabel(order)">
+                  {{ getWarrantyLabel(order) }}
+                </span>
               </div>
               <p>{{ order.device }}</p>
               <div class="order-meta">
@@ -150,6 +153,14 @@
 
             <div class="order-price">
               <strong>{{ formatMoney(getOrderAmount(order)) }}</strong>
+              <button
+                *ngIf="canCreateWarranty(order)"
+                mat-icon-button
+                type="button"
+                (click)="openWarranty(order)"
+                aria-label="Создать гарантийный заказ">
+                <mat-icon>verified</mat-icon>
+              </button>
               <a mat-icon-button [routerLink]="['/orders', order.id]" aria-label="Открыть заказ">
                 <mat-icon>arrow_forward</mat-icon>
               </a>

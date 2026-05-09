@@ -215,6 +215,24 @@ class OrderApprovalCreateSchema(Schema):
     amount: float
 
 
+class WarrantyCaseCreateSchema(Schema):
+    reason: str
+    problem_description: Optional[str] = None
+    priority: Optional[str] = "high"
+    estimated_completion: Optional[datetime] = None
+
+
+class WarrantyOrderSummarySchema(Schema):
+    id: int
+    order_number: str
+    status: str
+    priority: str
+    problem_description: str
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+    warranty_reason: Optional[str] = None
+
+
 class OrderSchema(Schema):
     id: int
     order_number: str
@@ -238,6 +256,15 @@ class OrderSchema(Schema):
     completed_at: Optional[datetime] = None
     additional_services: List[OrderServiceSchema]
     notes: Optional[str] = None
+    warranty_days: int
+    warranty_until: Optional[datetime] = None
+    warranty_active: bool = False
+    is_warranty_case: bool = False
+    warranty_parent_order_id: Optional[int] = None
+    warranty_parent_order_number: Optional[str] = None
+    warranty_reason: Optional[str] = None
+    warranty_resolution: Optional[str] = None
+    warranty_cases_count: int = 0
 
     @staticmethod
     def resolve_additional_services(obj):
@@ -249,7 +276,7 @@ class OrderSchema(Schema):
 
     @staticmethod
     def resolve_final_cost(obj):
-        return float(obj.final_cost) if obj.final_cost else None
+        return float(obj.final_cost) if obj.final_cost is not None else None
 
     @staticmethod
     def resolve_prepayment(obj):
@@ -262,6 +289,24 @@ class OrderSchema(Schema):
     @staticmethod
     def resolve_remaining_payment(obj):
         return float(obj.remaining_payment)
+
+    @staticmethod
+    def resolve_warranty_active(obj):
+        return bool(obj.warranty_active)
+
+    @staticmethod
+    def resolve_warranty_parent_order_id(obj):
+        return obj.warranty_parent_id
+
+    @staticmethod
+    def resolve_warranty_parent_order_number(obj):
+        if not obj.warranty_parent:
+            return None
+        return obj.warranty_parent.order_number
+
+    @staticmethod
+    def resolve_warranty_cases_count(obj):
+        return obj.warranty_cases.count()
 
 
 class OrderListSchema(Schema):

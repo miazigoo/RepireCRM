@@ -43,6 +43,8 @@ from .orders_schemas import (
     OrderUpdateSchema,
     RepairStageSchema,
     RepairStageUpdateSchema,
+    WarrantyCaseCreateSchema,
+    WarrantyOrderSummarySchema,
 )
 from .schemas_repair_services import RepairServiceSchema
 
@@ -55,7 +57,13 @@ class OrderPagination(PageNumberPagination):
 
 def _get_accessible_order(request, order_id: int) -> Order:
     order = get_object_or_404(
-        Order.objects.select_related("shop", "customer", "device__model__brand"),
+        Order.objects.select_related(
+            "shop",
+            "customer",
+            "device__model__brand",
+            "device__model__device_type",
+            "warranty_parent",
+        ),
         id=order_id,
     )
     if not request.auth.can_access_shop(order.shop):
@@ -116,6 +124,22 @@ def _get_available_additional_service(request, service_id: int) -> AdditionalSer
     return service
 
 
+def _with_order_relations(queryset):
+    return queryset.select_related(
+        "customer",
+        "device__model__brand",
+        "device__model__device_type",
+        "shop",
+        "created_by",
+        "assigned_to",
+        "warranty_parent",
+    ).prefetch_related(
+        Prefetch(
+            "orderservice_set", queryset=OrderService.objects.select_related("service")
+        )
+    )
+
+
 @router.get("/", response=List[OrderSchema])
 @paginate(OrderPagination)
 def list_orders(request, filters: OrderFilterSchema = Query(...)):
@@ -124,18 +148,7 @@ def list_orders(request, filters: OrderFilterSchema = Query(...)):
         raise PermissionError("Нет прав для просмотра заказов")
 
     # Базовый queryset с оптимизацией запросов
-    queryset = Order.objects.select_related(
-        "customer",
-        "device__model__brand",
-        "device__model__device_type",
-        "shop",
-        "created_by",
-        "assigned_to",
-    ).prefetch_related(
-        Prefetch(
-            "orderservice_set", queryset=OrderService.objects.select_related("service")
-        )
-    )
+    queryset = _with_order_relations(Order.objects.all())
 
     # Выбранный филиал всегда ограничивает рабочий список заказов.
     if hasattr(request, "current_shop") and request.current_shop:
@@ -438,24 +451,104 @@ def create_device_model(request, data: DeviceModelCreateSchema):
     return 201, model
 
 
+@router.get("/{order_id}/warranty-cases", response=List[WarrantyOrderSummarySchema])
+def list_warranty_cases(request, order_id: int):
+    """Гарантийные обращения, созданные по исходному заказу."""
+    if not request.auth.has_permission("orders.view_order"):
+        raise PermissionError("Нет прав для просмотра заказов")
+
+    order = _get_accessible_order(request, order_id)
+    return _with_order_relations(order.warranty_cases.all()).order_by("-created_at")
+
+
+@router.post(
+    "/{order_id}/warranty-cases",
+    response={201: OrderSchema, 400: ErrorSchema, 404: ErrorSchema},
+)
+def create_warranty_case(request, order_id: int, data: WarrantyCaseCreateSchema):
+    """Создать бесплатный гарантийный заказ по выданному заказу."""
+    if not request.auth.has_permission("orders.add_order"):
+        raise PermissionError("Нет прав для создания заказов")
+
+    source_order = _get_accessible_order(request, order_id)
+    if source_order.is_warranty_case:
+        return 400, {
+            "error": "Гарантийный заказ не может быть исходным для новой гарантии"
+        }
+    if source_order.status != Order.StatusChoices.COMPLETED:
+        return 400, {
+            "error": "Гарантийный случай можно создать только по выданному заказу"
+        }
+    if not source_order.warranty_active:
+        return 400, {"error": "Гарантия по этому заказу уже не действует"}
+
+    reason = data.reason.strip()
+    if not reason:
+        return 400, {"error": "Укажите причину гарантийного обращения"}
+
+    priority = data.priority or Order.PriorityChoices.HIGH
+    if priority not in Order.PriorityChoices.values:
+        return 400, {"error": "Некорректный приоритет гарантийного заказа"}
+
+    problem_description = (
+        data.problem_description.strip()
+        if data.problem_description
+        else f"Гарантийное обращение: {reason}"
+    )
+
+    try:
+        with transaction.atomic():
+            warranty_order = Order.objects.create(
+                shop=source_order.shop,
+                customer=source_order.customer,
+                device=source_order.device,
+                status=Order.StatusChoices.RECEIVED,
+                priority=priority,
+                problem_description=problem_description,
+                accessories=source_order.accessories,
+                device_condition=source_order.device_condition,
+                cost_estimate=0,
+                prepayment=0,
+                created_by=request.auth,
+                assigned_to=source_order.assigned_to,
+                estimated_completion=data.estimated_completion,
+                notes=f"Гарантийный случай по заказу {source_order.order_number}",
+                is_warranty_case=True,
+                warranty_parent=source_order,
+                warranty_reason=reason,
+                warranty_days=source_order.warranty_days,
+            )
+            _record_status_history(
+                order=warranty_order,
+                old_status="",
+                new_status=warranty_order.status,
+                user=request.auth,
+                comment="Создан гарантийный заказ",
+            )
+            _log_order_audit(
+                order=source_order,
+                action=OrderAuditLog.ActionChoices.UPDATED,
+                actor=request.auth,
+                message=f"Создан гарантийный заказ {warranty_order.order_number}",
+                changes={"warranty_order_id": warranty_order.id},
+            )
+
+            return 201, _with_order_relations(Order.objects.all()).get(
+                id=warranty_order.id
+            )
+    except Http404:
+        return 404, {"error": "Исходный заказ не найден"}
+    except Exception as e:
+        return 400, {"error": str(e)}
+
+
 @router.get("/{order_id}", response=OrderSchema)
 def get_order(request, order_id: int):
     """Получение заказа по ID"""
     if not request.auth.has_permission("orders.view_order"):
         raise PermissionError("Нет прав для просмотра заказов")
 
-    queryset = Order.objects.select_related(
-        "customer",
-        "device__model__brand",
-        "device__model__device_type",
-        "shop",
-        "created_by",
-        "assigned_to",
-    ).prefetch_related(
-        Prefetch(
-            "orderservice_set", queryset=OrderService.objects.select_related("service")
-        )
-    )
+    queryset = _with_order_relations(Order.objects.all())
 
     order = get_object_or_404(queryset, id=order_id)
 
@@ -547,23 +640,7 @@ def create_order(request, data: OrderCreateSchema):
                 history.save(update_fields=["visits_count", "last_visit"])
 
             # Загружаем заказ с полными данными для ответа
-            order = (
-                Order.objects.select_related(
-                    "customer",
-                    "device__model__brand",
-                    "device__model__device_type",
-                    "shop",
-                    "created_by",
-                    "assigned_to",
-                )
-                .prefetch_related(
-                    Prefetch(
-                        "orderservice_set",
-                        queryset=OrderService.objects.select_related("service"),
-                    )
-                )
-                .get(id=order.id)
-            )
+            order = _with_order_relations(Order.objects.all()).get(id=order.id)
 
             return 201, order
 
@@ -649,23 +726,7 @@ def update_order(request, order_id: int, data: OrderUpdateSchema):
             order.customer.update_statistics()
 
         # Загружаем заказ с полными данными для ответа
-        order = (
-            Order.objects.select_related(
-                "customer",
-                "device__model__brand",
-                "device__model__device_type",
-                "shop",
-                "created_by",
-                "assigned_to",
-            )
-            .prefetch_related(
-                Prefetch(
-                    "orderservice_set",
-                    queryset=OrderService.objects.select_related("service"),
-                )
-            )
-            .get(id=order.id)
-        )
+        order = _with_order_relations(Order.objects.all()).get(id=order.id)
 
         return order
 

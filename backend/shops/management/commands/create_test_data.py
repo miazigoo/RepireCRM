@@ -1029,6 +1029,7 @@ class Command(BaseCommand):
             Order.StatusChoices.CANCELLED,
         ]
         priorities = [choice[0] for choice in Order.PriorityChoices.choices]
+        completed_orders = []
         for index in range(1, self.orders_target + 1):
             shop = self.random.choice(shops)
             manager = self.user_for_shop(users["managers"], shop)
@@ -1114,6 +1115,7 @@ class Command(BaseCommand):
             )
 
             if is_completed:
+                completed_orders.append(order)
                 amount = order.total_cost
                 method = self.random.choice(
                     (
@@ -1146,6 +1148,8 @@ class Command(BaseCommand):
                     prepayment=money(order.cost_estimate * money("0.35")),
                     updated_at=created_at + timedelta(hours=6),
                 )
+
+        self.create_warranty_cases(completed_orders, users)
 
     def attach_services(self, order, services):
         selected = self.random.sample(services, k=self.random.randrange(1, 4))
@@ -1236,6 +1240,123 @@ class Command(BaseCommand):
             actor=manager,
             message="Создан demo-заказ",
             changes={"demo": True},
+        )
+        set_created_at(OrderAuditLog, audit, created_at)
+
+    def create_warranty_cases(self, completed_orders, users):
+        if not completed_orders:
+            return
+
+        target = max(6, min(len(completed_orders) // 12, 60))
+        reasons = (
+            "Брак установленной детали",
+            "Повторная неисправность после ремонта",
+            "Доделка после диагностики качества",
+            "След от инструмента на корпусе",
+            "Переделка пайки после нагрузки",
+        )
+        statuses = (
+            Order.StatusChoices.COMPLETED,
+            Order.StatusChoices.IN_REPAIR,
+            Order.StatusChoices.RECEIVED,
+        )
+
+        for source in self.random.sample(
+            completed_orders, k=min(target, len(completed_orders))
+        ):
+            created_at = source.completed_at + timedelta(
+                days=self.random.randrange(5, 75),
+                hours=self.random.randrange(1, 9),
+            )
+            status = self.random.choice(statuses)
+            completed_at = (
+                created_at + timedelta(days=self.random.randrange(1, 4))
+                if status == Order.StatusChoices.COMPLETED
+                else None
+            )
+            manager = self.user_for_shop(users["managers"], source.shop)
+            technician = source.assigned_to or self.user_for_shop(
+                users["technicians"], source.shop
+            )
+            reason = self.random.choice(reasons)
+            warranty_order = Order.objects.create(
+                shop=source.shop,
+                customer=source.customer,
+                device=source.device,
+                status=status,
+                priority=Order.PriorityChoices.HIGH,
+                problem_description=f"[Гарантия] {reason.lower()}",
+                diagnosis="Проверка гарантийного обращения",
+                work_description="Гарантийная переделка выполнена"
+                if completed_at
+                else "",
+                accessories=source.accessories,
+                device_condition=source.device_condition,
+                cost_estimate=money("0"),
+                final_cost=money("0") if completed_at else None,
+                prepayment=money("0"),
+                created_by=manager,
+                assigned_to=technician,
+                estimated_completion=created_at + timedelta(days=3),
+                completed_at=completed_at,
+                notes=f"[demo][warranty] гарантийный случай по {source.order_number}",
+                is_warranty_case=True,
+                warranty_parent=source,
+                warranty_reason=reason,
+                warranty_days=source.warranty_days,
+            )
+            Order.objects.filter(pk=warranty_order.pk).update(
+                created_at=created_at,
+                updated_at=completed_at or created_at,
+                completed_at=completed_at,
+            )
+            self.create_warranty_history(
+                warranty_order, source, manager, technician, created_at, completed_at
+            )
+
+    def create_warranty_history(
+        self,
+        warranty_order,
+        source_order,
+        manager,
+        technician,
+        created_at,
+        completed_at,
+    ):
+        received = OrderStatusHistory.objects.create(
+            order=warranty_order,
+            old_status="",
+            new_status=Order.StatusChoices.RECEIVED,
+            comment=f"Гарантийный случай по {source_order.order_number}",
+            changed_by=manager,
+        )
+        OrderStatusHistory.objects.filter(pk=received.pk).update(changed_at=created_at)
+        if completed_at:
+            done = OrderStatusHistory.objects.create(
+                order=warranty_order,
+                old_status=Order.StatusChoices.IN_REPAIR,
+                new_status=Order.StatusChoices.COMPLETED,
+                comment="Гарантийная переделка завершена",
+                changed_by=manager,
+            )
+            OrderStatusHistory.objects.filter(pk=done.pk).update(
+                changed_at=completed_at
+            )
+            stage = RepairStage.objects.create(
+                order=warranty_order,
+                title="Контроль гарантии",
+                description="Проверено после переделки, клиенту можно выдавать",
+                customer_visible=True,
+                created_by=technician,
+            )
+            set_created_at(RepairStage, stage, completed_at - timedelta(hours=1))
+
+        audit = OrderAuditLog.objects.create(
+            order=warranty_order,
+            action=OrderAuditLog.ActionChoices.CREATED,
+            actor=manager,
+            message=f"Создан гарантийный demo-заказ по {source_order.order_number}",
+            changes={"source_order_id": source_order.id, "demo": True},
         )
         set_created_at(OrderAuditLog, audit, created_at)
 

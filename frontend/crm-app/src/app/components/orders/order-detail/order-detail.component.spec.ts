@@ -29,6 +29,12 @@ describe('OrderDetailComponent', () => {
     created_at: '2026-05-05T20:32:00Z',
     updated_at: '2026-05-05T20:32:00Z',
     estimated_completion: '2026-05-23T00:00:00Z',
+    completed_at: undefined,
+    warranty_days: 90,
+    warranty_until: '2026-08-05T20:32:00Z',
+    warranty_active: false,
+    is_warranty_case: false,
+    warranty_cases_count: 0,
     additional_services: [
       {
         service: {
@@ -76,15 +82,27 @@ describe('OrderDetailComponent', () => {
       'updateOrder',
       'addRepairStage',
       'requestApproval',
+      'getWarrantyCases',
+      'createWarrantyCase',
     ]);
     ordersService.getOrder.and.returnValue(of(order));
     ordersService.getStatusHistory.and.returnValue(of([]));
     ordersService.getRepairStages.and.returnValue(of([]));
     ordersService.getApprovals.and.returnValue(of([]));
     ordersService.getAuditLog.and.returnValue(of([]));
+    ordersService.getWarrantyCases.and.returnValue(of([]));
     ordersService.updateOrder.and.callFake((_: number, payload: any) =>
       of({ ...order, ...payload } as Order),
     );
+    ordersService.createWarrantyCase.and.returnValue(of({
+      ...order,
+      id: 44,
+      order_number: 'ORD-SPB01-000044',
+      is_warranty_case: true,
+      warranty_parent_order_id: 2,
+      warranty_parent_order_number: 'ORD-SPB01-000002',
+      warranty_reason: 'Брак установленной детали',
+    } as Order));
     paymentsService = jasmine.createSpyObj<PaymentsService>('PaymentsService', [
       'createOrderPayment',
     ]);
@@ -131,6 +149,8 @@ describe('OrderDetailComponent', () => {
     expect(text).toContain('Петров Петр');
     expect(text).toContain('900 ₽');
     expect(text).toContain('1 800 ₽');
+    expect(text).toContain('Гарантия');
+    expect(text).toContain('3 месяца');
     expect(text).not.toContain('RUB');
     expect(fixture.nativeElement.querySelector('.order-detail-page')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('mat-card')).toBeFalsy();
@@ -231,6 +251,29 @@ describe('OrderDetailComponent', () => {
 
     expect(paymentsService.createOrderPayment).toHaveBeenCalledOnceWith(2, 'sbp', 1800);
     expect(component.onlinePaymentLoading).toBeNull();
+  });
+
+  it('creates a warranty order from an active completed order', () => {
+    component.order = {
+      ...order,
+      status: 'completed',
+      final_cost: 1200,
+      warranty_active: true,
+      completed_at: '2026-05-06T20:32:00Z',
+    } as Order;
+    component.warrantyForm.patchValue({
+      reason: 'Брак установленной детали',
+      problem_description: 'Экран снова мерцает',
+      priority: 'high',
+    });
+
+    component.createWarrantyCase();
+
+    expect(ordersService.createWarrantyCase).toHaveBeenCalledOnceWith(2, {
+      reason: 'Брак установленной детали',
+      problem_description: 'Экран снова мерцает',
+      priority: 'high',
+    });
   });
 
   function normalizeText(element: HTMLElement): string {

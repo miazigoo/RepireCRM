@@ -422,15 +422,37 @@ body .handover-dialog {
   color: var(--color-text-primary);
 }
 
-body .handover-dialog mat-dialog-content {
-  display: grid;
-  gap: 12px;
+body .warranty-dialog,
+body .task-dialog {
+  color: var(--color-text-primary);
 }
 
-body .handover-dialog mat-dialog-content p {
+body .handover-dialog mat-dialog-content,
+body .warranty-dialog mat-dialog-content {
+  display: grid;
+  gap: 12px;
+  max-height: min(70vh, 620px);
+  overflow: auto;
+}
+
+body .handover-dialog mat-dialog-content p,
+body .warranty-dialog mat-dialog-content p {
   margin: 0 0 4px;
   color: var(--color-text-secondary);
   line-height: 1.5;
+}
+
+body .task-dialog-panel .mat-mdc-dialog-surface,
+body .warranty-dialog-panel .mat-mdc-dialog-surface,
+body .handover-dialog-panel .mat-mdc-dialog-surface {
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+}
+
+body .task-dialog-panel .mdc-dialog__container,
+body .warranty-dialog-panel .mdc-dialog__container,
+body .handover-dialog-panel .mdc-dialog__container {
+  max-height: calc(100vh - 32px);
 }
 
 body .mat-mdc-form-field-subscript-wrapper {

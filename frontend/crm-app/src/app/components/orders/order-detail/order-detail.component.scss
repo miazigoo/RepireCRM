@@ -232,6 +232,7 @@
 
 .visibility-chip,
 .approval-chip,
+.warranty-chip,
 .panel-meta span,
 .service-meta span {
   display: inline-grid;
@@ -244,6 +245,16 @@
   font-size: 12px;
   font-weight: 950;
   white-space: nowrap;
+}
+
+.warranty-chip {
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  color: var(--color-warning);
+
+  &.active {
+    background: color-mix(in srgb, var(--color-success) 14%, transparent);
+    color: var(--color-success);
+  }
 }
 
 .status-rail {
@@ -337,7 +348,8 @@
 .repair-stages,
 .approval-list,
 .audit-list,
-.document-list {
+.document-list,
+.warranty-cases {
   display: grid;
   gap: 12px;
 }
@@ -351,7 +363,8 @@
 .repair-stage,
 .approval-item,
 .audit-item,
-.document-item {
+.document-item,
+.warranty-case {
   padding: 14px;
   background: var(--order-panel-strong);
 
@@ -371,6 +384,44 @@
     margin-top: 8px;
     color: var(--order-muted);
     line-height: 1.5;
+  }
+}
+
+.warranty-story {
+  border-color: color-mix(in srgb, var(--color-success) 26%, var(--order-border));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-success) 9%, transparent), transparent 52%),
+    var(--order-panel-strong);
+}
+
+.warranty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+
+  a {
+    min-height: 44px;
+    color: var(--color-text-primary) !important;
+    font-weight: 950;
+  }
+}
+
+.warranty-case {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid var(--order-border);
+  border-radius: 8px;
+}
+
+.warranty-case-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  a {
+    color: var(--color-text-primary) !important;
   }
 }
 
@@ -670,6 +721,29 @@
   button {
     flex: 1;
   }
+}
+
+.warranty-panel {
+  border-color: color-mix(in srgb, var(--color-warning) 24%, var(--order-border));
+
+  &.active {
+    border-color: color-mix(in srgb, var(--color-success) 32%, var(--order-border));
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--color-success) 8%, transparent), transparent 56%),
+      var(--order-panel);
+  }
+
+  &.case {
+    border-color: color-mix(in srgb, var(--color-primary) 32%, var(--order-border));
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 9%, transparent), transparent 56%),
+      var(--order-panel);
+  }
+}
+
+.warranty-action {
+  width: 100%;
+  margin-top: 14px;
 }
 
 .timeline-list div {

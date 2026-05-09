@@ -221,6 +221,7 @@ def get_customer_orders(request, customer_id: int):
         "shop",
         "created_by",
         "assigned_to",
+        "warranty_parent",
     ).order_by("-created_at")
 
     return [
@@ -233,6 +234,15 @@ def get_customer_orders(request, customer_id: int):
             "final_cost": float(order.final_cost) if order.final_cost else None,
             "created_at": order.created_at,
             "shop": order.shop.name,
+            "completed_at": order.completed_at,
+            "warranty_until": order.warranty_until,
+            "warranty_active": order.warranty_active,
+            "is_warranty_case": order.is_warranty_case,
+            "warranty_parent_order_id": order.warranty_parent_id,
+            "warranty_parent_order_number": order.warranty_parent.order_number
+            if order.warranty_parent
+            else None,
+            "warranty_reason": order.warranty_reason,
         }
         for order in orders
     ]

@@ -281,6 +281,16 @@ export class OrdersListComponent implements OnInit {
     return order.problem_description || 'Описание неисправности пока не указано';
   }
 
+  getWarrantySummary(order: Order): string {
+    if (order.is_warranty_case) {
+      return `Гарантия по ${order.warranty_parent_order_number || 'исходному заказу'}`;
+    }
+    if (order.warranty_active && order.warranty_until) {
+      return `Гарантия до ${new Intl.DateTimeFormat('ru-RU').format(new Date(order.warranty_until))}`;
+    }
+    return '';
+  }
+
   getOrderAmount(order: Order): number {
     return Number(order.final_cost ?? order.total_cost ?? order.cost_estimate ?? 0);
   }

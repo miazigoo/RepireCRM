@@ -1,8 +1,10 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Max
+from django.utils import timezone
 from sequences import get_next_value
 
 
@@ -123,6 +125,21 @@ class Order(models.Model):
     sla_delay_minutes = models.IntegerField("Отклонение, мин", null=True, blank=True)
     # положительные — опоздание, отрицательные — раньше, 0 — точно в срок
 
+    # Гарантия и гарантийные обращения
+    warranty_days = models.PositiveIntegerField("Гарантия (дней)", default=90)
+    warranty_until = models.DateTimeField("Гарантия до", null=True, blank=True)
+    is_warranty_case = models.BooleanField("Гарантийный случай", default=False)
+    warranty_parent = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="warranty_cases",
+        verbose_name="Исходный заказ по гарантии",
+    )
+    warranty_reason = models.TextField("Причина гарантийного обращения", blank=True)
+    warranty_resolution = models.TextField("Решение по гарантии", blank=True)
+
     class Meta:
         db_table = "orders"
         verbose_name = "Заказ"
@@ -134,6 +151,9 @@ class Order(models.Model):
             models.Index(fields=["order_number"]),
             models.Index(fields=["completed_at", "sla_on_time"]),
             models.Index(fields=["estimated_completion"]),
+            models.Index(fields=["is_warranty_case", "status"]),
+            models.Index(fields=["warranty_parent"]),
+            models.Index(fields=["warranty_until"]),
         ]
 
     def __str__(self):
@@ -142,7 +162,9 @@ class Order(models.Model):
     @property
     def total_cost(self):
         """Общая стоимость заказа включая дополнительные услуги"""
-        base_cost = self.final_cost or self.cost_estimate
+        base_cost = (
+            self.final_cost if self.final_cost is not None else self.cost_estimate
+        )
         services_cost = sum(
             service.price * service.quantity for service in self.orderservice_set.all()
         )
@@ -153,6 +175,15 @@ class Order(models.Model):
         """Остаток к доплате"""
         return max(0, self.total_cost - self.prepayment)
 
+    @property
+    def warranty_active(self):
+        """Действует ли гарантия на текущий момент."""
+        return bool(
+            self.warranty_until
+            and self.status == self.StatusChoices.COMPLETED
+            and self.warranty_until >= timezone.now()
+        )
+
     def _generate_order_number(self):
         """Генерация номера заказа"""
         shop_settings = getattr(self.shop, "settings", None)
@@ -162,7 +193,7 @@ class Order(models.Model):
 
     def save(self, *args, **kwargs):
         # Бизнес-правило: нельзя закрыть без final_cost
-        if self.status == self.StatusChoices.COMPLETED and not self.final_cost:
+        if self.status == self.StatusChoices.COMPLETED and self.final_cost is None:
             from django.core.exceptions import ValidationError
 
             raise ValidationError(
@@ -171,6 +202,23 @@ class Order(models.Model):
 
         if not self.order_number:
             self.order_number = self._generate_order_number()
+
+        if self.status == self.StatusChoices.COMPLETED and not self.completed_at:
+            self.completed_at = timezone.now()
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None:
+                kwargs["update_fields"] = list(set(update_fields) | {"completed_at"})
+
+        if (
+            self.status == self.StatusChoices.COMPLETED
+            and self.completed_at
+            and self.warranty_days
+            and not self.warranty_until
+        ):
+            self.warranty_until = self.completed_at + timedelta(days=self.warranty_days)
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None:
+                kwargs["update_fields"] = list(set(update_fields) | {"warranty_until"})
 
         super().save(*args, **kwargs)
 

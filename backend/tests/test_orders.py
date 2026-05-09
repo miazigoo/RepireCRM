@@ -116,6 +116,7 @@ class OrderTestCase(TestCase):
         self.assertEqual(order.status, Order.StatusChoices.RECEIVED)
         self.assertEqual(order.priority, Order.PriorityChoices.NORMAL)
         self.assertTrue(order.order_number.startswith("ORD-TEST01-"))
+        self.assertEqual(order.warranty_days, 90)
 
     def test_order_total_cost_calculation(self):
         """Тест расчета общей стоимости"""
@@ -197,6 +198,58 @@ class OrderTestCase(TestCase):
                 response = self.client.get(route, **self.auth_headers())
 
                 self.assertEqual(response.status_code, 200, response.content)
+
+    def test_completed_order_gets_default_warranty_period(self):
+        completed_at = timezone.now()
+        order = self.create_order()
+        order.status = Order.StatusChoices.COMPLETED
+        order.final_cost = 5000
+        order.completed_at = completed_at
+        order.save()
+
+        self.assertEqual(order.warranty_days, 90)
+        self.assertIsNotNone(order.warranty_until)
+        self.assertEqual(order.warranty_until, completed_at + timedelta(days=90))
+        self.assertTrue(order.warranty_active)
+
+    def test_create_warranty_case_from_completed_order(self):
+        completed_at = timezone.now() - timedelta(days=7)
+        order = self.create_order()
+        order.status = Order.StatusChoices.COMPLETED
+        order.final_cost = 5000
+        order.completed_at = completed_at
+        order.save()
+
+        response = self.client.post(
+            f"/api/orders/{order.id}/warranty-cases",
+            data=json.dumps(
+                {
+                    "reason": "Брак детали",
+                    "problem_description": "Экран снова мерцает",
+                    "priority": "high",
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 201, response.content)
+        payload = response.json()
+        self.assertTrue(payload["is_warranty_case"])
+        self.assertEqual(payload["warranty_parent_order_id"], order.id)
+        self.assertEqual(payload["warranty_parent_order_number"], order.order_number)
+        self.assertEqual(payload["cost_estimate"], 0.0)
+        self.assertEqual(payload["warranty_reason"], "Брак детали")
+
+        cases_response = self.client.get(
+            f"/api/orders/{order.id}/warranty-cases",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(cases_response.status_code, 200, cases_response.content)
+        self.assertEqual(
+            cases_response.json()[0]["order_number"], payload["order_number"]
+        )
 
     def test_order_list_serializes_additional_services_through_order_service(self):
         order = self.create_order()

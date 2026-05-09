@@ -12,6 +12,7 @@ import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { finalize } from 'rxjs';
@@ -46,6 +47,7 @@ import {
     MatTabsModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     MatCheckboxModule,
     MatDialogModule,
   ],
@@ -63,6 +65,7 @@ import {
 })
 export class OrderDetailComponent implements OnInit {
   @ViewChild('handoverDialog') handoverDialog?: TemplateRef<void>;
+  @ViewChild('warrantyDialog') warrantyDialog?: TemplateRef<void>;
 
   order: Order | null = null;
   loading = false;
@@ -70,6 +73,7 @@ export class OrderDetailComponent implements OnInit {
   approvalSaving = false;
   statusSaving = false;
   handoverSaving = false;
+  warrantySaving = false;
   handoverNeedsAttention = false;
   onlinePaymentLoading: OnlinePaymentMethodType | null = null;
   orderId: number;
@@ -78,12 +82,15 @@ export class OrderDetailComponent implements OnInit {
   repairStages: RepairStage[] = [];
   approvals: OrderApproval[] = [];
   auditLogs: OrderAuditLog[] = [];
+  warrantyCases: Order[] = [];
   orderDocuments: any[] = [];
   stageForm: FormGroup;
   approvalForm: FormGroup;
   handoverForm: FormGroup;
+  warrantyForm: FormGroup;
   selectedStagePhoto: File | null = null;
   private handoverDialogRef: MatDialogRef<unknown> | null = null;
+  private warrantyDialogRef: MatDialogRef<unknown> | null = null;
 
   readonly statusOptions: Array<{ value: OrderStatus; label: string; icon: string }> = [
     { value: 'received', label: 'Принят', icon: 'inbox' },
@@ -94,6 +101,14 @@ export class OrderDetailComponent implements OnInit {
     { value: 'ready', label: 'Готов', icon: 'task_alt' },
     { value: 'completed', label: 'Выдан', icon: 'done_all' },
     { value: 'cancelled', label: 'Отменен', icon: 'cancel' },
+  ];
+
+  readonly warrantyReasonOptions = [
+    'Брак установленной детали',
+    'Повторная неисправность',
+    'Недоделка ремонта',
+    'Повреждение при ремонте',
+    'Другое гарантийное обращение',
   ];
 
   private readonly statusIconPaths: Record<string, string[]> = {
@@ -141,6 +156,11 @@ export class OrderDetailComponent implements OnInit {
       prepayment: [0, [Validators.required, Validators.min(0)]],
       status_comment: ['Заказ выдан клиенту', [Validators.maxLength(255)]],
     });
+    this.warrantyForm = this.fb.group({
+      reason: ['Повторная неисправность', [Validators.required, Validators.maxLength(255)]],
+      problem_description: ['', [Validators.required, Validators.maxLength(1000)]],
+      priority: ['high', Validators.required],
+    });
   }
 
   ngOnInit(): void {
@@ -149,6 +169,7 @@ export class OrderDetailComponent implements OnInit {
     this.loadRepairStages();
     this.loadApprovals();
     this.loadAuditLog();
+    this.loadWarrantyCases();
     this.loadDocuments();
   }
 
@@ -158,7 +179,11 @@ export class OrderDetailComponent implements OnInit {
       next: (order) => {
         this.order = order;
         this.syncHandoverForm(order);
+        this.syncWarrantyForm(order);
         this.loading = false;
+        if (this.route.snapshot.queryParamMap?.get('warranty') === 'new') {
+          setTimeout(() => this.openWarrantyDialog(), 0);
+        }
       },
       error: (error) => {
         this.snackBar.open('Ошибка загрузки заказа', 'Закрыть', { duration: 3000 });
@@ -196,6 +221,16 @@ export class OrderDetailComponent implements OnInit {
       next: (items) => (this.approvals = items),
       error: () =>
         this.snackBar.open('Ошибка загрузки согласований', 'Закрыть', { duration: 3000 }),
+    });
+  }
+
+  private loadWarrantyCases(): void {
+    this.ordersService.getWarrantyCases(this.orderId).subscribe({
+      next: (items) => (this.warrantyCases = items),
+      error: () =>
+        this.snackBar.open('Ошибка загрузки гарантийных обращений', 'Закрыть', {
+          duration: 3000,
+        }),
     });
   }
 
@@ -318,6 +353,7 @@ export class OrderDetailComponent implements OnInit {
       .subscribe({
         next: (order) => {
           this.order = order;
+          this.syncWarrantyForm(order);
           this.snackBar.open('Статус заказа обновлен', 'Закрыть', { duration: 2500 });
           this.loadStatusHistory();
           this.loadAuditLog();
@@ -403,6 +439,62 @@ export class OrderDetailComponent implements OnInit {
         },
         error: (error) => {
           const message = error?.error?.error || 'Не удалось создать онлайн-оплату';
+          this.snackBar.open(message, 'Закрыть', { duration: 3500 });
+        },
+      });
+  }
+
+  openWarrantyDialog(): void {
+    if (!this.order) {
+      return;
+    }
+
+    if (!this.canCreateWarrantyCase(this.order)) {
+      this.snackBar.open(this.getWarrantyUnavailableReason(this.order), 'Закрыть', {
+        duration: 3500,
+      });
+      return;
+    }
+
+    this.syncWarrantyForm(this.order);
+    if (!this.warrantyDialog || this.warrantyDialogRef) {
+      return;
+    }
+
+    this.warrantyDialogRef = this.dialog.open(this.warrantyDialog, {
+      width: 'min(680px, calc(100vw - 32px))',
+      maxHeight: 'calc(100vh - 32px)',
+      panelClass: 'warranty-dialog-panel',
+      autoFocus: 'first-tabbable',
+    });
+    this.warrantyDialogRef.afterClosed().subscribe(() => {
+      this.warrantyDialogRef = null;
+    });
+  }
+
+  createWarrantyCase(): void {
+    if (!this.order || this.warrantySaving) {
+      return;
+    }
+
+    if (this.warrantyForm.invalid) {
+      this.warrantyForm.markAllAsTouched();
+      return;
+    }
+
+    this.warrantySaving = true;
+    this.ordersService
+      .createWarrantyCase(this.order.id, this.warrantyForm.getRawValue())
+      .pipe(finalize(() => (this.warrantySaving = false)))
+      .subscribe({
+        next: (warrantyOrder) => {
+          this.warrantyDialogRef?.close();
+          this.warrantyDialogRef = null;
+          this.snackBar.open('Гарантийный заказ создан', 'Закрыть', { duration: 2500 });
+          this.router.navigate(['/orders', warrantyOrder.id]);
+        },
+        error: (error) => {
+          const message = error.error?.error || 'Не удалось создать гарантийный заказ';
           this.snackBar.open(message, 'Закрыть', { duration: 3500 });
         },
       });
@@ -555,6 +647,45 @@ export class OrderDetailComponent implements OnInit {
     return order.estimated_completion || order.created_at;
   }
 
+  canCreateWarrantyCase(order: Order): boolean {
+    return Boolean(!order.is_warranty_case && order.status === 'completed' && order.warranty_active);
+  }
+
+  getWarrantyUnavailableReason(order: Order): string {
+    if (order.is_warranty_case) {
+      return 'Это уже гарантийный заказ';
+    }
+    if (order.status !== 'completed') {
+      return 'Гарантийный случай можно создать после выдачи заказа';
+    }
+    return 'Гарантия по этому заказу уже не действует';
+  }
+
+  getWarrantyLabel(order: Order): string {
+    if (order.is_warranty_case) {
+      return `Гарантийный случай по ${order.warranty_parent_order_number || 'исходному заказу'}`;
+    }
+    if (order.warranty_until) {
+      return `Гарантия до ${this.formatDate(order.warranty_until)}`;
+    }
+    return 'Гарантия 3 месяца после выдачи';
+  }
+
+  getWarrantyDaysLabel(order: Order): string {
+    const days = Number(order.warranty_days || 90);
+    if (days === 90) {
+      return '3 месяца';
+    }
+    return `${days} дн.`;
+  }
+
+  formatDate(value?: string): string {
+    if (!value) {
+      return 'не указано';
+    }
+    return new Intl.DateTimeFormat('ru-RU').format(new Date(value));
+  }
+
   getStatusIndex(status: OrderStatus): number {
     return this.statusOptions.findIndex((option) => option.value === status);
   }
@@ -588,6 +719,17 @@ export class OrderDetailComponent implements OnInit {
         final_cost: finalCost,
         prepayment,
         status_comment: 'Заказ выдан клиенту',
+      },
+      { emitEvent: false },
+    );
+  }
+
+  private syncWarrantyForm(order: Order): void {
+    this.warrantyForm.patchValue(
+      {
+        reason: 'Повторная неисправность',
+        problem_description: `Гарантийное обращение по заказу ${order.order_number}: ${order.problem_description}`,
+        priority: 'high',
       },
       { emitEvent: false },
     );

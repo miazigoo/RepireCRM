@@ -37,9 +37,11 @@ class OrderAdmin(admin.ModelAdmin):
         "shop",
         "status",
         "priority",
+        "is_warranty_case",
+        "warranty_until",
         "created_at",
     )
-    list_filter = ("status", "priority", "shop")
+    list_filter = ("status", "priority", "shop", "is_warranty_case")
     search_fields = (
         "order_number",
         "customer__phone",

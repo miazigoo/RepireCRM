@@ -171,6 +171,22 @@ export interface Order {
   completed_at?: string;
   additional_services: OrderService[];
   notes?: string;
+  warranty_days?: number;
+  warranty_until?: string;
+  warranty_active?: boolean;
+  is_warranty_case?: boolean;
+  warranty_parent_order_id?: number;
+  warranty_parent_order_number?: string;
+  warranty_reason?: string;
+  warranty_resolution?: string;
+  warranty_cases_count?: number;
+}
+
+export interface WarrantyCaseCreate {
+  reason: string;
+  problem_description?: string;
+  priority?: OrderPriority;
+  estimated_completion?: string | null;
 }
 
 export interface OrderStatusHistory {

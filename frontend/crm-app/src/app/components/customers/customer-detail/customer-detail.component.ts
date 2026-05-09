@@ -82,6 +82,12 @@ export class CustomerDetailComponent implements OnInit {
     });
   }
 
+  openWarranty(order: any): void {
+    this.router.navigate(['/orders', order.id], {
+      queryParams: { warranty: 'new' }
+    });
+  }
+
   deleteCustomer(): void {
     if (this.customer && this.customer.orders_count > 0) {
       this.snackBar.open('Нельзя удалить клиента с заказами', 'Закрыть', { duration: 3000 });
@@ -162,6 +168,20 @@ export class CustomerDetailComponent implements OnInit {
 
   getOrderAmount(order: any): number {
     return Number(order.final_cost || order.cost_estimate || 0);
+  }
+
+  canCreateWarranty(order: any): boolean {
+    return Boolean(!order.is_warranty_case && order.status === 'completed' && order.warranty_active);
+  }
+
+  getWarrantyLabel(order: any): string {
+    if (order.is_warranty_case) {
+      return `Гарантийный по ${order.warranty_parent_order_number || 'исходному заказу'}`;
+    }
+    if (order.warranty_active && order.warranty_until) {
+      return `Гарантия до ${new Intl.DateTimeFormat('ru-RU').format(new Date(order.warranty_until))}`;
+    }
+    return '';
   }
 
   formatMoney(value: number | null | undefined): string {

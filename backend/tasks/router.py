@@ -180,6 +180,8 @@ def create_task(request, data: TaskCreateSchema):
             payload = data.dict()
             if not payload.get("payment_amount"):
                 payload["payment_amount"] = Decimal("0")
+            payload["attachments"] = payload.get("attachments") or []
+            payload["recurrence_pattern"] = payload.get("recurrence_pattern") or {}
             task = Task.objects.create(**payload, created_by=request.auth)
 
             # Отправляем уведомления исполнителям
@@ -352,6 +354,10 @@ def update_task(request, task_id: int, data: TaskUpdateSchema):
     """Обновление задачи"""
     task = get_object_or_404(Task, id=task_id)
     incoming = data.dict(exclude_unset=True)
+    if incoming.get("attachments") is None:
+        incoming.pop("attachments", None)
+    if incoming.get("recurrence_pattern") is None:
+        incoming.pop("recurrence_pattern", None)
 
     # Проверяем права на редактирование
     if not request.auth.has_permission("tasks.change_task"):

@@ -295,6 +295,7 @@ export class TasksDashboardComponent implements OnInit {
     const dialogRef = this.dialog.open(TaskDialogComponent, {
       width: 'min(880px, calc(100vw - 28px))',
       maxWidth: '880px',
+      maxHeight: 'calc(100vh - 32px)',
       panelClass: 'task-dialog-panel',
       autoFocus: false,
       data: {
@@ -323,6 +324,7 @@ export class TasksDashboardComponent implements OnInit {
     const dialogRef = this.dialog.open(TaskDialogComponent, {
       width: 'min(880px, calc(100vw - 28px))',
       maxWidth: '880px',
+      maxHeight: 'calc(100vh - 32px)',
       panelClass: 'task-dialog-panel',
       autoFocus: false,
       data: {

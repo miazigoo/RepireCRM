@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, time, timedelta
 
 import jwt
@@ -22,7 +23,11 @@ class TasksApiTestCase(TestCase):
             currency="RUB",
         )
         self.role = Role.objects.create(name="Manager", code=Role.RoleType.MANAGER)
-        for codename in ("tasks.view_task", "tasks.view_template"):
+        for codename in (
+            "tasks.view_task",
+            "tasks.view_template",
+            "tasks.add_task",
+        ):
             permission = Permission.objects.create(
                 name=codename,
                 codename=codename,
@@ -37,6 +42,7 @@ class TasksApiTestCase(TestCase):
             last_name="User",
             role=self.role,
             current_shop=self.shop,
+            is_director=True,
         )
         self.user.shops.add(self.shop)
 
@@ -96,3 +102,30 @@ class TasksApiTestCase(TestCase):
         payload = response.json()
         self.assertEqual(payload[0]["name"], "Первичная диагностика")
         self.assertEqual(payload[0]["category"], "Сервис")
+
+    def test_create_task_defaults_nullable_attachments_to_list(self):
+        response = self.client.post(
+            "/api/tasks/",
+            data=json.dumps(
+                {
+                    "title": "Проверить витрину",
+                    "description": "Проверка после смены",
+                    "assignment_type": "individual",
+                    "assigned_to_id": self.user.id,
+                    "priority": "normal",
+                    "kind": "regular",
+                    "substatus": "new",
+                    "status": "pending",
+                    "is_paid": True,
+                    "payment_amount": 550,
+                    "attachments": None,
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 201, response.content)
+        task = Task.objects.get(id=response.json()["id"])
+        self.assertEqual(task.attachments, [])
+        self.assertEqual(task.payment_amount, 550)

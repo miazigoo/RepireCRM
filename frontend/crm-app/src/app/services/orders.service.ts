@@ -11,7 +11,8 @@ import {
   OrderFilters,
   PaginatedResponse,
   OrderStatusHistory,
-  RepairStage
+  RepairStage,
+  WarrantyCaseCreate
 } from '../core/models/models';
 
 type OrderListResponse = Order[] | PaginatedResponse<Order>;
@@ -95,6 +96,14 @@ export class OrdersService {
     data: { title: string; description?: string; amount: number }
   ): Observable<OrderApproval> {
     return this.apiService.post<OrderApproval>(`${this.endpoint}/${id}/approvals`, data);
+  }
+
+  getWarrantyCases(id: number): Observable<Order[]> {
+    return this.apiService.get<Order[]>(`${this.endpoint}/${id}/warranty-cases`);
+  }
+
+  createWarrantyCase(id: number, data: WarrantyCaseCreate): Observable<Order> {
+    return this.apiService.post<Order>(`${this.endpoint}/${id}/warranty-cases`, data);
   }
 
   getAdditionalServices(includeInactive = false): Observable<AdditionalService[]> {

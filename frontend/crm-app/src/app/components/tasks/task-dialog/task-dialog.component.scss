@@ -1,8 +1,12 @@
 .task-dialog {
   display: grid;
   width: min(820px, calc(100vw - 40px));
+  max-height: calc(100vh - 40px);
+  box-sizing: border-box;
   gap: 14px;
-  padding: 4px;
+  overflow: auto;
+  padding: 4px 6px 8px;
+  color: var(--color-text-primary);
 }
 
 header,
@@ -49,10 +53,27 @@ header {
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+  color: var(--color-text-primary);
 }
 
 footer {
   justify-content: flex-end;
+}
+
+:host ::ng-deep {
+  .mat-mdc-form-field,
+  .mat-mdc-select-value,
+  .mat-mdc-input-element,
+  textarea.mat-mdc-input-element,
+  .mat-mdc-slide-toggle .mdc-label,
+  .mat-mdc-form-field .mat-mdc-form-field-text-suffix {
+    color: var(--color-text-primary) !important;
+  }
+
+  .mat-mdc-floating-label,
+  .mat-mdc-form-field-required-marker {
+    color: var(--color-text-secondary) !important;
+  }
 }
 
 @media (max-width: 760px) {
