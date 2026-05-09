@@ -13,9 +13,11 @@
   --order-muted: var(--color-text-secondary);
   --order-shadow: var(--panel-shadow);
 
-  width: min(100%, 1480px);
+  box-sizing: border-box;
+  width: min(100%, 1520px);
   margin: 0 auto;
   color: var(--color-text-primary);
+  overflow-x: hidden;
 }
 
 .order-hero,
@@ -37,11 +39,11 @@
 
 .order-hero {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 18px;
-  margin-bottom: 18px;
-  padding: 24px 26px;
+  margin-bottom: 14px;
+  padding: 18px 22px;
   background:
     linear-gradient(
       125deg,
@@ -73,13 +75,18 @@
   align-items: center;
   gap: 16px;
 
+  > div {
+    min-width: 0;
+  }
+
   h1 {
     overflow: hidden;
     margin: 6px 0 0;
     color: var(--color-text-primary);
-    font-size: 34px;
+    font-size: 31px;
     font-weight: 950;
     line-height: 1.08;
+    overflow-wrap: anywhere;
     text-overflow: ellipsis;
   }
 }
@@ -99,8 +106,8 @@
 }
 
 .order-avatar {
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
   color: #fff;
 }
@@ -149,16 +156,20 @@
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 18px;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
 .metric-card {
   display: flex;
   min-width: 0;
-  gap: 13px;
-  padding: 16px;
+  gap: 12px;
+  padding: 14px;
   background: var(--order-panel-strong);
+
+  > div {
+    min-width: 0;
+  }
 
   small,
   strong,
@@ -177,16 +188,22 @@
     overflow: hidden;
     margin-top: 5px;
     color: var(--color-text-primary);
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 950;
+    overflow-wrap: anywhere;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    line-height: 1.15;
   }
 
   span:not(.metric-icon) {
     margin-top: 4px;
     color: var(--order-muted);
     font-size: 13px;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    word-break: break-word;
   }
 }
 
@@ -260,16 +277,16 @@
 .status-rail {
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 8px;
-  margin-bottom: 18px;
-  padding: 12px;
+  gap: 7px;
+  margin-bottom: 14px;
+  padding: 10px;
   background: var(--order-panel-strong);
 
   button {
     display: grid;
-    min-height: 76px;
+    min-height: 60px;
     place-items: center;
-    gap: 6px;
+    gap: 4px;
     border: 1px solid var(--order-border);
     border-radius: 8px;
     background: color-mix(in srgb, var(--panel-background) 82%, transparent);
@@ -300,7 +317,7 @@
 .order-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 18px;
+  gap: 14px;
   align-items: start;
 }
 
@@ -308,10 +325,11 @@
 .order-sidebar {
   display: grid;
   min-width: 0;
-  gap: 18px;
+  gap: 14px;
 }
 
 .order-sidebar {
+  order: -1;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   align-items: start;
 }
@@ -328,21 +346,159 @@
 .customer-panel,
 .device-panel,
 .warranty-panel,
-.handover-panel {
+.timeline-panel {
   grid-column: span 3;
 }
 
 .finance-panel {
-  grid-column: span 6;
+  grid-column: 1 / -1;
+}
+
+.handover-panel {
+  grid-column: 1 / -1;
+}
+
+.customer-panel {
+  order: 1;
+}
+
+.device-panel {
+  order: 2;
+}
+
+.warranty-panel {
+  order: 3;
 }
 
 .timeline-panel {
-  grid-column: span 3;
+  order: 4;
+}
+
+.handover-panel {
+  order: 5;
+}
+
+.finance-panel {
+  order: 6;
 }
 
 .details-panel {
   min-width: 0;
   overflow: hidden;
+}
+
+.handover-fields {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.handover-total {
+  margin-top: 0;
+}
+
+.handover-preview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.handover-preview div {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  border: 1px solid var(--order-border);
+  border-radius: 8px;
+  background: var(--order-panel-strong);
+
+  span {
+    color: var(--order-muted);
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  strong {
+    color: var(--color-text-primary);
+    font-weight: 950;
+  }
+}
+
+.handover-action {
+  width: auto;
+  margin-top: 14px;
+}
+
+.handover-panel {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.85fr) minmax(360px, 1.2fr) auto;
+  gap: 14px;
+  align-items: center;
+
+  .eyebrow,
+  h2,
+  p {
+    grid-column: 1;
+  }
+
+  .handover-preview {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    margin-top: 0;
+  }
+
+  .handover-action {
+    grid-column: 3;
+    grid-row: 1 / span 3;
+    align-self: stretch;
+    min-width: 190px;
+  }
+}
+
+.customer-panel .contact-list,
+.customer-panel .info-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.customer-panel .contact-list {
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.customer-panel .contact-list a {
+  min-height: 0;
+  border-color: transparent;
+  background: transparent;
+  padding: 0;
+  color: var(--order-muted);
+
+  span {
+    white-space: normal;
+  }
+}
+
+.finance-panel .info-list {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.finance-panel .discount-box {
+  grid-template-columns: minmax(220px, 0.8fr) minmax(260px, 1fr) minmax(260px, 1fr);
+  align-items: start;
+}
+
+.finance-panel .discount-header {
+  grid-column: 1 / -1;
+}
+
+.finance-panel .discount-list,
+.finance-panel .discount-empty {
+  grid-row: span 2;
+}
+
+.finance-panel .online-payment-box {
+  grid-template-columns: minmax(220px, 0.7fr) minmax(260px, 1fr);
+  align-items: center;
 }
 
 .panel-header {
@@ -646,9 +802,12 @@
 }
 
 .sidebar-panel {
+  min-width: 0;
+
   h2,
   p {
     margin: 0;
+    overflow-wrap: anywhere;
   }
 
   h2 {
@@ -693,6 +852,7 @@
 
   span {
     overflow: hidden;
+    overflow-wrap: anywhere;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -924,13 +1084,40 @@
   .customer-panel,
   .device-panel,
   .warranty-panel,
-  .handover-panel,
   .timeline-panel {
     grid-column: span 3;
   }
 
+  .handover-panel,
   .finance-panel {
     grid-column: span 6;
+  }
+
+  .handover-panel,
+  .finance-panel .discount-box,
+  .finance-panel .online-payment-box {
+    grid-template-columns: 1fr;
+  }
+
+  .handover-panel .handover-preview,
+  .finance-panel .info-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .handover-panel .eyebrow,
+  .handover-panel h2,
+  .handover-panel p,
+  .handover-panel .handover-preview,
+  .handover-panel .handover-action {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .finance-panel .discount-header,
+  .finance-panel .discount-list,
+  .finance-panel .discount-empty {
+    grid-column: auto;
+    grid-row: auto;
   }
 }
 
@@ -961,8 +1148,41 @@
     padding: 20px;
   }
 
+  :host .order-detail-page {
+    width: calc(100vw - 32px);
+    max-width: calc(100vw - 32px);
+  }
+
   .hero-main h1 {
-    font-size: 29px;
+    font-size: 25px;
+  }
+
+  .metric-card {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+    gap: 10px;
+
+    > div {
+      width: min(100%, calc(100vw - 64px));
+      max-width: calc(100vw - 64px);
+    }
+
+    strong {
+      overflow: visible;
+      font-size: 19px;
+      text-overflow: clip;
+    }
+
+    span:not(.metric-icon) {
+      overflow-wrap: anywhere;
+      line-height: 1.35;
+    }
+  }
+
+  .hero-actions .secondary-action,
+  .hero-actions .primary-action {
+    width: 100%;
   }
 
   .metrics-grid,
@@ -985,6 +1205,16 @@
   .finance-panel,
   .timeline-panel {
     grid-column: 1 / -1;
+  }
+
+  .handover-panel,
+  .handover-fields,
+  .handover-total,
+  .handover-preview,
+  .finance-panel .info-list,
+  .finance-panel .discount-box,
+  .finance-panel .online-payment-box {
+    grid-template-columns: 1fr;
   }
 
   .stage-description-field,

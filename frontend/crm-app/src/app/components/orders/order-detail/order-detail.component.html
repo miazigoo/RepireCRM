@@ -618,24 +618,30 @@
         [class.needs-attention]="handoverNeedsAttention"
         *ngIf="order.status !== 'completed'; else completedHandover"
       >
-        <form [formGroup]="handoverForm" (ngSubmit)="completeOrder()">
-          <span class="eyebrow">Выдача</span>
-          <h2>Финальная стоимость</h2>
-          <p>Перед выдачей зафиксируйте итоговую сумму ремонта и оплату клиента.</p>
+        <span class="eyebrow">Выдача</span>
+        <h2>Финальная стоимость</h2>
+        <p>Перед выдачей зафиксируйте итоговую сумму ремонта и оплату клиента.</p>
 
-          <ng-container *ngTemplateOutlet="handoverFields"></ng-container>
+        <div class="handover-preview">
+          <div>
+            <span>Итого</span>
+            <strong>{{ formatMoney(handoverTotal) }}</strong>
+          </div>
+          <div>
+            <span>Остаток</span>
+            <strong>{{ formatMoney(handoverRemaining) }}</strong>
+          </div>
+        </div>
 
-          <button
-            mat-flat-button
-            class="primary-action handover-action"
-            type="submit"
-            [disabled]="handoverForm.invalid || handoverSaving"
-          >
-            <mat-spinner *ngIf="handoverSaving" diameter="18"></mat-spinner>
-            <mat-icon *ngIf="!handoverSaving">done_all</mat-icon>
-            Выдать заказ
-          </button>
-        </form>
+        <button
+          mat-flat-button
+          class="primary-action handover-action"
+          type="button"
+          (click)="openHandoverDialog()"
+        >
+          <mat-icon>done_all</mat-icon>
+          Оформить выдачу
+        </button>
       </section>
 
       <ng-template #completedHandover>
@@ -794,7 +800,7 @@
 </div>
 
 <ng-template #handoverFields>
-  <ng-container [formGroup]="handoverForm">
+  <div class="handover-fields" [formGroup]="handoverForm">
     <mat-form-field>
       <mat-label>Стоимость работ</mat-label>
       <input matInput type="number" min="0" formControlName="final_cost" />
@@ -830,7 +836,7 @@
         <strong>{{ formatMoney(handoverRemaining) }}</strong>
       </div>
     </div>
-  </ng-container>
+  </div>
 </ng-template>
 
 <ng-template #handoverDialog>
