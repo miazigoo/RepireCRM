@@ -12,6 +12,7 @@
   width: min(100%, 1480px);
   margin: 0 auto;
   color: var(--color-text-primary);
+  container: inventory-page / inline-size;
 }
 
 .inventory-hero,
@@ -204,6 +205,7 @@
 .filters-panel,
 .inventory-panel,
 .sidebar-panel {
+  min-width: 0;
   padding: 18px;
 }
 
@@ -257,6 +259,8 @@
 
 .table-shell {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
   overflow: auto;
   border: 1px solid var(--inventory-border);
   border-radius: 8px;
@@ -267,6 +271,16 @@
   width: 100%;
   min-width: 1060px;
   background: transparent !important;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:focus-visible,
+.inventory-card:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .item-cell {
@@ -400,10 +414,21 @@
 }
 
 .inventory-card {
+  cursor: pointer;
   padding: 14px;
   border: 1px solid var(--inventory-border);
   border-radius: 8px;
   background: var(--inventory-panel-strong);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.inventory-card:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 46%, var(--inventory-border));
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--inventory-panel-strong));
+  transform: translateY(-1px);
 }
 
 .card-topline,
@@ -709,6 +734,32 @@
   }
 }
 
+@container inventory-page (max-width: 1180px) {
+  .inventory-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .inventory-sidebar {
+    position: static;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@container inventory-page (max-width: 980px) {
+  .inventory-sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .filters-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .search-field,
+  .filter-actions {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 1120px) {
   .inventory-sidebar {
     grid-template-columns: 1fr;
@@ -727,6 +778,57 @@
 @media (max-width: 980px) {
   .metrics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container inventory-page (max-width: 720px) {
+  .inventory-hero {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 20px;
+
+    h1 {
+      font-size: 29px;
+    }
+  }
+
+  .hero-actions,
+  .filter-actions {
+    flex-direction: column;
+  }
+
+  .metrics-grid,
+  .filters-form {
+    grid-template-columns: 1fr;
+  }
+
+  .search-field,
+  .filter-actions {
+    grid-column: auto;
+  }
+
+  .panel-header {
+    flex-direction: column;
+  }
+
+  .panel-meta {
+    justify-content: flex-start;
+  }
+
+  .table-shell {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .inventory-table,
+  :host ::ng-deep .inventory-page .mat-mdc-paginator {
+    display: none;
+  }
+
+  .mobile-list {
+    display: grid;
+    gap: 12px;
   }
 }
 

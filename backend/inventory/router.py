@@ -23,13 +23,16 @@ from .inventory_schemas import (
     StockBalanceSchema,
     StockDashboardSchema,
     SupplierSchema,
+    UpdateInventoryItemInputSchema,
 )
 from .models import (
+    Category,
     InventoryItem,
     PurchaseOrder,
     PurchaseOrderItem,
     RetailSale,
     StockBalance,
+    StockMovement,
     Supplier,
 )
 from .services import InventoryService
@@ -432,6 +435,141 @@ def quick_create_item(request, data: QuickCreateItemInputSchema):
         }
     except ValueError as e:
         return 400, {"error": str(e)}
+
+
+@router.put("/items/{item_id}", response={200: InventoryItemSchema, 400: dict})
+def update_inventory_item(request, item_id: int, data: UpdateInventoryItemInputSchema):
+    if not request.auth.has_permission("inventory.change_item"):
+        raise PermissionError("Нет прав для редактирования товаров")
+
+    item = get_object_or_404(
+        InventoryItem.objects.select_related("category", "primary_supplier"),
+        id=item_id,
+        is_active=True,
+    )
+    payload = data.dict(exclude_unset=True)
+
+    if "name" in payload:
+        name = (payload.get("name") or "").strip()
+        if not name:
+            return 400, {"error": "Название товара обязательно"}
+        item.name = name
+
+    if "sku" in payload:
+        sku = (payload.get("sku") or "").strip()
+        if not sku:
+            return 400, {"error": "Артикул обязателен"}
+        if InventoryItem.objects.exclude(id=item.id).filter(sku=sku).exists():
+            return 400, {"error": "Товар с таким SKU уже существует"}
+        item.sku = sku
+
+    if "item_type" in payload:
+        item_type = payload.get("item_type")
+        if item_type not in InventoryItem.ItemType.values:
+            return 400, {"error": "Некорректный тип товара"}
+        item.item_type = item_type
+
+    if payload.get("category_id"):
+        item.category = get_object_or_404(Category, id=payload["category_id"])
+    elif "category_name" in payload:
+        category_name = (payload.get("category_name") or "").strip()
+        if not category_name:
+            return 400, {"error": "Категория обязательна"}
+        category, _ = Category.objects.get_or_create(
+            name=category_name,
+            defaults={"description": "Категория для складской номенклатуры"},
+        )
+        item.category = category
+
+    if "primary_supplier_id" in payload:
+        supplier_id = payload.get("primary_supplier_id")
+        item.primary_supplier = (
+            get_object_or_404(Supplier, id=supplier_id, is_active=True)
+            if supplier_id
+            else None
+        )
+
+    if "purchase_price" in payload:
+        purchase_price = Decimal(str(payload.get("purchase_price") or 0))
+        if purchase_price < 0:
+            return 400, {"error": "Закупочная цена не может быть отрицательной"}
+        item.purchase_price = purchase_price
+
+    if "selling_price" in payload:
+        selling_price = Decimal(str(payload.get("selling_price") or 0))
+        if selling_price < 0:
+            return 400, {"error": "Цена продажи не может быть отрицательной"}
+        item.selling_price = selling_price
+
+    if "unit" in payload:
+        item.unit = (payload.get("unit") or "шт").strip() or "шт"
+
+    if "description" in payload:
+        item.description = (payload.get("description") or "").strip()
+
+    with transaction.atomic():
+        item.save()
+
+        if "stock_quantity" in payload or "min_quantity" in payload:
+            if not request.auth.has_permission("inventory.add_movement"):
+                raise PermissionError("Нет прав для корректировки остатков")
+            if not hasattr(request, "current_shop") or not request.current_shop:
+                return 400, {"error": "Не выбран текущий магазин"}
+
+            balance, _ = StockBalance.objects.select_for_update().get_or_create(
+                shop=request.current_shop,
+                item=item,
+                defaults={
+                    "quantity": 0,
+                    "reserved_quantity": 0,
+                    "available_quantity": 0,
+                },
+            )
+
+            if "min_quantity" in payload:
+                min_quantity = int(payload.get("min_quantity") or 0)
+                if min_quantity < 0:
+                    return 400, {
+                        "error": "Минимальный остаток не может быть отрицательным"
+                    }
+                balance.min_quantity = min_quantity
+                balance.save(
+                    update_fields=[
+                        "min_quantity",
+                        "available_quantity",
+                        "last_movement_date",
+                    ]
+                )
+
+            if "stock_quantity" in payload:
+                stock_quantity = int(payload.get("stock_quantity") or 0)
+                if stock_quantity < 0 and not item.allow_negative_stock:
+                    return 400, {"error": "Остаток не может быть отрицательным"}
+                if stock_quantity < balance.reserved_quantity:
+                    return 400, {
+                        "error": (
+                            "Остаток не может быть меньше "
+                            "зарезервированного количества"
+                        )
+                    }
+
+                quantity_change = stock_quantity - balance.quantity
+                if quantity_change:
+                    service = InventoryService()
+                    service.create_movement(
+                        stock_balance_id=balance.id,
+                        movement_type=StockMovement.MovementType.ADJUSTMENT,
+                        quantity_change=quantity_change,
+                        notes="Корректировка из карточки товара",
+                        user=request.auth,
+                    )
+
+    item = (
+        InventoryItem.objects.select_related("category", "primary_supplier")
+        .prefetch_related("stock_balances")
+        .get(id=item.id)
+    )
+    return 200, item
 
 
 # Финализация продажи с оплатой

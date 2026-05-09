@@ -8,7 +8,7 @@ describe('InventoryService', () => {
   let apiService: jasmine.SpyObj<ApiService>;
 
   beforeEach(() => {
-    apiService = jasmine.createSpyObj<ApiService>('ApiService', ['get', 'post']);
+    apiService = jasmine.createSpyObj<ApiService>('ApiService', ['get', 'post', 'put']);
 
     TestBed.configureTestingModule({
       providers: [
@@ -141,6 +141,38 @@ describe('InventoryService', () => {
     });
 
     expect(apiService.post).toHaveBeenCalledOnceWith('/inventory/items/quick-create', payload);
+  });
+
+  it('updates inventory items through the item detail endpoint', () => {
+    const item = {
+      id: 9,
+      name: 'Чехол обновленный',
+      sku: 'CASE-9',
+      total_stock: '12',
+      min_quantity: '3',
+      purchase_price: '500',
+      selling_price: '1500',
+    } as any;
+    const payload = {
+      name: 'Чехол обновленный',
+      primary_supplier_id: 2,
+      stock_quantity: 12,
+    };
+    apiService.put.and.returnValue(of(item));
+
+    service.updateInventoryItem(9, payload).subscribe((result) => {
+      expect(result).toEqual(jasmine.objectContaining({
+        id: 9,
+        name: 'Чехол обновленный',
+        total_stock: 12,
+        min_quantity: 3,
+        purchase_price: 500,
+        selling_price: 1500,
+        stock_status: 'in_stock',
+      }));
+    });
+
+    expect(apiService.put).toHaveBeenCalledOnceWith('/inventory/items/9', payload);
   });
 
   it('creates supplier purchase orders through backend endpoint', () => {

@@ -60,6 +60,21 @@ export interface QuickCreateInventoryItemRequest {
   description?: string;
 }
 
+export interface UpdateInventoryItemRequest {
+  name?: string;
+  sku?: string;
+  item_type?: string;
+  category_name?: string;
+  category_id?: number;
+  primary_supplier_id?: number | null;
+  purchase_price?: number;
+  selling_price?: number;
+  stock_quantity?: number;
+  min_quantity?: number;
+  unit?: string;
+  description?: string;
+}
+
 export interface PurchaseOrderRequest {
   supplier_id?: number;
   supplier_name?: string;
@@ -161,6 +176,12 @@ export class InventoryService {
 
   quickCreateItem(data: QuickCreateInventoryItemRequest): Observable<InventoryItem> {
     return this.apiService.post<InventoryItem>('/inventory/items/quick-create', data);
+  }
+
+  updateInventoryItem(id: number, data: UpdateInventoryItemRequest): Observable<InventoryItem> {
+    return this.apiService.put<InventoryItem>(`/inventory/items/${id}`, data).pipe(
+      map(normalizeInventoryItem)
+    );
   }
 
   createPurchaseOrder(data: PurchaseOrderRequest): Observable<any> {

@@ -385,6 +385,21 @@ class QuickCreateItemInputSchema(Schema):
     description: Optional[str] = None
 
 
+class UpdateInventoryItemInputSchema(Schema):
+    name: Optional[str] = None
+    sku: Optional[str] = None
+    item_type: Optional[str] = None
+    category_id: Optional[int] = None
+    category_name: Optional[str] = None
+    primary_supplier_id: Optional[int] = None
+    purchase_price: Optional[float] = None
+    selling_price: Optional[float] = None
+    stock_quantity: Optional[int] = None
+    min_quantity: Optional[int] = None
+    unit: Optional[str] = None
+    description: Optional[str] = None
+
+
 class QuickCreateItemResponseSchema(Schema):
     id: int
     name: str

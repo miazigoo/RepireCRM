@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
 import {
@@ -13,6 +15,8 @@ describe('InventoryDashboardComponent', () => {
   let fixture: ComponentFixture<InventoryDashboardComponent>;
   let component: InventoryDashboardComponent;
   let inventoryService: jasmine.SpyObj<InventoryService>;
+  let dialog: jasmine.SpyObj<MatDialog>;
+  let snackBar: jasmine.SpyObj<MatSnackBar>;
   let router: Router;
 
   const items: InventoryItem[] = [
@@ -58,10 +62,17 @@ describe('InventoryDashboardComponent', () => {
   beforeEach(async () => {
     inventoryService = jasmine.createSpyObj<InventoryService>('InventoryService', [
       'getInventoryItems',
+      'getSuppliers',
       'getStockAlerts',
       'getInventoryStatistics',
+      'updateInventoryItem',
     ]);
+    dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
+    snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
     inventoryService.getInventoryItems.and.returnValue(of(items));
+    inventoryService.getSuppliers.and.returnValue(of([
+      { id: 4, name: 'Склад Москва' },
+    ]));
     inventoryService.getStockAlerts.and.returnValue(of(alerts));
     inventoryService.getInventoryStatistics.and.returnValue(of({
       total_items: 2,
@@ -77,6 +88,8 @@ describe('InventoryDashboardComponent', () => {
         provideRouter([]),
         provideNoopAnimations(),
         { provide: InventoryService, useValue: inventoryService },
+        { provide: MatDialog, useValue: dialog },
+        { provide: MatSnackBar, useValue: snackBar },
       ],
     }).compileComponents();
 
@@ -129,6 +142,40 @@ describe('InventoryDashboardComponent', () => {
     expect(navigate).toHaveBeenCalledWith(['/inventory/purchase-orders/new'], {
       queryParams: { item_id: 2 },
     });
+  });
+
+  it('opens item edit dialog and persists inventory changes', () => {
+    dialog.open.and.returnValue({
+      afterClosed: () => of({
+        name: 'Аккумулятор iPhone 12 Pro',
+        sku: 'BAT-12-PRO',
+        item_type: 'component',
+        category_name: 'Запчасти',
+        primary_supplier_id: 4,
+        stock_quantity: 8,
+        min_quantity: 2,
+        purchase_price: 1700,
+        selling_price: 4200,
+      }),
+    } as any);
+    inventoryService.updateInventoryItem.and.returnValue(of({
+      ...items[1],
+      name: 'Аккумулятор iPhone 12 Pro',
+      total_stock: 8,
+      selling_price: 4200,
+    }));
+    (component as any).dialog = dialog;
+    (component as any).snackBar = snackBar;
+
+    component.openItemEditor(items[1]);
+
+    expect(dialog.open).toHaveBeenCalled();
+    expect(inventoryService.updateInventoryItem).toHaveBeenCalledOnceWith(2, jasmine.objectContaining({
+      name: 'Аккумулятор iPhone 12 Pro',
+      primary_supplier_id: 4,
+      stock_quantity: 8,
+    }));
+    expect(snackBar.open).toHaveBeenCalledWith('Товар обновлен', 'Закрыть', { duration: 3000 });
   });
 
   function normalizeText(element: HTMLElement): string {

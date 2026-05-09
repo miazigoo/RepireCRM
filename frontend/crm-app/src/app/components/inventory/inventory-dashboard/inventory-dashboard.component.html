@@ -225,11 +225,16 @@
                   mat-icon-button
                   class="row-menu-button"
                   [matMenuTriggerFor]="actionsMenu"
-                  aria-label="Действия с товаром">
+                  aria-label="Действия с товаром"
+                  (click)="$event.stopPropagation()">
                   <mat-icon>more_horiz</mat-icon>
                 </button>
 
                 <mat-menu #actionsMenu="matMenu">
+                  <button mat-menu-item (click)="openItemEditor(item, $event)">
+                    <mat-icon>edit</mat-icon>
+                    <span>Редактировать</span>
+                  </button>
                   <button mat-menu-item (click)="createPurchaseOrderFor(item)">
                     <mat-icon>shopping_cart</mat-icon>
                     <span>Заказать у поставщика</span>
@@ -243,11 +248,25 @@
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+            <tr
+              mat-row
+              *matRowDef="let row; columns: displayedColumns;"
+              class="clickable-row"
+              tabindex="0"
+              (click)="openItemEditor(row)"
+              (keydown.enter)="openItemEditor(row)"
+              (keydown.space)="openItemEditor(row); $event.preventDefault()">
+            </tr>
           </table>
 
           <div class="mobile-list">
-            <article class="inventory-card" *ngFor="let item of items; trackBy: trackById">
+            <article
+              class="inventory-card"
+              *ngFor="let item of items; trackBy: trackById"
+              tabindex="0"
+              (click)="openItemEditor(item)"
+              (keydown.enter)="openItemEditor(item)"
+              (keydown.space)="openItemEditor(item); $event.preventDefault()">
               <div class="card-topline">
                 <div class="item-cell">
                   <span class="item-mark">
@@ -267,10 +286,15 @@
                   mat-icon-button
                   class="row-menu-button"
                   [matMenuTriggerFor]="mobileActionsMenu"
-                  aria-label="Действия с товаром">
+                  aria-label="Действия с товаром"
+                  (click)="$event.stopPropagation()">
                   <mat-icon>more_horiz</mat-icon>
                 </button>
                 <mat-menu #mobileActionsMenu="matMenu">
+                  <button mat-menu-item (click)="openItemEditor(item, $event)">
+                    <mat-icon>edit</mat-icon>
+                    <span>Редактировать</span>
+                  </button>
                   <button mat-menu-item (click)="createPurchaseOrderFor(item)">
                     <mat-icon>shopping_cart</mat-icon>
                     <span>Заказать у поставщика</span>

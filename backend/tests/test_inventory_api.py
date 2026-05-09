@@ -13,6 +13,8 @@ from inventory.models import (
     PurchaseOrder,
     PurchaseOrderItem,
     StockBalance,
+    StockMovement,
+    Supplier,
 )
 from shops.models import Shop
 from users.models import Permission, Role
@@ -31,7 +33,9 @@ class InventoryApiTestCase(TestCase):
         role = Role.objects.create(name="Warehouse", code=Role.RoleType.MANAGER)
         for codename in (
             "inventory.add_item",
+            "inventory.add_movement",
             "inventory.add_purchase",
+            "inventory.change_item",
             "inventory.view_item",
             "inventory.view_stock",
             "inventory.view_supplier",
@@ -131,6 +135,59 @@ class InventoryApiTestCase(TestCase):
         self.assertEqual(result["min_quantity"], 2)
         self.assertEqual(result["stock_status"], "low_stock")
         self.assertIsNotNone(result["last_movement_date"])
+
+    def test_update_inventory_item_updates_card_and_current_shop_stock(self):
+        category = Category.objects.create(name="Аксессуары")
+        supplier = Supplier.objects.create(name="Демо поставщик")
+        item = InventoryItem.objects.create(
+            name="Чехол старый",
+            sku="CASE-OLD",
+            item_type="accessory",
+            category=category,
+            purchase_price=300,
+            selling_price=900,
+            created_by=self.user,
+        )
+        balance, _ = StockBalance.objects.get_or_create(shop=self.shop, item=item)
+        balance.quantity = 1
+        balance.min_quantity = 2
+        balance.save()
+
+        response = self.client.put(
+            f"/api/inventory/items/{item.id}",
+            data=json.dumps(
+                {
+                    "name": "Чехол прозрачный",
+                    "sku": "CASE-CLEAR",
+                    "item_type": "accessory",
+                    "category_name": "Чехлы",
+                    "primary_supplier_id": supplier.id,
+                    "stock_quantity": 7,
+                    "min_quantity": 3,
+                    "purchase_price": 350,
+                    "selling_price": 1100,
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        item.refresh_from_db()
+        balance.refresh_from_db()
+        self.assertEqual(item.name, "Чехол прозрачный")
+        self.assertEqual(item.sku, "CASE-CLEAR")
+        self.assertEqual(item.category.name, "Чехлы")
+        self.assertEqual(item.primary_supplier_id, supplier.id)
+        self.assertEqual(balance.quantity, 7)
+        self.assertEqual(balance.min_quantity, 3)
+        self.assertTrue(
+            StockMovement.objects.filter(
+                stock_balance=balance,
+                movement_type=StockMovement.MovementType.ADJUSTMENT,
+                quantity_change=6,
+            ).exists()
+        )
 
     def test_create_purchase_order_accepts_legacy_purchase_permission(self):
         category = Category.objects.create(name="Дисплеи")

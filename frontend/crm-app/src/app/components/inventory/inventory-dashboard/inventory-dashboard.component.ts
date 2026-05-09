@@ -1,7 +1,7 @@
-import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, Inject, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_FORM_FIELD_DEFAULT_OPTIONS, MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -12,9 +12,226 @@ import { MatPaginatorModule, MatPaginator, MatPaginatorIntl } from '@angular/mat
 import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
-import { InventoryItem, InventoryService, StockAlert } from '../../../services/inventory.service';
+import {
+  InventoryItem,
+  InventoryService,
+  StockAlert,
+  Supplier,
+  UpdateInventoryItemRequest,
+} from '../../../services/inventory.service';
 import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl';
+
+interface InventoryItemEditDialogData {
+  item: InventoryItem;
+  suppliers: Supplier[];
+  itemTypes: Array<{ value: string; label: string }>;
+}
+
+@Component({
+  selector: 'app-inventory-item-edit-dialog',
+  standalone: true,
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatProgressSpinnerModule,
+    MatSelectModule
+  ],
+  template: `
+    <header class="edit-dialog-header">
+      <div>
+        <span>Карточка товара</span>
+        <h2 mat-dialog-title>Редактирование позиции</h2>
+      </div>
+      <button mat-icon-button type="button" aria-label="Закрыть" (click)="close()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </header>
+
+    <mat-dialog-content>
+      <form [formGroup]="form" class="edit-form">
+        <mat-form-field class="span-2">
+          <mat-label>Название</mat-label>
+          <input matInput formControlName="name" autocomplete="off">
+          <mat-error *ngIf="form.get('name')?.hasError('required')">
+            Укажите название
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Артикул</mat-label>
+          <input matInput formControlName="sku" autocomplete="off">
+          <mat-error *ngIf="form.get('sku')?.hasError('required')">
+            Укажите артикул
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Тип</mat-label>
+          <mat-select formControlName="item_type">
+            <mat-option *ngFor="let type of data.itemTypes" [value]="type.value">
+              {{ type.label }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Категория</mat-label>
+          <input matInput formControlName="category_name" autocomplete="off">
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Поставщик</mat-label>
+          <mat-select formControlName="primary_supplier_id">
+            <mat-option [value]="null">Не указан</mat-option>
+            <mat-option *ngFor="let supplier of data.suppliers" [value]="supplier.id">
+              {{ supplier.name }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Остаток</mat-label>
+          <input matInput type="number" formControlName="stock_quantity" min="0">
+          <span matTextSuffix>шт</span>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Минимум</mat-label>
+          <input matInput type="number" formControlName="min_quantity" min="0">
+          <span matTextSuffix>шт</span>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Закупочная цена</mat-label>
+          <input matInput type="number" formControlName="purchase_price" min="0">
+          <span matTextSuffix>₽</span>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Цена продажи</mat-label>
+          <input matInput type="number" formControlName="selling_price" min="0">
+          <span matTextSuffix>₽</span>
+        </mat-form-field>
+      </form>
+    </mat-dialog-content>
+
+    <mat-dialog-actions align="end">
+      <button mat-button type="button" (click)="close()">Отмена</button>
+      <button mat-flat-button color="primary" type="button" (click)="save()">
+        <mat-icon>save</mat-icon>
+        Сохранить
+      </button>
+    </mat-dialog-actions>
+  `,
+  styles: [`
+    :host {
+      display: block;
+      color: var(--color-text-primary);
+    }
+
+    .edit-dialog-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 22px 24px 6px;
+    }
+
+    .edit-dialog-header span {
+      color: var(--color-primary);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .edit-dialog-header h2 {
+      margin: 4px 0 0;
+      color: var(--color-text-primary);
+      font-size: 24px;
+      font-weight: 950;
+    }
+
+    .edit-form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      padding-top: 8px;
+    }
+
+    .span-2 {
+      grid-column: 1 / -1;
+    }
+
+    mat-dialog-content {
+      padding: 0 24px 8px;
+    }
+
+    mat-dialog-actions {
+      padding: 10px 24px 22px;
+    }
+
+    @media (max-width: 640px) {
+      .edit-form {
+        grid-template-columns: 1fr;
+      }
+    }
+  `]
+})
+export class InventoryItemEditDialogComponent {
+  form: FormGroup;
+
+  constructor(
+    @Inject(MAT_DIALOG_DATA) public data: InventoryItemEditDialogData,
+    private fb: FormBuilder,
+    private dialogRef: MatDialogRef<InventoryItemEditDialogComponent, UpdateInventoryItemRequest | null>
+  ) {
+    const item = data.item;
+    this.form = this.fb.group({
+      name: [item.name || '', Validators.required],
+      sku: [item.sku || '', Validators.required],
+      item_type: [item.item_type || 'component', Validators.required],
+      category_name: [item.category_name || item.category || 'Запчасти', Validators.required],
+      primary_supplier_id: [item.primary_supplier_id ?? null],
+      stock_quantity: [Number(item.total_stock || 0), [Validators.required, Validators.min(0)]],
+      min_quantity: [Number(item.min_quantity || 0), [Validators.required, Validators.min(0)]],
+      purchase_price: [Number(item.purchase_price || 0), [Validators.required, Validators.min(0)]],
+      selling_price: [Number(item.selling_price || 0), [Validators.required, Validators.min(0)]],
+    });
+  }
+
+  save(): void {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    const value = this.form.getRawValue();
+    this.dialogRef.close({
+      name: String(value.name || '').trim(),
+      sku: String(value.sku || '').trim(),
+      item_type: value.item_type || 'component',
+      category_name: String(value.category_name || 'Запчасти').trim(),
+      primary_supplier_id: value.primary_supplier_id ?? null,
+      stock_quantity: Number(value.stock_quantity || 0),
+      min_quantity: Number(value.min_quantity || 0),
+      purchase_price: Number(value.purchase_price || 0),
+      selling_price: Number(value.selling_price || 0),
+    });
+  }
+
+  close(): void {
+    this.dialogRef.close(null);
+  }
+}
 
 @Component({
   selector: 'app-inventory-dashboard',
@@ -32,7 +249,9 @@ import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl'
     MatPaginatorModule,
     MatSortModule,
     MatMenuModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    MatDialogModule,
+    MatSnackBarModule
   ],
   templateUrl: './inventory-dashboard.component.html',
   styleUrl: './inventory-dashboard.component.scss',
@@ -54,6 +273,7 @@ export class InventoryDashboardComponent implements OnInit, AfterViewInit {
   displayedColumns: string[] = ['name', 'sku', 'category', 'stock_status', 'stock_level', 'price', 'actions'];
   dataSource = new MatTableDataSource<InventoryItem>();
   allItems: InventoryItem[] = [];
+  suppliers: Supplier[] = [];
   filtersForm: FormGroup;
 
   stockAlerts: StockAlert[] = [];
@@ -68,6 +288,15 @@ export class InventoryDashboardComponent implements OnInit, AfterViewInit {
     turnover_rate: 0
   };
 
+  readonly itemTypes = [
+    { value: 'component', label: 'Комплектующие' },
+    { value: 'accessory', label: 'Аксессуары' },
+    { value: 'consumable', label: 'Расходные материалы' },
+    { value: 'tool', label: 'Инструменты' },
+    { value: 'software', label: 'Программное обеспечение' },
+    { value: 'service', label: 'Услуга' }
+  ];
+
   private readonly moneyFormatter = new Intl.NumberFormat('ru-RU', {
     maximumFractionDigits: 0
   });
@@ -75,7 +304,9 @@ export class InventoryDashboardComponent implements OnInit, AfterViewInit {
   constructor(
     private inventoryService: InventoryService,
     private router: Router,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private dialog: MatDialog,
+    private snackBar: MatSnackBar
   ) {
     this.filtersForm = this.fb.group({
       search: [''],
@@ -86,6 +317,7 @@ export class InventoryDashboardComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     this.loadInventoryData();
+    this.loadSuppliers();
     this.loadStockAlerts();
     this.loadInventoryStats();
     this.setupFilters();
@@ -165,6 +397,17 @@ export class InventoryDashboardComponent implements OnInit, AfterViewInit {
       },
       error: (error) => {
         console.error('Error loading inventory stats:', error);
+      }
+    });
+  }
+
+  private loadSuppliers(): void {
+    this.inventoryService.getSuppliers().subscribe({
+      next: (suppliers) => {
+        this.suppliers = suppliers;
+      },
+      error: (error) => {
+        console.error('Error loading suppliers:', error);
       }
     });
   }
@@ -296,6 +539,40 @@ export class InventoryDashboardComponent implements OnInit, AfterViewInit {
       queryParams: {
         item_id: item.id
       }
+    });
+  }
+
+  openItemEditor(item: InventoryItem, event?: Event): void {
+    event?.stopPropagation();
+
+    const dialogRef = this.dialog.open(InventoryItemEditDialogComponent, {
+      width: '720px',
+      maxWidth: 'calc(100vw - 32px)',
+      panelClass: 'inventory-edit-dialog-panel',
+      data: {
+        item,
+        suppliers: this.suppliers,
+        itemTypes: this.itemTypes
+      }
+    });
+
+    dialogRef.afterClosed().subscribe((payload?: UpdateInventoryItemRequest | null) => {
+      if (!payload) {
+        return;
+      }
+
+      this.loading = true;
+      this.inventoryService.updateInventoryItem(item.id, payload).subscribe({
+        next: () => {
+          this.snackBar.open('Товар обновлен', 'Закрыть', { duration: 3000 });
+          this.refreshInventory();
+        },
+        error: (error) => {
+          const message = error?.error?.error || 'Не удалось обновить товар';
+          this.snackBar.open(message, 'Закрыть', { duration: 4000 });
+          this.loading = false;
+        }
+      });
     });
   }
 
