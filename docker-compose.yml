@@ -1,3 +1,28 @@
+x-backend-environment: &backend-environment
+  DEBUG: "False"
+  ENVIRONMENT: production
+  DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-repair_crm}"
+  REDIS_URL: "redis://redis:6379/0"
+  SECRET_KEY: "${SECRET_KEY}"
+  ALLOWED_HOSTS: "${ALLOWED_HOSTS}"
+  CSRF_TRUSTED_ORIGINS: "${CSRF_TRUSTED_ORIGINS:-}"
+  CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-}"
+  SECURE_SSL_REDIRECT: "${SECURE_SSL_REDIRECT:-False}"
+  SECURE_HSTS_SECONDS: "${SECURE_HSTS_SECONDS:-0}"
+  SECURE_HSTS_INCLUDE_SUBDOMAINS: "${SECURE_HSTS_INCLUDE_SUBDOMAINS:-False}"
+  SECURE_HSTS_PRELOAD: "${SECURE_HSTS_PRELOAD:-False}"
+  SESSION_COOKIE_SECURE: "${SESSION_COOKIE_SECURE:-False}"
+  CSRF_COOKIE_SECURE: "${CSRF_COOKIE_SECURE:-False}"
+  FRONTEND_URL: "${FRONTEND_URL:-}"
+  BACKEND_PUBLIC_URL: "${BACKEND_PUBLIC_URL:-}"
+  YOOKASSA_SHOP_ID: "${YOOKASSA_SHOP_ID:-}"
+  YOOKASSA_SECRET_KEY: "${YOOKASSA_SECRET_KEY:-}"
+  YOOKASSA_API_URL: "${YOOKASSA_API_URL:-https://api.yookassa.ru/v3}"
+  YOOKASSA_MOCK: "${YOOKASSA_MOCK:-false}"
+  YOOKASSA_CAPTURE: "${YOOKASSA_CAPTURE:-true}"
+  PORTAL_DEFAULT_SHOP_CODE: "${PORTAL_DEFAULT_SHOP_CODE:-}"
+  SENTRY_DSN: "${SENTRY_DSN:-}"
+
 services:
   frontend:
     build:
@@ -18,18 +43,8 @@ services:
       context: .
       dockerfile: docker/Dockerfile.backend
     environment:
-      DEBUG: "False"
-      ENVIRONMENT: production
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-repair_crm}"
-      REDIS_URL: "redis://redis:6379/0"
-      SECRET_KEY: "${SECRET_KEY}"
-      ALLOWED_HOSTS: "${ALLOWED_HOSTS}"
-      CSRF_TRUSTED_ORIGINS: "${CSRF_TRUSTED_ORIGINS:-}"
-      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-}"
-      SECURE_SSL_REDIRECT: "${SECURE_SSL_REDIRECT:-False}"
-      SECURE_HSTS_SECONDS: "${SECURE_HSTS_SECONDS:-0}"
-      PORTAL_DEFAULT_SHOP_CODE: "${PORTAL_DEFAULT_SHOP_CODE:-}"
-      SENTRY_DSN: "${SENTRY_DSN:-}"
+      <<: *backend-environment
+      APP_SERVER: "${APP_SERVER:-daphne}"
       GUNICORN_WORKERS: "${GUNICORN_WORKERS:-3}"
     restart: unless-stopped
     depends_on:
@@ -59,19 +74,38 @@ services:
         done
       "
     environment:
-      DEBUG: "False"
-      ENVIRONMENT: production
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-repair_crm}"
-      REDIS_URL: "redis://redis:6379/0"
-      SECRET_KEY: "${SECRET_KEY}"
-      ALLOWED_HOSTS: "${ALLOWED_HOSTS}"
-      CSRF_TRUSTED_ORIGINS: "${CSRF_TRUSTED_ORIGINS:-}"
-      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-}"
-      SECURE_SSL_REDIRECT: "${SECURE_SSL_REDIRECT:-False}"
-      SECURE_HSTS_SECONDS: "${SECURE_HSTS_SECONDS:-0}"
-      PORTAL_DEFAULT_SHOP_CODE: "${PORTAL_DEFAULT_SHOP_CODE:-}"
-      SENTRY_DSN: "${SENTRY_DSN:-}"
+      <<: *backend-environment
       SUBSCRIPTION_CHECK_INTERVAL_SECONDS: "${SUBSCRIPTION_CHECK_INTERVAL_SECONDS:-86400}"
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - media_data:/app/media
+      - static_data:/app/static
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    command: celery -A core worker -l info
+    environment:
+      <<: *backend-environment
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - media_data:/app/media
+      - static_data:/app/static
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    command: celery -A core beat -l info
+    environment:
+      <<: *backend-environment
     restart: unless-stopped
     depends_on:
       backend:
