@@ -28,16 +28,13 @@ class AnalyticsService:
         avg = (revenue / orders) if orders > 0 else Decimal("0")
 
         # Дополнительная аналитика: услуги/доп.работы
-        services_revenue = (
-            OrderService.objects.filter(order__in=qs)
-            .annotate(
-                total=models.ExpressionWrapper(
-                    F("price") * F("quantity"),
-                    output_field=models.DecimalField(max_digits=12, decimal_places=2),
-                )
-            )
-            .aggregate(total=Coalesce(Sum("total"), Decimal("0")))["total"]
+        service_revenue = models.ExpressionWrapper(
+            F("price") * F("quantity"),
+            output_field=models.DecimalField(max_digits=12, decimal_places=2),
         )
+        services_revenue = OrderService.objects.filter(order__in=qs).aggregate(
+            total=Coalesce(Sum(service_revenue), Decimal("0"))
+        )["total"]
 
         return {
             "shop_id": shop_id,
