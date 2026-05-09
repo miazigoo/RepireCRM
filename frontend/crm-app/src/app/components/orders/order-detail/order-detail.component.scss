@@ -700,6 +700,103 @@
   .danger {
     color: var(--color-danger);
   }
+
+  .success {
+    color: var(--color-success);
+  }
+}
+
+.discount-box {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--order-border);
+  border-radius: 8px;
+  background: var(--order-panel-strong);
+}
+
+.discount-header,
+.discount-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.discount-header {
+  color: var(--color-text-primary);
+  font-weight: 950;
+
+  span {
+    color: var(--order-muted);
+    font-size: 12px;
+    text-transform: uppercase;
+  }
+}
+
+.discount-list {
+  display: grid;
+  gap: 8px;
+}
+
+.discount-item {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--order-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel-background) 78%, transparent);
+
+  div {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+  }
+
+  strong {
+    color: var(--color-text-primary);
+    font-weight: 950;
+  }
+
+  span {
+    overflow: hidden;
+    color: var(--order-muted);
+    font-size: 12px;
+    font-weight: 850;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  button mat-icon {
+    margin-right: 0;
+  }
+}
+
+.discount-empty {
+  padding: 10px;
+  border: 1px dashed var(--order-border);
+  border-radius: 8px;
+  color: var(--order-muted);
+  font-weight: 850;
+}
+
+.promo-code-form,
+.manual-discount-form {
+  display: grid;
+  gap: 8px;
+}
+
+.promo-code-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.manual-discount-form {
+  grid-template-columns: minmax(0, 1fr) minmax(96px, 0.7fr);
+
+  button {
+    grid-column: 1 / -1;
+  }
 }
 
 .online-payment-box {

@@ -174,7 +174,8 @@ class OrderTestCase(TestCase):
     def test_order_statistics_static_route_is_not_treated_as_order_id(self):
         order = self.create_order()
         order.final_cost = 5000
-        order.save(update_fields=["final_cost"])
+        order.status = Order.StatusChoices.COMPLETED
+        order.save(update_fields=["final_cost", "status"])
 
         response = self.client.get(
             "/api/orders/statistics",

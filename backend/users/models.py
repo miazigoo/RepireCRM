@@ -41,6 +41,7 @@ class Permission(models.Model):
         REPORTS = "reports", "Отчеты"
         TASKS = "tasks", "Задачи"
         FINANCE = "finance", "Финансы"
+        MARKETING = "marketing", "Маркетинг"
         SETTINGS = "settings", "Настройки"
         USERS = "users", "Пользователи"
 

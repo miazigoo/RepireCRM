@@ -18,6 +18,7 @@ import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dial
 import { finalize } from 'rxjs';
 import { OrdersService } from '../../../services/orders.service';
 import { OnlinePaymentMethodType, PaymentsService } from '../../../services/payments.service';
+import { PromotionsService } from '../../../services/promotions.service';
 import {
   Order,
   OrderApproval,
@@ -74,6 +75,7 @@ export class OrderDetailComponent implements OnInit {
   statusSaving = false;
   handoverSaving = false;
   warrantySaving = false;
+  discountSaving = false;
   handoverNeedsAttention = false;
   onlinePaymentLoading: OnlinePaymentMethodType | null = null;
   orderId: number;
@@ -88,6 +90,8 @@ export class OrderDetailComponent implements OnInit {
   approvalForm: FormGroup;
   handoverForm: FormGroup;
   warrantyForm: FormGroup;
+  promoCodeForm: FormGroup;
+  manualDiscountForm: FormGroup;
   selectedStagePhoto: File | null = null;
   private handoverDialogRef: MatDialogRef<unknown> | null = null;
   private warrantyDialogRef: MatDialogRef<unknown> | null = null;
@@ -136,6 +140,7 @@ export class OrderDetailComponent implements OnInit {
     private router: Router,
     private ordersService: OrdersService,
     private paymentsService: PaymentsService,
+    private promotionsService: PromotionsService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private fb: FormBuilder,
@@ -160,6 +165,13 @@ export class OrderDetailComponent implements OnInit {
       reason: ['Повторная неисправность', [Validators.required, Validators.maxLength(255)]],
       problem_description: ['', [Validators.required, Validators.maxLength(1000)]],
       priority: ['high', Validators.required],
+    });
+    this.promoCodeForm = this.fb.group({
+      code: ['', [Validators.required, Validators.maxLength(40)]],
+    });
+    this.manualDiscountForm = this.fb.group({
+      label: ['Ручная скидка', [Validators.required, Validators.maxLength(160)]],
+      amount: [0, [Validators.required, Validators.min(1)]],
     });
   }
 
@@ -444,6 +456,81 @@ export class OrderDetailComponent implements OnInit {
       });
   }
 
+  applyPromoCode(): void {
+    if (!this.order || this.promoCodeForm.invalid || this.discountSaving) {
+      this.promoCodeForm.markAllAsTouched();
+      return;
+    }
+
+    const code = String(this.promoCodeForm.get('code')?.value || '').trim();
+    if (!code) {
+      return;
+    }
+
+    this.discountSaving = true;
+    this.promotionsService
+      .applyPromoCode(this.order.id, code)
+      .pipe(finalize(() => (this.discountSaving = false)))
+      .subscribe({
+        next: () => {
+          this.promoCodeForm.reset({ code: '' });
+          this.snackBar.open('Промокод применен', 'Закрыть', { duration: 2500 });
+          this.loadOrder();
+          this.loadAuditLog();
+        },
+        error: (error) => {
+          const message = error?.error?.error || 'Не удалось применить промокод';
+          this.snackBar.open(message, 'Закрыть', { duration: 3500 });
+        },
+      });
+  }
+
+  addManualDiscount(): void {
+    if (!this.order || this.manualDiscountForm.invalid || this.discountSaving) {
+      this.manualDiscountForm.markAllAsTouched();
+      return;
+    }
+
+    this.discountSaving = true;
+    this.promotionsService
+      .addManualDiscount(this.order.id, this.manualDiscountForm.getRawValue())
+      .pipe(finalize(() => (this.discountSaving = false)))
+      .subscribe({
+        next: () => {
+          this.manualDiscountForm.reset({ label: 'Ручная скидка', amount: 0 });
+          this.snackBar.open('Скидка добавлена', 'Закрыть', { duration: 2500 });
+          this.loadOrder();
+          this.loadAuditLog();
+        },
+        error: (error) => {
+          const message = error?.error?.error || 'Не удалось добавить скидку';
+          this.snackBar.open(message, 'Закрыть', { duration: 3500 });
+        },
+      });
+  }
+
+  removeDiscount(discountId: number): void {
+    if (!this.order || this.discountSaving) {
+      return;
+    }
+
+    this.discountSaving = true;
+    this.promotionsService
+      .deleteOrderDiscount(this.order.id, discountId)
+      .pipe(finalize(() => (this.discountSaving = false)))
+      .subscribe({
+        next: () => {
+          this.snackBar.open('Скидка удалена', 'Закрыть', { duration: 2500 });
+          this.loadOrder();
+          this.loadAuditLog();
+        },
+        error: (error) => {
+          const message = error?.error?.error || 'Не удалось удалить скидку';
+          this.snackBar.open(message, 'Закрыть', { duration: 3500 });
+        },
+      });
+  }
+
   openWarrantyDialog(): void {
     if (!this.order) {
       return;
@@ -590,6 +677,14 @@ export class OrderDetailComponent implements OnInit {
     return Number(order.total_cost ?? order.final_cost ?? order.cost_estimate ?? 0);
   }
 
+  getOrderSubtotal(order: Order): number {
+    return Number(order.subtotal_before_discount ?? this.getOrderWorkAmount(order) + this.getOrderServicesAmount(order));
+  }
+
+  getDiscountTotal(order: Order): number {
+    return Number(order.discount_total || 0);
+  }
+
   getOrderServicesAmount(order: Order): number {
     return (
       order.additional_services?.reduce(
@@ -613,7 +708,8 @@ export class OrderDetailComponent implements OnInit {
 
   get handoverTotal(): number {
     const finalCost = Number(this.handoverForm.get('final_cost')?.value || 0);
-    return finalCost + this.handoverServicesTotal;
+    const discount = this.order ? this.getDiscountTotal(this.order) : 0;
+    return Math.max(0, finalCost + this.handoverServicesTotal - discount);
   }
 
   get handoverRemaining(): number {

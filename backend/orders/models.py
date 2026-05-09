@@ -159,21 +159,56 @@ class Order(models.Model):
     def __str__(self):
         return f"Заказ {self.order_number} - {self.customer.full_name}"
 
+    @staticmethod
+    def _as_money(value):
+        if value is None:
+            return Decimal("0.00")
+        if isinstance(value, Decimal):
+            return value
+        return Decimal(str(value))
+
     @property
     def total_cost(self):
-        """Общая стоимость заказа включая дополнительные услуги"""
-        base_cost = (
+        """Общая стоимость заказа с услугами и примененными скидками."""
+        base_cost = self._as_money(
             self.final_cost if self.final_cost is not None else self.cost_estimate
         )
         services_cost = sum(
-            service.price * service.quantity for service in self.orderservice_set.all()
+            (
+                self._as_money(service.price) * self._as_money(service.quantity)
+                for service in self.orderservice_set.all()
+            ),
+            Decimal("0.00"),
+        )
+        return max(Decimal("0.00"), base_cost + services_cost - self.discount_total)
+
+    @property
+    def subtotal_before_discount(self):
+        """Сумма заказа до скидок."""
+        base_cost = self._as_money(
+            self.final_cost if self.final_cost is not None else self.cost_estimate
+        )
+        services_cost = sum(
+            (
+                self._as_money(service.price) * self._as_money(service.quantity)
+                for service in self.orderservice_set.all()
+            ),
+            Decimal("0.00"),
         )
         return base_cost + services_cost
 
     @property
+    def discount_total(self):
+        """Суммарная скидка заказа."""
+        return sum(
+            (discount.amount for discount in self.discounts.all()),
+            Decimal("0.00"),
+        )
+
+    @property
     def remaining_payment(self):
         """Остаток к доплате"""
-        return max(0, self.total_cost - self.prepayment)
+        return max(Decimal("0.00"), self.total_cost - self._as_money(self.prepayment))
 
     @property
     def warranty_active(self):

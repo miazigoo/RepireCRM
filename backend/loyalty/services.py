@@ -44,7 +44,7 @@ class LoyaltyService:
             return 0
 
         program = customer_loyalty.program
-        order_amount = order.final_cost or order.cost_estimate
+        order_amount = order.total_cost
 
         # Проверяем минимальную сумму заказа
         if order_amount < program.min_order_amount:
@@ -95,7 +95,7 @@ class LoyaltyService:
         # Обновляем баланс клиента
         customer_loyalty.total_points += points
         customer_loyalty.available_points += points
-        customer_loyalty.total_spent += order.final_cost or order.cost_estimate
+        customer_loyalty.total_spent += order.total_cost
         customer_loyalty.orders_count += 1
 
         # Обновляем уровень клиента
@@ -131,7 +131,7 @@ class LoyaltyService:
             )
 
         # Проверяем максимальный процент оплаты баллами
-        order_amount = order.final_cost or order.cost_estimate
+        order_amount = order.total_cost
         points_value = Decimal(points) * customer_loyalty.program.point_value
         max_redeem_amount = (
             order_amount * customer_loyalty.program.max_redeem_percent / 100

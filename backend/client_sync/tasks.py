@@ -1,7 +1,7 @@
 from celery import shared_task
 
 from .models import ClientPortalIntegration
-from .services import sync_client_portal
+from .services import sync_client_service
 
 
 @shared_task(name="client_sync.tasks.sync_client_portals")
@@ -13,10 +13,15 @@ def sync_client_portals(limit: int = 100):
         api_key__gt="",
     )
     for integration in integrations:
-        current = sync_client_portal(integration, limit=limit)
+        current = sync_client_service(integration, limit=limit)
         result["integrations"] += 1
         result["pushed"] += current.get("pushed", 0)
         result["pulled"] += current.get("pulled", 0)
         result["applied"] += current.get("applied", 0)
         result["errors"] += current.get("errors", 0)
     return result
+
+
+@shared_task(name="client_sync.tasks.sync_client_services")
+def sync_client_services(limit: int = 100):
+    return sync_client_portals(limit=limit)

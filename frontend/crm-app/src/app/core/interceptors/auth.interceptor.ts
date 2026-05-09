@@ -11,11 +11,8 @@ export class AuthInterceptor implements HttpInterceptor {
   constructor(private router: Router) {}
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    const isPortalRequest = req.url.includes('/portal');
-    const token = isPortalRequest
-      ? localStorage.getItem('portal_access_token')
-      : localStorage.getItem('access_token');
-    const currentShopId = isPortalRequest ? null : localStorage.getItem('current_shop_id');
+    const token = localStorage.getItem('access_token');
+    const currentShopId = localStorage.getItem('current_shop_id');
     const headers: Record<string, string> = {};
 
     if (token) {
@@ -33,13 +30,7 @@ export class AuthInterceptor implements HttpInterceptor {
     return next.handle(authReq).pipe(
       catchError((err: HttpErrorResponse) => {
         if (err.status === 401) {
-          if (isPortalRequest) {
-            localStorage.removeItem('portal_access_token');
-            localStorage.removeItem('portal_customer');
-            this.router.navigate(['/portal']);
-          } else {
-            this.clearPrimarySession();
-          }
+          this.clearPrimarySession();
         }
         return throwError(() => err);
       })

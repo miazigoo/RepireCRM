@@ -7,6 +7,7 @@ import { of } from 'rxjs';
 import { Order } from '../../../core/models/models';
 import { OrdersService } from '../../../services/orders.service';
 import { PaymentsService } from '../../../services/payments.service';
+import { PromotionsService } from '../../../services/promotions.service';
 import { OrderDetailComponent } from './order-detail.component';
 
 describe('OrderDetailComponent', () => {
@@ -14,6 +15,7 @@ describe('OrderDetailComponent', () => {
   let component: OrderDetailComponent;
   let ordersService: jasmine.SpyObj<OrdersService>;
   let paymentsService: jasmine.SpyObj<PaymentsService>;
+  let promotionsService: jasmine.SpyObj<PromotionsService>;
 
   const order = {
     id: 2,
@@ -23,6 +25,8 @@ describe('OrderDetailComponent', () => {
     problem_description: 'Не включается',
     accessories: 'Коробка',
     cost_estimate: 900,
+    subtotal_before_discount: 1800,
+    discount_total: 0,
     total_cost: 1800,
     prepayment: 0,
     remaining_payment: 1800,
@@ -120,6 +124,31 @@ describe('OrderDetailComponent', () => {
         is_test: true,
       }),
     );
+    promotionsService = jasmine.createSpyObj<PromotionsService>('PromotionsService', [
+      'applyPromoCode',
+      'addManualDiscount',
+      'deleteOrderDiscount',
+    ]);
+    promotionsService.applyPromoCode.and.returnValue(
+      of({
+        id: 1,
+        source: 'promo_code',
+        label: 'Промокод START',
+        amount: 300,
+        promo_code: 'START',
+        created_at: '2026-05-05T20:32:00Z',
+      }),
+    );
+    promotionsService.addManualDiscount.and.returnValue(
+      of({
+        id: 2,
+        source: 'manual',
+        label: 'Ручная скидка',
+        amount: 200,
+        created_at: '2026-05-05T20:32:00Z',
+      }),
+    );
+    promotionsService.deleteOrderDiscount.and.returnValue(of({ success: true }));
 
     await TestBed.configureTestingModule({
       imports: [OrderDetailComponent],
@@ -129,6 +158,7 @@ describe('OrderDetailComponent', () => {
         { provide: ActivatedRoute, useValue: { snapshot: { params: { id: 2 } } } },
         { provide: OrdersService, useValue: ordersService },
         { provide: PaymentsService, useValue: paymentsService },
+        { provide: PromotionsService, useValue: promotionsService },
         {
           provide: MatSnackBar,
           useValue: jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']),
@@ -251,6 +281,15 @@ describe('OrderDetailComponent', () => {
 
     expect(paymentsService.createOrderPayment).toHaveBeenCalledOnceWith(2, 'sbp', 1800);
     expect(component.onlinePaymentLoading).toBeNull();
+  });
+
+  it('applies promo code and reloads order', () => {
+    component.promoCodeForm.patchValue({ code: 'START' });
+
+    component.applyPromoCode();
+
+    expect(promotionsService.applyPromoCode).toHaveBeenCalledOnceWith(2, 'START');
+    expect(ordersService.getOrder).toHaveBeenCalledTimes(2);
   });
 
   it('creates a warranty order from an active completed order', () => {

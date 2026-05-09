@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 
 from client_sync.models import ClientPortalIntegration
-from client_sync.services import sync_client_portal
+from client_sync.services import sync_client_service
 
 
 class Command(BaseCommand):
@@ -26,7 +26,7 @@ class Command(BaseCommand):
         pull = not options["push_only"]
         total = {"integrations": 0, "pushed": 0, "pulled": 0, "applied": 0, "errors": 0}
         for integration in queryset:
-            result = sync_client_portal(
+            result = sync_client_service(
                 integration,
                 push=push,
                 pull=pull,

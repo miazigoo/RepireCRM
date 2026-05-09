@@ -136,9 +136,6 @@ def main() -> int:
             continue
         if path in {"/", "/api/", "/openapi.json", "/api/openapi.json"}:
             continue
-        if path.startswith("/api/portal/"):
-            skipped.append(f"GET {path} uses customer portal auth")
-            continue
         if path == "/api/loyalty/customer/{customer_id}" and not context.get(
             "loyalty_enabled"
         ):

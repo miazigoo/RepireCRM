@@ -43,6 +43,7 @@ from orders.models import (
     RepairService,
     RepairStage,
 )
+from promotions.models import OrderDiscount, PromoCode, Promotion
 from shops.models import Organization, Shop, ShopSettings
 from shops.subscription_services import (
     ensure_default_subscription_plans,
@@ -232,6 +233,7 @@ class Command(BaseCommand):
         suppliers = self.create_suppliers()
         inventory_items = self.create_inventory(shops, suppliers, users["director"])
         services = self.create_services(shops, device_models)
+        promo_codes = self.create_promotions(shops, users["director"])
         customers = self.create_customers(users["managers"])
 
         self.seed_stock_history(shops, inventory_items, users["director"])
@@ -247,6 +249,7 @@ class Command(BaseCommand):
             users,
             payment_methods,
             cash_registers,
+            promo_codes,
         )
         self.create_retail_sales(
             shops, customers, inventory_items, users["cashiers"], payment_methods
@@ -274,6 +277,7 @@ class Command(BaseCommand):
         OrderStatusHistory.objects.filter(order__notes__startswith="[demo]").delete()
         OrderAuditLog.objects.filter(order__notes__startswith="[demo]").delete()
         RepairStage.objects.filter(order__notes__startswith="[demo]").delete()
+        OrderDiscount.objects.filter(order__notes__startswith="[demo]").delete()
         OrderService.objects.filter(order__notes__startswith="[demo]").delete()
         Payment.objects.filter(description__startswith="[demo]").delete()
         Expense.objects.filter(invoice_number__startswith="DEMO-").delete()
@@ -285,6 +289,8 @@ class Command(BaseCommand):
         ).delete()
         PurchaseOrder.objects.filter(notes__startswith="[demo]").delete()
         Order.objects.filter(notes__startswith="[demo]").delete()
+        PromoCode.objects.filter(description__startswith="[demo]").delete()
+        Promotion.objects.filter(description__startswith="[demo]").delete()
         StockBalance.objects.filter(
             shop__code__in=[s["code"] for s in DEMO_SHOPS]
         ).delete()
@@ -871,6 +877,51 @@ class Command(BaseCommand):
                 )
         return services
 
+    def create_promotions(self, shops, director):
+        specs = (
+            ("DEMO-SPRING7", "Сезонная скидка на ремонт", "percent", 7, None, 2500),
+            ("DEMO-GLASS500", "Защитное стекло дешевле", "fixed", 500, None, 1500),
+            ("DEMO-VIP12", "VIP клиент", "percent", 12, 2000, 6000),
+        )
+        promo_codes = []
+        now = timezone.now()
+        for code, name, discount_type, value, max_discount, min_amount in specs:
+            promotion, _ = Promotion.objects.update_or_create(
+                name=name,
+                defaults={
+                    "description": "[demo] акция для проверки скидок и промокодов",
+                    "discount_type": discount_type,
+                    "value": money(value),
+                    "max_discount_amount": money(max_discount)
+                    if max_discount is not None
+                    else None,
+                    "min_order_amount": money(min_amount),
+                    "starts_at": now - timedelta(days=45),
+                    "ends_at": now + timedelta(days=320),
+                    "is_active": True,
+                    "auto_apply": False,
+                    "stackable": False,
+                    "usage_limit": None,
+                    "per_customer_limit": 3,
+                    "created_by": director,
+                },
+            )
+            promotion.shops.set(shops)
+            promo_code, _ = PromoCode.objects.update_or_create(
+                code=code,
+                defaults={
+                    "promotion": promotion,
+                    "description": "[demo] промокод для заказов",
+                    "is_active": True,
+                    "starts_at": now - timedelta(days=45),
+                    "ends_at": now + timedelta(days=320),
+                    "usage_limit": None,
+                    "per_customer_limit": 3,
+                },
+            )
+            promo_codes.append(promo_code)
+        return promo_codes
+
     def create_customers(self, managers):
         customers = []
         sources = [choice[0] for choice in Customer.CustomerSource.choices]
@@ -1016,6 +1067,7 @@ class Command(BaseCommand):
         users,
         payment_methods,
         cash_registers,
+        promo_codes,
     ):
         statuses = [
             Order.StatusChoices.COMPLETED,
@@ -1109,6 +1161,7 @@ class Command(BaseCommand):
                 completed_at=completed_at,
             )
             self.attach_services(order, services)
+            self.attach_discount(order, promo_codes, manager)
             self.consume_inventory(order, inventory_items, technician, created_at)
             self.create_order_history(
                 order, manager, technician, created_at, completed_at
@@ -1164,6 +1217,30 @@ class Command(BaseCommand):
                     "price": service.price,
                 },
             )
+
+    def attach_discount(self, order, promo_codes, manager):
+        if not promo_codes or self.random.random() > 0.28:
+            return
+        promo_code = self.random.choice(promo_codes)
+        if (
+            promo_code.promotion.shops.exists()
+            and not promo_code.promotion.shops.filter(id=order.shop_id).exists()
+        ):
+            return
+        amount = promo_code.promotion.calculate_discount(order.subtotal_before_discount)
+        if amount <= 0:
+            return
+        OrderDiscount.objects.update_or_create(
+            order=order,
+            promo_code=promo_code,
+            defaults={
+                "promotion": promo_code.promotion,
+                "source": OrderDiscount.Source.PROMO_CODE,
+                "label": f"Промокод {promo_code.code}",
+                "amount": amount,
+                "created_by": manager,
+            },
+        )
 
     def consume_inventory(self, order, inventory_items, technician, created_at):
         for item in self.random.sample(inventory_items, k=self.random.randrange(1, 3)):

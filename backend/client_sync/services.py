@@ -146,6 +146,8 @@ def serialize_order_snapshot(order: Order) -> dict[str, Any]:
         "cost_estimate": serialize_money(order.cost_estimate),
         "final_cost": serialize_money(order.final_cost),
         "prepayment": serialize_money(order.prepayment),
+        "subtotal_before_discount": serialize_money(order.subtotal_before_discount),
+        "discount_total": serialize_money(order.discount_total),
         "total_cost": serialize_money(order.total_cost),
         "remaining_payment": serialize_money(order.remaining_payment),
         "warranty_days": order.warranty_days,
@@ -198,6 +200,18 @@ def serialize_order_snapshot(order: Order) -> dict[str, Any]:
             }
             for service in order.orderservice_set.all()
         ],
+        "discounts": [
+            {
+                "crm_discount_id": discount.id,
+                "source": discount.source,
+                "label": discount.label,
+                "amount": serialize_money(discount.amount),
+                "promotion_name": discount.promotion.name if discount.promotion else "",
+                "promo_code": discount.promo_code.code if discount.promo_code else "",
+                "created_at": serialize_datetime(discount.created_at),
+            }
+            for discount in order.discounts.all()
+        ],
     }
 
 
@@ -231,6 +245,7 @@ def orders_for_push(integration: ClientPortalIntegration, limit: int = 100):
             "warranty_parent",
         )
         .prefetch_related("repair_stages", "approvals", "orderservice_set__service")
+        .prefetch_related("discounts__promotion", "discounts__promo_code")
         .distinct()
         .order_by("updated_at")[:limit]
     )
@@ -379,7 +394,7 @@ def pull_pending_actions(
     return result
 
 
-def sync_client_portal(
+def sync_client_service(
     integration: ClientPortalIntegration,
     push: bool = True,
     pull: bool = True,
@@ -397,6 +412,15 @@ def sync_client_portal(
         result.applied += pull_result.applied
         result.errors += pull_result.errors
     return result.as_dict()
+
+
+def sync_client_portal(
+    integration: ClientPortalIntegration,
+    push: bool = True,
+    pull: bool = True,
+    limit: int = 100,
+) -> dict[str, int]:
+    return sync_client_service(integration, push=push, pull=pull, limit=limit)
 
 
 def record_action(

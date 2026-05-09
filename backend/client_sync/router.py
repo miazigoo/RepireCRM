@@ -12,9 +12,9 @@ from .schemas import (
     ClientSyncRunSchema,
     ClientSyncStatusSchema,
 )
-from .services import get_or_create_integration, sync_client_portal
+from .services import get_or_create_integration, sync_client_service
 
-router = Router(tags=["Синхронизация клиентского кабинета"])
+router = Router(tags=["Синхронизация клиентского сервиса"])
 
 
 def _current_shop(request):
@@ -63,7 +63,7 @@ def _serialize_integration(
 @router.get("/status", response=ClientSyncStatusSchema)
 def get_client_sync_status(request):
     if not request.auth.has_permission("settings.view_shop"):
-        raise PermissionError("Нет прав для просмотра настроек клиентского кабинета")
+        raise PermissionError("Нет прав для просмотра настроек клиентского сервиса")
     integration = _integration_for_request(request)
     order_states = dict(
         ClientSyncOrderState.objects.filter(integration=integration)
@@ -90,7 +90,7 @@ def update_client_sync_integration(
     data: ClientPortalIntegrationUpdateSchema,
 ):
     if not request.auth.has_permission("settings.change_shop"):
-        raise PermissionError("Нет прав для изменения клиентского кабинета")
+        raise PermissionError("Нет прав для изменения клиентского сервиса")
     integration = _integration_for_request(request)
     incoming = data.dict(exclude_unset=True)
     for field, value in incoming.items():
@@ -108,7 +108,7 @@ def run_client_sync(request, data: ClientSyncRunSchema):
     if not request.auth.has_permission("settings.change_shop"):
         raise PermissionError("Нет прав для запуска синхронизации")
     integration = _integration_for_request(request)
-    return sync_client_portal(
+    return sync_client_service(
         integration,
         push=data.push,
         pull=data.pull,
@@ -119,7 +119,7 @@ def run_client_sync(request, data: ClientSyncRunSchema):
 @router.get("/actions", response=List[dict])
 def list_client_sync_actions(request, limit: int = 50):
     if not request.auth.has_permission("settings.view_shop"):
-        raise PermissionError("Нет прав для просмотра действий клиентского кабинета")
+        raise PermissionError("Нет прав для просмотра действий клиентского сервиса")
     integration = _integration_for_request(request)
     actions = ClientSyncAction.objects.filter(integration=integration).order_by(
         "-received_at"

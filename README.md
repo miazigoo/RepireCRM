@@ -145,8 +145,8 @@ make smoke
 ```
 
 `make smoke` авторизуется тестовым пользователем и проверяет live API. Часть
-endpoints с обязательными path-параметрами или клиентским portal-auth
-пропускается осознанно.
+endpoints с обязательными path-параметрами или зависимостью от специальных
+demo-данных пропускается осознанно.
 
 ## Основные команды
 
@@ -197,6 +197,7 @@ make backend-tests    # только backend tests
 make frontend-tests   # только frontend unit tests
 make lint             # backend flake8
 make smoke            # live API smoke
+make client-sync      # ручной sync с внешним клиентским сервисом
 ```
 
 ## Структура проекта
@@ -205,7 +206,7 @@ make smoke            # live API smoke
 .
 ├── backend/                 # Django backend
 │   ├── API/                 # admin/auth routers
-│   ├── client_portal/       # клиентский портал
+│   ├── client_sync/         # интеграция с внешним клиентским сервисом
 │   ├── core/                # настройки, API app, middleware
 │   ├── customers/           # клиенты
 │   ├── device/              # устройства и модели
@@ -214,6 +215,7 @@ make smoke            # live API smoke
 │   ├── inventory/           # склад, поставщики, закупки
 │   ├── notifications/       # уведомления
 │   ├── orders/              # заказы и ремонт
+│   ├── promotions/          # акции, скидки и промокоды
 │   ├── reports/             # отчеты
 │   ├── shops/               # филиалы, подписки, demo-data command
 │   ├── tasks/               # задачи
@@ -252,7 +254,8 @@ make smoke            # live API smoke
   закупки, поставщики;
 - отчеты: аналитика, экспорт, общая статистика;
 - администрирование: магазины, сотрудники, роли и права;
-- финансы: платежи, подписки, онлайн-оплата.
+- финансы: платежи, подписки, онлайн-оплата;
+- маркетинг: просмотр акций, управление промокодами, применение скидок.
 
 ## API
 
@@ -261,6 +264,8 @@ Backend использует Django Ninja. Основные ссылки лок�
 - Swagger: <http://127.0.0.1:8030/api/docs>
 - Root: <http://127.0.0.1:8030/api>
 - Health: <http://127.0.0.1:8030/api/health>
+- Client sync: `/api/client-sync/*`
+- Акции и промокоды: `/api/promotions/*`
 
 Авторизация:
 

@@ -1,0 +1,283 @@
+:host {
+  display: block;
+}
+
+.promotions-shell {
+  width: min(100%, 1480px);
+  margin: 0 auto;
+  color: var(--color-text-primary);
+}
+
+.promotions-hero,
+.editor-panel,
+.list-panel,
+.promo-card,
+.quote-panel {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--panel-background);
+  box-shadow: var(--panel-shadow);
+}
+
+.promotions-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+  padding: 26px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 12%, transparent), transparent 50%),
+    var(--panel-background);
+
+  h1,
+  p {
+    margin: 0;
+  }
+
+  h1 {
+    margin-top: 6px;
+    font-size: 34px;
+    font-weight: 950;
+    line-height: 1.08;
+  }
+
+  p {
+    max-width: 720px;
+    margin-top: 10px;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+  }
+}
+
+.eyebrow {
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.promotions-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.82fr) minmax(0, 1.18fr);
+  gap: 18px;
+  padding-top: 18px;
+}
+
+.editor-panel,
+.list-panel,
+.quote-panel {
+  padding: 18px;
+}
+
+.editor-panel {
+  display: grid;
+  align-self: start;
+  gap: 12px;
+
+  header h2,
+  header span {
+    display: block;
+    margin: 0;
+  }
+
+  header span {
+    color: var(--color-primary);
+    font-size: 12px;
+    font-weight: 950;
+    text-transform: uppercase;
+  }
+
+  header h2 {
+    margin-top: 5px;
+    font-size: 22px;
+    font-weight: 950;
+  }
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.switch-grid,
+.editor-actions,
+.list-header,
+.promo-card,
+.card-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.switch-grid {
+  flex-wrap: wrap;
+}
+
+.editor-actions {
+  justify-content: flex-end;
+
+  button[type='submit'] {
+    --mdc-filled-button-container-color: var(--color-primary);
+    --mdc-filled-button-label-text-color: #fff;
+
+    color: #fff !important;
+    font-weight: 950;
+  }
+}
+
+.list-panel {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.list-header,
+.promo-card {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.list-header h2,
+.promo-card h3,
+.promo-card p {
+  margin: 0;
+}
+
+.list-header h2 {
+  margin-top: 5px;
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.promo-card {
+  padding: 16px;
+  background: color-mix(in srgb, var(--color-surface-strong) 82%, var(--panel-background));
+
+  h3 {
+    margin-top: 8px;
+    font-size: 18px;
+    font-weight: 950;
+  }
+
+  p {
+    margin-top: 8px;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+  }
+
+  mat-chip-set {
+    margin-top: 12px;
+  }
+}
+
+.discount-badge,
+.code-badge {
+  display: inline-grid;
+  min-height: 30px;
+  place-items: center;
+  border-radius: 999px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.discount-badge {
+  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  color: var(--color-success);
+}
+
+.code-badge {
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--color-primary);
+}
+
+.disabled-chip {
+  opacity: 0.62;
+}
+
+.card-actions {
+  flex: 0 0 auto;
+}
+
+.quote-panel {
+  display: grid;
+  max-width: 760px;
+  gap: 16px;
+  margin-top: 18px;
+
+  h2,
+  p {
+    margin: 0;
+  }
+
+  h2 {
+    font-size: 24px;
+    font-weight: 950;
+  }
+
+  p {
+    margin: 8px 0 16px;
+    color: var(--color-text-secondary);
+  }
+
+  button[type='submit'] {
+    --mdc-filled-button-container-color: var(--color-primary);
+    --mdc-filled-button-label-text-color: #fff;
+
+    color: #fff !important;
+    font-weight: 950;
+  }
+}
+
+.quote-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--color-success) 28%, var(--color-border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-success) 11%, var(--panel-background));
+  color: var(--color-text-primary);
+
+  mat-icon {
+    color: var(--color-success);
+  }
+}
+
+:host ::ng-deep {
+  .mat-mdc-tab .mdc-tab__text-label {
+    color: var(--color-text-secondary) !important;
+    font-weight: 900;
+  }
+
+  .mat-mdc-tab.mdc-tab--active .mdc-tab__text-label {
+    color: var(--color-primary) !important;
+  }
+
+  .mat-mdc-form-field {
+    width: 100%;
+  }
+
+  .mdc-label {
+    color: var(--color-text-primary) !important;
+  }
+}
+
+@media (max-width: 1040px) {
+  .promotions-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .promotions-hero,
+  .promo-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,255 @@
+<div class="promotions-shell">
+  <section class="promotions-hero">
+    <div>
+      <span class="eyebrow">Маркетинг</span>
+      <h1>Акции и промокоды</h1>
+      <p>Управляйте скидочными правилами, персональными кодами и быстрыми проверками суммы заказа.</p>
+    </div>
+    <button mat-stroked-button type="button" (click)="loadAll()" [disabled]="loading">
+      <mat-icon>sync</mat-icon>
+      Обновить
+    </button>
+  </section>
+
+  <mat-tab-group class="promotions-tabs" animationDuration="180ms">
+    <mat-tab label="Акции">
+      <section class="promotions-grid">
+        <form class="editor-panel" [formGroup]="promotionForm" (ngSubmit)="savePromotion()">
+          <header>
+            <span>{{ editingPromotion ? 'Редактирование' : 'Новая акция' }}</span>
+            <h2>{{ editingPromotion?.name || 'Создать правило скидки' }}</h2>
+          </header>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Название</mat-label>
+            <input matInput formControlName="name" placeholder="Скидка на защитные стекла">
+          </mat-form-field>
+
+          <div class="form-grid">
+            <mat-form-field appearance="outline">
+              <mat-label>Тип</mat-label>
+              <mat-select formControlName="discount_type">
+                <mat-option *ngFor="let type of discountTypes" [value]="type.value">{{ type.label }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Размер</mat-label>
+              <input matInput type="number" min="0" formControlName="value">
+            </mat-form-field>
+          </div>
+
+          <div class="form-grid">
+            <mat-form-field appearance="outline">
+              <mat-label>Минимальная сумма</mat-label>
+              <input matInput type="number" min="0" formControlName="min_order_amount">
+              <span matTextSuffix>₽</span>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Максимальная скидка</mat-label>
+              <input matInput type="number" min="0" formControlName="max_discount_amount">
+              <span matTextSuffix>₽</span>
+            </mat-form-field>
+          </div>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Описание</mat-label>
+            <textarea matInput rows="3" formControlName="description"></textarea>
+          </mat-form-field>
+
+          <div class="form-grid">
+            <mat-form-field appearance="outline">
+              <mat-label>Действует с</mat-label>
+              <input matInput type="datetime-local" formControlName="starts_at">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Действует до</mat-label>
+              <input matInput type="datetime-local" formControlName="ends_at">
+            </mat-form-field>
+          </div>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Филиалы</mat-label>
+            <mat-select formControlName="shop_ids" multiple>
+              <mat-option *ngFor="let shop of shops" [value]="shop.id">{{ shop.name }}</mat-option>
+            </mat-select>
+            <mat-hint>Если ничего не выбрано, акция доступна во всех филиалах.</mat-hint>
+          </mat-form-field>
+
+          <div class="switch-grid">
+            <mat-slide-toggle formControlName="is_active">Активна</mat-slide-toggle>
+            <mat-slide-toggle formControlName="auto_apply">Авто-применение</mat-slide-toggle>
+            <mat-slide-toggle formControlName="stackable">Сочетается</mat-slide-toggle>
+          </div>
+
+          <div class="editor-actions">
+            <button mat-button type="button" (click)="resetPromotionForm()">Сбросить</button>
+            <button mat-flat-button type="submit" [disabled]="savingPromotion">
+              <mat-spinner *ngIf="savingPromotion" diameter="18"></mat-spinner>
+              <mat-icon *ngIf="!savingPromotion">save</mat-icon>
+              Сохранить
+            </button>
+          </div>
+        </form>
+
+        <section class="list-panel">
+          <header class="list-header">
+            <div>
+              <span class="eyebrow">Каталог</span>
+              <h2>{{ promotions.length }} акций</h2>
+            </div>
+            <mat-spinner *ngIf="loading" diameter="28"></mat-spinner>
+          </header>
+
+          <article class="promo-card" *ngFor="let promotion of promotions; trackBy: trackById">
+            <div>
+              <span class="discount-badge">{{ getDiscountLabel(promotion) }}</span>
+              <h3>{{ promotion.name }}</h3>
+              <p>{{ promotion.description || 'Описание не указано' }}</p>
+              <mat-chip-set>
+                <mat-chip>{{ getScopeLabel(promotion.shop_ids) }}</mat-chip>
+                <mat-chip>{{ promotion.used_count }} применений</mat-chip>
+                <mat-chip [class.disabled-chip]="!promotion.is_active">
+                  {{ promotion.is_active ? 'Активна' : 'Отключена' }}
+                </mat-chip>
+              </mat-chip-set>
+            </div>
+            <div class="card-actions">
+              <button mat-icon-button type="button" matTooltip="Редактировать" (click)="editPromotion(promotion)">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button type="button" matTooltip="Отключить" (click)="disablePromotion(promotion)">
+                <mat-icon>visibility_off</mat-icon>
+              </button>
+            </div>
+          </article>
+        </section>
+      </section>
+    </mat-tab>
+
+    <mat-tab label="Промокоды">
+      <section class="promotions-grid">
+        <form class="editor-panel" [formGroup]="promoCodeForm" (ngSubmit)="savePromoCode()">
+          <header>
+            <span>{{ editingPromoCode ? 'Редактирование' : 'Новый промокод' }}</span>
+            <h2>{{ editingPromoCode?.code || 'Создать промокод' }}</h2>
+          </header>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Акция</mat-label>
+            <mat-select formControlName="promotion_id">
+              <mat-option *ngFor="let promotion of promotions" [value]="promotion.id">{{ promotion.name }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Код</mat-label>
+            <input matInput formControlName="code" placeholder="START500">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Описание</mat-label>
+            <textarea matInput rows="3" formControlName="description"></textarea>
+          </mat-form-field>
+
+          <div class="form-grid">
+            <mat-form-field appearance="outline">
+              <mat-label>Общий лимит</mat-label>
+              <input matInput type="number" min="0" formControlName="usage_limit">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Лимит на клиента</mat-label>
+              <input matInput type="number" min="0" formControlName="per_customer_limit">
+            </mat-form-field>
+          </div>
+
+          <div class="form-grid">
+            <mat-form-field appearance="outline">
+              <mat-label>Действует с</mat-label>
+              <input matInput type="datetime-local" formControlName="starts_at">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Действует до</mat-label>
+              <input matInput type="datetime-local" formControlName="ends_at">
+            </mat-form-field>
+          </div>
+
+          <mat-slide-toggle formControlName="is_active">Активен</mat-slide-toggle>
+
+          <div class="editor-actions">
+            <button mat-button type="button" (click)="resetPromoCodeForm()">Сбросить</button>
+            <button mat-flat-button type="submit" [disabled]="savingCode">
+              <mat-spinner *ngIf="savingCode" diameter="18"></mat-spinner>
+              <mat-icon *ngIf="!savingCode">save</mat-icon>
+              Сохранить
+            </button>
+          </div>
+        </form>
+
+        <section class="list-panel">
+          <header class="list-header">
+            <div>
+              <span class="eyebrow">Коды</span>
+              <h2>{{ promoCodes.length }} промокодов</h2>
+            </div>
+          </header>
+
+          <article class="promo-card code-card" *ngFor="let code of promoCodes; trackBy: trackById">
+            <div>
+              <span class="code-badge">{{ code.code }}</span>
+              <h3>{{ code.promotion_name }}</h3>
+              <p>{{ code.description || 'Описание не указано' }}</p>
+              <mat-chip-set>
+                <mat-chip>{{ code.used_count }} использований</mat-chip>
+                <mat-chip [class.disabled-chip]="!code.is_active">
+                  {{ code.is_active ? 'Активен' : 'Отключен' }}
+                </mat-chip>
+              </mat-chip-set>
+            </div>
+            <div class="card-actions">
+              <button mat-icon-button type="button" matTooltip="Редактировать" (click)="editPromoCode(code)">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button type="button" matTooltip="Отключить" (click)="disablePromoCode(code)">
+                <mat-icon>visibility_off</mat-icon>
+              </button>
+            </div>
+          </article>
+        </section>
+      </section>
+    </mat-tab>
+
+    <mat-tab label="Проверка">
+      <section class="quote-panel">
+        <form [formGroup]="quoteForm" (ngSubmit)="validatePromoCode()">
+          <h2>Быстрая проверка</h2>
+          <p>Проверьте код без привязки к заказу, чтобы быстро назвать клиенту итоговую сумму.</p>
+          <div class="form-grid">
+            <mat-form-field appearance="outline">
+              <mat-label>Промокод</mat-label>
+              <input matInput formControlName="code" placeholder="START500">
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Сумма заказа</mat-label>
+              <input matInput type="number" min="0" formControlName="subtotal">
+              <span matTextSuffix>₽</span>
+            </mat-form-field>
+          </div>
+          <button mat-flat-button type="submit" [disabled]="validating">
+            <mat-spinner *ngIf="validating" diameter="18"></mat-spinner>
+            <mat-icon *ngIf="!validating">sell</mat-icon>
+            Проверить
+          </button>
+        </form>
+        <div class="quote-result" *ngIf="quoteMessage">
+          <mat-icon>confirmation_number</mat-icon>
+          <strong>{{ quoteMessage }}</strong>
+        </div>
+      </section>
+    </mat-tab>
+  </mat-tab-group>
+</div>

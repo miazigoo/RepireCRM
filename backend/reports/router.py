@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional
 
-from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Sum
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -75,6 +75,14 @@ def _get_scoped_orders_queryset(
     return queryset.filter(shop__in=request.auth.get_available_shops())
 
 
+def _sum_payable_total(queryset) -> Decimal:
+    orders = queryset.prefetch_related(
+        "orderservice_set",
+        "discounts",
+    )
+    return sum((order.total_cost for order in orders), Decimal("0.00"))
+
+
 @router.get("/sla", response=dict)
 def get_sla_report(
     request,
@@ -128,18 +136,15 @@ def get_dashboard_metrics(
     prev_completed = prev_orders.filter(status="completed")
 
     # Расчеты
-    current_revenue = current_completed.aggregate(total=Sum("final_cost"))[
-        "total"
-    ] or Decimal("0")
-
-    prev_revenue = prev_completed.aggregate(total=Sum("final_cost"))[
-        "total"
-    ] or Decimal("0")
+    current_revenue = _sum_payable_total(current_completed)
+    prev_revenue = _sum_payable_total(prev_completed)
 
     # Средний чек
-    current_avg_check = current_completed.aggregate(avg=Avg("final_cost"))[
-        "avg"
-    ] or Decimal("0")
+    current_avg_check = (
+        current_revenue / current_completed.count()
+        if current_completed.count() > 0
+        else Decimal("0")
+    )
 
     # Конверсия
     total_current = current_orders.count()

@@ -84,7 +84,8 @@ export class MainLayoutComponent implements OnInit {
         { label: 'Задачи', icon: 'task_alt', route: '/tasks' },
         { label: 'Клиенты', icon: 'people', route: '/customers' },
         { label: 'Склад', icon: 'inventory_2', route: '/inventory' },
-        { label: 'Услуги', icon: 'home_repair_service', route: '/services' }
+        { label: 'Услуги', icon: 'home_repair_service', route: '/services' },
+        { label: 'Акции', icon: 'sell', route: '/promotions' }
       ]
     },
     {
@@ -121,6 +122,7 @@ export class MainLayoutComponent implements OnInit {
     '/inventory/purchase-orders/new': 'Заказ поставщику',
     '/notifications': 'Уведомления',
     '/services': 'Услуги',
+    '/promotions': 'Акции и промокоды',
     '/reports': 'Отчеты',
     '/finance': 'Финансы',
     '/tasks': 'Задачи',

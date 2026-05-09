@@ -62,10 +62,15 @@ class ReportService:
 
         # Основные метрики
         completed_orders = orders_qs.filter(status="completed")
-
-        total_revenue = completed_orders.aggregate(total=Sum("final_cost"))[
-            "total"
-        ] or Decimal("0")
+        completed_order_list = list(
+            completed_orders.select_related("shop").prefetch_related(
+                "orderservice_set", "discounts"
+            )
+        )
+        completed_order_ids = [order.id for order in completed_order_list]
+        total_revenue = sum(
+            (order.total_cost for order in completed_order_list), Decimal("0")
+        )
 
         # Доходы по дням
         daily_revenue = []
@@ -73,9 +78,14 @@ class ReportService:
         end_date = date_to.date()
 
         while current_date <= end_date:
-            day_revenue = completed_orders.filter(
-                completed_at__date=current_date
-            ).aggregate(total=Sum("final_cost"))["total"] or Decimal("0")
+            day_revenue = sum(
+                (
+                    order.total_cost
+                    for order in completed_order_list
+                    if order.completed_at and order.completed_at.date() == current_date
+                ),
+                Decimal("0"),
+            )
 
             daily_revenue.append(
                 {"date": current_date.isoformat(), "revenue": float(day_revenue)}
@@ -88,18 +98,21 @@ class ReportService:
             output_field=DecimalField(max_digits=12, decimal_places=2),
         )
         services_revenue = (
-            OrderService.objects.filter(order__in=completed_orders)
+            OrderService.objects.filter(order_id__in=completed_order_ids)
             .values("service__name")
             .annotate(total_revenue=Sum(service_revenue), count=Count("id"))
             .order_by("-total_revenue")
         )
 
         # Доходы по магазинам
-        shops_revenue = (
-            completed_orders.values("shop__name")
-            .annotate(total_revenue=Sum("final_cost"), orders_count=Count("id"))
-            .order_by("-total_revenue")
-        )
+        shops_revenue = {}
+        for order in completed_order_list:
+            item = shops_revenue.setdefault(
+                order.shop.name,
+                {"shop": order.shop.name, "revenue": Decimal("0"), "orders": 0},
+            )
+            item["revenue"] += order.total_cost
+            item["orders"] += 1
 
         return {
             "summary": {
@@ -107,7 +120,7 @@ class ReportService:
                 "total_orders": completed_orders.count(),
                 "avg_check": float(
                     total_revenue / completed_orders.count()
-                    if completed_orders.count() > 0
+                    if len(completed_order_list) > 0
                     else 0
                 ),
                 "period_days": (date_to - date_from).days + 1,
@@ -123,11 +136,15 @@ class ReportService:
             ],
             "shops_breakdown": [
                 {
-                    "shop": item["shop__name"],
-                    "revenue": float(item["total_revenue"]),
-                    "orders": item["orders_count"],
+                    "shop": item["shop"],
+                    "revenue": float(item["revenue"]),
+                    "orders": item["orders"],
                 }
-                for item in shops_revenue
+                for item in sorted(
+                    shops_revenue.values(),
+                    key=lambda row: row["revenue"],
+                    reverse=True,
+                )
             ],
         }
 

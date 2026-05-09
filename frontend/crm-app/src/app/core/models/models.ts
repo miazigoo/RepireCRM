@@ -148,6 +148,18 @@ export interface OrderService {
   total_price: number;
 }
 
+export interface OrderDiscount {
+  id: number;
+  source: 'manual' | 'promo_code' | 'auto' | 'loyalty';
+  label: string;
+  amount: number;
+  promotion_id?: number;
+  promotion_name?: string;
+  promo_code_id?: number;
+  promo_code?: string;
+  created_at: string;
+}
+
 export interface Order {
   id: number;
   order_number: string;
@@ -163,6 +175,8 @@ export interface Order {
   cost_estimate: number;
   final_cost?: number;
   prepayment: number; // Обязательно в backend
+  subtotal_before_discount?: number;
+  discount_total?: number;
   total_cost: number; // Обязательно в backend
   remaining_payment: number; // Обязательно в backend
   created_at: string;
@@ -170,6 +184,7 @@ export interface Order {
   estimated_completion?: string;
   completed_at?: string;
   additional_services: OrderService[];
+  discounts?: OrderDiscount[];
   notes?: string;
   warranty_days?: number;
   warranty_until?: string;
@@ -180,6 +195,54 @@ export interface Order {
   warranty_reason?: string;
   warranty_resolution?: string;
   warranty_cases_count?: number;
+}
+
+export interface Promotion {
+  id: number;
+  name: string;
+  description?: string;
+  discount_type: 'percent' | 'fixed';
+  value: number;
+  max_discount_amount?: number | null;
+  min_order_amount: number;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  is_active: boolean;
+  auto_apply: boolean;
+  stackable: boolean;
+  usage_limit?: number | null;
+  per_customer_limit?: number | null;
+  shop_ids: number[];
+  used_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PromoCode {
+  id: number;
+  promotion_id: number;
+  promotion_name: string;
+  code: string;
+  description?: string;
+  is_active: boolean;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  usage_limit?: number | null;
+  per_customer_limit?: number | null;
+  used_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DiscountQuote {
+  valid: boolean;
+  message: string;
+  code?: string;
+  promotion_id?: number;
+  promotion_name?: string;
+  subtotal: number;
+  discount_amount: number;
+  total_after_discount: number;
 }
 
 export interface WarrantyCaseCreate {

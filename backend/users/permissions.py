@@ -237,6 +237,24 @@ PERMISSION_DEFINITIONS: tuple[PermissionDefinition, ...] = (
         "Технический дубль для старых интеграций платежей.",
     ),
     PermissionDefinition(
+        "promotions.view_promotion",
+        "Просматривать акции и промокоды",
+        "marketing",
+        "Открывать раздел акций, скидок и промокодов.",
+    ),
+    PermissionDefinition(
+        "promotions.change_promotion",
+        "Управлять акциями и промокодами",
+        "marketing",
+        "Создавать и редактировать акции, скидочные правила и промокоды.",
+    ),
+    PermissionDefinition(
+        "promotions.apply_discount",
+        "Применять скидки к заказам",
+        "marketing",
+        "Проверять промокоды и добавлять скидки в карточке заказа.",
+    ),
+    PermissionDefinition(
         "settings.view_shop",
         "Просматривать филиалы",
         "settings",
@@ -341,6 +359,8 @@ DEFAULT_ROLE_PERMISSIONS: dict[str, tuple[str, ...] | str] = {
         "reports.view_dashboard",
         "reports.view_financial",
         "reports.view_analytics",
+        "promotions.view_promotion",
+        "promotions.apply_discount",
         "tasks.view_task",
         "tasks.add_task",
         "tasks.change_task",
@@ -367,6 +387,8 @@ DEFAULT_ROLE_PERMISSIONS: dict[str, tuple[str, ...] | str] = {
         "inventory.add_sale",
         "finance.add_payment",
         "payments.add_payment",
+        "promotions.view_promotion",
+        "promotions.apply_discount",
     ),
 }
 
@@ -378,6 +400,7 @@ CATEGORY_LABELS: dict[str, str] = {
     "reports": "Отчеты",
     "tasks": "Задачи",
     "finance": "Финансы",
+    "marketing": "Маркетинг и скидки",
     "settings": "Настройки",
     "users": "Пользователи и доступ",
 }

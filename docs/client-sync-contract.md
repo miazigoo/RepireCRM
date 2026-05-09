@@ -1,4 +1,4 @@
-# Контракт синхронизации клиентского кабинета
+# Контракт синхронизации внешнего клиентского сервиса
 
 Рабочая CRM остается основной системой для сотрудников. Внешний клиентский backend
 хранит аккаунты клиентов, подтвержденные контакты, локальный снимок заказов и
@@ -69,7 +69,7 @@ CRM отправляет батч снимков:
 ```json
 {
   "orders": [
-    {"crm_order_id": 123, "remote_order_id": "portal-order-abc"}
+    {"crm_order_id": 123, "remote_order_id": "client-order-abc"}
   ]
 }
 ```
@@ -124,11 +124,11 @@ CRM забирает ожидающие действия:
 Ручной запуск:
 
 ```bash
-docker compose -f docker-compose.dev.yml exec -T backend python manage.py sync_client_portal
+docker compose -f docker-compose.dev.yml exec -T backend python manage.py sync_client_service
 ```
 
 Планировщик может дергать Celery task:
 
 ```python
-client_sync.tasks.sync_client_portals
+client_sync.tasks.sync_client_services
 ```

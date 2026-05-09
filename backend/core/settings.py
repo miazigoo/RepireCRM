@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "tasks",
     "analytics",
     "client_sync",
+    "promotions",
 ]
 
 MIDDLEWARE = [

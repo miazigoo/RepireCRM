@@ -85,8 +85,8 @@ build: ## Angular build без записи в root-owned dist
 smoke: ## Проверить live API по запущенному стенду
 	python3 scripts/api_smoke.py --base-url $(BACKEND_URL) --username $(TEST_USER) --password '$(TEST_PASSWORD)'
 
-client-sync: ## Ручной запуск синхронизации с внешним клиентским backend
-	$(COMPOSE) exec -T $(BACKEND) python manage.py sync_client_portal
+client-sync: ## Ручной запуск синхронизации с внешним клиентским сервисом
+	$(COMPOSE) exec -T $(BACKEND) python manage.py sync_client_service
 
 mock: up migrate ## Пересоздать большую demo-базу за год
 	$(COMPOSE) exec -T $(BACKEND) python manage.py create_test_data --reset-demo --months $(MOCK_MONTHS) --orders $(MOCK_ORDERS) --customers $(MOCK_CUSTOMERS)

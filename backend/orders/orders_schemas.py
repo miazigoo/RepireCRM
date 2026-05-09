@@ -4,6 +4,7 @@ from typing import List, Optional
 from ninja import Schema
 
 from customers.customers_schemas import CustomerSchema
+from promotions.schemas import OrderDiscountSchema
 from Schemas.common import PaginationSchema
 
 
@@ -248,6 +249,8 @@ class OrderSchema(Schema):
     cost_estimate: float
     final_cost: Optional[float] = None
     prepayment: float
+    subtotal_before_discount: float
+    discount_total: float
     total_cost: float
     remaining_payment: float
     created_at: datetime
@@ -255,6 +258,7 @@ class OrderSchema(Schema):
     estimated_completion: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     additional_services: List[OrderServiceSchema]
+    discounts: List[OrderDiscountSchema] = []
     notes: Optional[str] = None
     warranty_days: int
     warranty_until: Optional[datetime] = None
@@ -283,12 +287,24 @@ class OrderSchema(Schema):
         return float(obj.prepayment)
 
     @staticmethod
+    def resolve_subtotal_before_discount(obj):
+        return float(obj.subtotal_before_discount)
+
+    @staticmethod
+    def resolve_discount_total(obj):
+        return float(obj.discount_total)
+
+    @staticmethod
     def resolve_total_cost(obj):
         return float(obj.total_cost)
 
     @staticmethod
     def resolve_remaining_payment(obj):
         return float(obj.remaining_payment)
+
+    @staticmethod
+    def resolve_discounts(obj):
+        return obj.discounts.all()
 
     @staticmethod
     def resolve_warranty_active(obj):

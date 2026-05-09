@@ -663,6 +663,14 @@
             <span>Услуги</span>
             <strong>{{ formatMoney(getOrderServicesAmount(order)) }}</strong>
           </div>
+          <div *ngIf="getDiscountTotal(order) > 0">
+            <span>До скидок</span>
+            <strong>{{ formatMoney(getOrderSubtotal(order)) }}</strong>
+          </div>
+          <div *ngIf="getDiscountTotal(order) > 0">
+            <span>Скидки</span>
+            <strong class="success">−{{ formatMoney(getDiscountTotal(order)) }}</strong>
+          </div>
           <div>
             <span>Итого</span>
             <strong>{{ formatMoney(getOrderAmount(order)) }}</strong>
@@ -675,6 +683,61 @@
             <span>К доплате</span>
             <strong class="danger">{{ formatMoney(getDisplayRemainingPayment(order)) }}</strong>
           </div>
+        </div>
+
+        <div class="discount-box">
+          <div class="discount-header">
+            <span>Скидки и промокоды</span>
+            <strong>{{ formatMoney(getDiscountTotal(order)) }}</strong>
+          </div>
+
+          <div class="discount-list" *ngIf="order.discounts?.length; else noDiscounts">
+            <div class="discount-item" *ngFor="let discount of order.discounts; trackBy: trackById">
+              <div>
+                <strong>{{ discount.label }}</strong>
+                <span>{{ discount.promo_code || discount.promotion_name || 'Ручная скидка' }}</span>
+              </div>
+              <button
+                mat-icon-button
+                type="button"
+                aria-label="Удалить скидку"
+                [disabled]="discountSaving"
+                (click)="removeDiscount(discount.id)">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <ng-template #noDiscounts>
+            <div class="discount-empty">Скидок пока нет</div>
+          </ng-template>
+
+          <form class="promo-code-form" [formGroup]="promoCodeForm" (ngSubmit)="applyPromoCode()">
+            <mat-form-field>
+              <mat-label>Промокод</mat-label>
+              <input matInput formControlName="code" placeholder="START500">
+            </mat-form-field>
+            <button mat-flat-button class="primary-action" type="submit" [disabled]="promoCodeForm.invalid || discountSaving">
+              <mat-spinner *ngIf="discountSaving" diameter="16"></mat-spinner>
+              Применить
+            </button>
+          </form>
+
+          <form class="manual-discount-form" [formGroup]="manualDiscountForm" (ngSubmit)="addManualDiscount()">
+            <mat-form-field>
+              <mat-label>Название</mat-label>
+              <input matInput formControlName="label">
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>Сумма</mat-label>
+              <input matInput type="number" min="0" formControlName="amount">
+              <span matSuffix>₽</span>
+            </mat-form-field>
+            <button mat-stroked-button type="submit" [disabled]="manualDiscountForm.invalid || discountSaving">
+              <mat-icon>add</mat-icon>
+              Добавить
+            </button>
+          </form>
         </div>
 
         <div class="online-payment-box" *ngIf="getDisplayRemainingPayment(order) > 0">
@@ -753,6 +816,10 @@
       <div>
         <span>Услуги</span>
         <strong>{{ formatMoney(handoverServicesTotal) }}</strong>
+      </div>
+      <div *ngIf="order && getDiscountTotal(order) > 0">
+        <span>Скидки</span>
+        <strong>−{{ formatMoney(getDiscountTotal(order)) }}</strong>
       </div>
       <div>
         <span>Итого к оплате</span>

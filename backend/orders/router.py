@@ -14,6 +14,7 @@ from device.popular_models import (
     ensure_popular_device_models,
     popular_device_model_ordering,
 )
+from promotions.models import OrderDiscount
 from Schemas.common import ErrorSchema
 from users.models import User
 
@@ -136,7 +137,11 @@ def _with_order_relations(queryset):
     ).prefetch_related(
         Prefetch(
             "orderservice_set", queryset=OrderService.objects.select_related("service")
-        )
+        ),
+        Prefetch(
+            "discounts",
+            queryset=OrderDiscount.objects.select_related("promotion", "promo_code"),
+        ),
     )
 
 
@@ -293,7 +298,7 @@ def get_orders_statistics(request, all_shops: bool = False):
 
     from datetime import timedelta
 
-    from django.db.models import Avg, Count, Sum
+    from django.db.models import Count
     from django.utils import timezone
 
     # Базовый queryset с учетом прав доступа
@@ -311,17 +316,16 @@ def get_orders_statistics(request, all_shops: bool = False):
     thirty_days_ago = timezone.now() - timedelta(days=30)
     recent_orders = queryset.filter(created_at__gte=thirty_days_ago)
 
-    # Общая статистика
-    total_stats = queryset.aggregate(
-        total_orders=Count("id"),
-        total_revenue=Sum("final_cost"),
-        avg_order_value=Avg("final_cost"),
+    completed_orders = list(
+        queryset.filter(status=Order.StatusChoices.COMPLETED).prefetch_related(
+            "orderservice_set", "discounts"
+        )
     )
-
-    # Статистика за последние 30 дней
-    recent_stats = recent_orders.aggregate(
-        recent_orders=Count("id"), recent_revenue=Sum("final_cost")
-    )
+    total_revenue = sum((order.total_cost for order in completed_orders), 0)
+    recent_completed_orders = [
+        order for order in completed_orders if order.created_at >= thirty_days_ago
+    ]
+    recent_revenue = sum((order.total_cost for order in recent_completed_orders), 0)
 
     # Статистика по статусам
     status_stats = (
@@ -329,11 +333,13 @@ def get_orders_statistics(request, all_shops: bool = False):
     )
 
     return {
-        "total_orders": total_stats["total_orders"] or 0,
-        "total_revenue": float(total_stats["total_revenue"] or 0),
-        "avg_order_value": float(total_stats["avg_order_value"] or 0),
-        "recent_orders": recent_stats["recent_orders"] or 0,
-        "recent_revenue": float(recent_stats["recent_revenue"] or 0),
+        "total_orders": queryset.count(),
+        "total_revenue": float(total_revenue or 0),
+        "avg_order_value": float(
+            total_revenue / len(completed_orders) if completed_orders else 0
+        ),
+        "recent_orders": recent_orders.count(),
+        "recent_revenue": float(recent_revenue or 0),
         "status_distribution": list(status_stats),
         "period": "30 days",
     }
