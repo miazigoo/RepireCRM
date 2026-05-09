@@ -15,6 +15,7 @@ from django.utils import timezone
 
 from customers.models import Customer, CustomerShopHistory
 from device.models import Device, DeviceBrand, DeviceModel, DeviceType
+from finance.models import Payment
 from orders.models import Order, OrderApproval, OrderAuditLog
 from promotions.models import Promotion
 from shops.models import Organization, Shop
@@ -47,6 +48,18 @@ class SyncResult:
 
 class ClientSyncError(RuntimeError):
     pass
+
+
+def _sync_error_message(exc: Exception) -> str:
+    return (str(exc) or exc.__class__.__name__)[:1000]
+
+
+def _save_integration_error(
+    integration: ClientPortalIntegration,
+    message: str,
+) -> None:
+    integration.last_error = message[:1000]
+    integration.save(update_fields=["last_error", "updated_at"])
 
 
 def get_or_create_integration(
@@ -253,6 +266,28 @@ def serialize_order_snapshot(order: Order) -> dict[str, Any]:
             }
             for discount in order.discounts.all()
         ],
+        "payments": [
+            {
+                "crm_payment_id": payment.id,
+                "payment_number": payment.payment_number,
+                "payment_type": payment.payment_type,
+                "status": payment.status,
+                "status_display": payment.get_status_display(),
+                "amount": serialize_money(payment.amount),
+                "fee_amount": serialize_money(payment.fee_amount),
+                "net_amount": serialize_money(payment.net_amount),
+                "payment_method": (
+                    payment.payment_method.name if payment.payment_method_id else ""
+                ),
+                "payment_method_code": (
+                    payment.payment_method.code if payment.payment_method_id else ""
+                ),
+                "payment_date": serialize_datetime(payment.payment_date),
+                "processed_at": serialize_datetime(payment.processed_at),
+            }
+            for payment in order.payment_set.all()
+            if payment.payment_type == Payment.PaymentType.INCOME
+        ],
     }
 
 
@@ -287,6 +322,7 @@ def orders_for_push(integration: ClientPortalIntegration, limit: int = 100):
         )
         .prefetch_related("repair_stages", "approvals", "orderservice_set__service")
         .prefetch_related("discounts__promotion", "discounts__promo_code")
+        .prefetch_related("payment_set__payment_method")
         .distinct()
         .order_by("updated_at")[:limit]
     )
@@ -332,16 +368,27 @@ def push_order_snapshots(
         integration.save(update_fields=["last_push_at", "last_error", "updated_at"])
         return result
 
-    response = session.post(
-        build_sync_url(integration, "/api/sync/orders/upsert"),
-        headers=integration_headers(integration),
-        json={
-            "tenant_key": integration.tenant_key,
-            "sent_at": serialize_datetime(timezone.now()),
-            "orders": snapshots,
-        },
-        timeout=DEFAULT_TIMEOUT_SECONDS,
-    )
+    try:
+        response = session.post(
+            build_sync_url(integration, "/api/sync/orders/upsert"),
+            headers=integration_headers(integration),
+            json={
+                "tenant_key": integration.tenant_key,
+                "sent_at": serialize_datetime(timezone.now()),
+                "orders": snapshots,
+            },
+            timeout=DEFAULT_TIMEOUT_SECONDS,
+        )
+    except requests.RequestException as exc:
+        message = _sync_error_message(exc)
+        for state, _ in states.values():
+            state.status = ClientSyncOrderState.Status.ERROR
+            state.attempts += 1
+            state.last_error = message
+            state.save(update_fields=["status", "attempts", "last_error", "updated_at"])
+        _save_integration_error(integration, message)
+        result.errors += len(states)
+        return result
     if response.status_code >= 400:
         message = response.text[:1000]
         for state, _ in states.values():
@@ -349,8 +396,7 @@ def push_order_snapshots(
             state.attempts += 1
             state.last_error = message
             state.save(update_fields=["status", "attempts", "last_error", "updated_at"])
-        integration.last_error = message
-        integration.save(update_fields=["last_error", "updated_at"])
+        _save_integration_error(integration, message)
         result.errors += len(states)
         return result
 
@@ -458,20 +504,23 @@ def push_marketing_snapshot(
         for p in promotions_for_client_portal(integration)
     ]
     banner = build_marketing_banner_dict(integration)
-    response = session.post(
-        build_sync_url(integration, "/api/sync/marketing/upsert"),
-        headers=integration_headers(integration),
-        json={
-            "tenant_key": integration.tenant_key,
-            "sent_at": serialize_datetime(timezone.now()),
-            "promotions": promotions,
-            "banner": banner,
-        },
-        timeout=DEFAULT_TIMEOUT_SECONDS,
-    )
+    try:
+        response = session.post(
+            build_sync_url(integration, "/api/sync/marketing/upsert"),
+            headers=integration_headers(integration),
+            json={
+                "tenant_key": integration.tenant_key,
+                "sent_at": serialize_datetime(timezone.now()),
+                "promotions": promotions,
+                "banner": banner,
+            },
+            timeout=DEFAULT_TIMEOUT_SECONDS,
+        )
+    except requests.RequestException as exc:
+        _save_integration_error(integration, _sync_error_message(exc))
+        return False
     if response.status_code >= 400:
-        integration.last_error = response.text[:1000]
-        integration.save(update_fields=["last_error", "updated_at"])
+        _save_integration_error(integration, response.text[:1000])
         return False
     integration.last_error = ""
     integration.save(update_fields=["last_error", "updated_at"])
@@ -488,22 +537,31 @@ def pull_pending_actions(
         return result
 
     session = session or requests.Session()
-    response = session.get(
-        build_sync_url(integration, "/api/sync/actions"),
-        headers=integration_headers(integration),
-        params={"limit": limit},
-        timeout=DEFAULT_TIMEOUT_SECONDS,
-    )
+    try:
+        response = session.get(
+            build_sync_url(integration, "/api/sync/actions"),
+            headers=integration_headers(integration),
+            params={"limit": limit},
+            timeout=DEFAULT_TIMEOUT_SECONDS,
+        )
+    except requests.RequestException as exc:
+        _save_integration_error(integration, _sync_error_message(exc))
+        result.errors += 1
+        return result
     if response.status_code >= 400:
-        integration.last_error = response.text[:1000]
-        integration.save(update_fields=["last_error", "updated_at"])
+        _save_integration_error(integration, response.text[:1000])
         result.errors += 1
         return result
 
     payload = _response_json(response)
     for raw_action in _response_items(payload, keys=("actions", "items")):
         result.pulled += 1
-        action = record_action(integration, raw_action)
+        try:
+            action = record_action(integration, raw_action)
+        except ClientSyncError as exc:
+            result.errors += 1
+            integration.last_error = _sync_error_message(exc)
+            continue
         if action.status == ClientSyncAction.Status.RECEIVED:
             apply_client_action(action)
         if action.status in (
@@ -518,7 +576,8 @@ def pull_pending_actions(
             result.errors += 1
 
     integration.last_pull_at = timezone.now()
-    integration.last_error = ""
+    if not result.errors:
+        integration.last_error = ""
     integration.save(update_fields=["last_pull_at", "last_error", "updated_at"])
     return result
 
@@ -531,17 +590,25 @@ def sync_client_service(
 ) -> dict[str, int]:
     result = SyncResult()
     if push:
-        push_result = push_order_snapshots(integration, limit=limit)
-        result.pushed += push_result.pushed
-        result.skipped += push_result.skipped
-        result.errors += push_result.errors
-        if not push_marketing_snapshot(integration):
+        try:
+            push_result = push_order_snapshots(integration, limit=limit)
+            result.pushed += push_result.pushed
+            result.skipped += push_result.skipped
+            result.errors += push_result.errors
+            if not push_marketing_snapshot(integration):
+                result.errors += 1
+        except Exception as exc:
+            _save_integration_error(integration, _sync_error_message(exc))
             result.errors += 1
     if pull:
-        pull_result = pull_pending_actions(integration, limit=limit)
-        result.pulled += pull_result.pulled
-        result.applied += pull_result.applied
-        result.errors += pull_result.errors
+        try:
+            pull_result = pull_pending_actions(integration, limit=limit)
+            result.pulled += pull_result.pulled
+            result.applied += pull_result.applied
+            result.errors += pull_result.errors
+        except Exception as exc:
+            _save_integration_error(integration, _sync_error_message(exc))
+            result.errors += 1
     return result.as_dict()
 
 
@@ -613,25 +680,36 @@ def mark_action_synced(
     if action.synced_back_at:
         return
     session = session or requests.Session()
-    response = session.post(
-        build_sync_url(
-            integration, f"/api/sync/actions/{action.external_id}/mark-synced"
-        ),
-        headers=integration_headers(integration),
-        json={
-            "status": action.status,
-            "crm_order_id": action.related_order_id,
-            "crm_order_number": (
-                action.related_order.order_number if action.related_order_id else None
+    try:
+        response = session.post(
+            build_sync_url(
+                integration, f"/api/sync/actions/{action.external_id}/mark-synced"
             ),
-            "crm_task_id": action.related_task_id,
-            "error": action.error_message,
-        },
-        timeout=DEFAULT_TIMEOUT_SECONDS,
-    )
-    if response.status_code >= 400:
-        action.error_message = response.text[:1000]
+            headers=integration_headers(integration),
+            json={
+                "status": action.status,
+                "crm_order_id": action.related_order_id,
+                "crm_order_number": (
+                    action.related_order.order_number
+                    if action.related_order_id
+                    else None
+                ),
+                "crm_task_id": action.related_task_id,
+                "error": action.error_message,
+            },
+            timeout=DEFAULT_TIMEOUT_SECONDS,
+        )
+    except requests.RequestException as exc:
+        message = _sync_error_message(exc)
+        action.error_message = message
         action.save(update_fields=["error_message"])
+        _save_integration_error(integration, message)
+        return
+    if response.status_code >= 400:
+        message = response.text[:1000]
+        action.error_message = message
+        action.save(update_fields=["error_message"])
+        _save_integration_error(integration, message)
         return
     action.synced_back_at = timezone.now()
     action.save(update_fields=["synced_back_at"])
@@ -685,6 +763,14 @@ def _apply_approval_decision(action: ClientSyncAction) -> None:
 
 def _apply_repair_request(action: ClientSyncAction) -> None:
     payload = action.payload
+    if action.related_order_id:
+        return
+    existing_order = _existing_order_for_action(action)
+    if existing_order:
+        action.related_order = existing_order
+        mark_order_for_sync(existing_order)
+        return
+
     shop = _shop_from_payload(action.integration.organization, payload)
     customer = _customer_from_payload(payload)
     if not customer:
@@ -726,6 +812,12 @@ def _apply_repair_request(action: ClientSyncAction) -> None:
             color=device_payload.get("color") or "",
             storage_capacity=device_payload.get("storage_capacity") or "",
         )
+        client_order_id = payload.get("client_order_id") or order_payload.get(
+            "client_order_id"
+        )
+        notes = f"Заявка клиента из внешнего кабинета. Action: {action.external_id}"
+        if client_order_id:
+            notes = f"{notes}. Portal order: {client_order_id}"
         order = Order.objects.create(
             shop=shop,
             customer=customer,
@@ -739,7 +831,7 @@ def _apply_repair_request(action: ClientSyncAction) -> None:
             device_condition=order_payload.get("device_condition") or "",
             cost_estimate=Decimal(str(order_payload.get("cost_estimate") or "0")),
             created_by=_sync_user(shop),
-            notes=f"Заявка клиента из внешнего кабинета. Action: {action.external_id}",
+            notes=notes,
         )
         CustomerShopHistory.objects.get_or_create(customer=customer, shop=shop)
         customer.update_statistics()
@@ -751,6 +843,17 @@ def _apply_repair_request(action: ClientSyncAction) -> None:
             changes={"external_action_id": action.external_id},
         )
         mark_order_for_sync(order)
+
+
+def _existing_order_for_action(action: ClientSyncAction) -> Order | None:
+    shops = organization_shops(action.integration.organization)
+    return (
+        Order.objects.filter(
+            shop__in=shops, notes__contains=f"Action: {action.external_id}"
+        )
+        .select_related("shop", "customer")
+        .first()
+    )
 
 
 def _customer_from_payload(payload: dict[str, Any]) -> Customer | None:
@@ -795,6 +898,8 @@ def _create_task_from_action(
     title_prefix: str,
     shop: Shop | None = None,
 ) -> Task:
+    if action.related_task_id:
+        return action.related_task
     shop = shop or _shop_from_payload(action.integration.organization, action.payload)
     category, _ = TaskCategory.objects.get_or_create(
         name=CLIENT_ACTION_CATEGORY,

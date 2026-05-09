@@ -2,6 +2,7 @@ import json
 from datetime import timedelta
 
 import jwt
+import requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -20,6 +21,7 @@ from client_sync.services import (
 )
 from customers.models import Customer
 from device.models import Device, DeviceBrand, DeviceModel, DeviceType
+from finance.models import Payment, PaymentMethod
 from orders.models import Order, OrderApproval, RepairStage
 from shops.models import Organization, Shop, ShopSettings
 from users.models import Permission, Role
@@ -53,6 +55,11 @@ class FakeSession:
     def get(self, url, **kwargs):
         self.gets.append({"url": url, **kwargs})
         return FakeResponse(self.get_payload)
+
+
+class FailingPostSession:
+    def post(self, url, **kwargs):
+        raise requests.Timeout("client portal timeout")
 
 
 class ClientSyncTestCase(TestCase):
@@ -247,6 +254,63 @@ class ClientSyncTestCase(TestCase):
         state.refresh_from_db()
         self.assertEqual(state.status, ClientSyncOrderState.Status.PENDING)
 
+    def test_payment_change_is_pushed_even_when_order_timestamp_is_unchanged(self):
+        first_session = FakeSession(
+            post_payload={
+                "orders": [
+                    {
+                        "crm_order_id": self.order.id,
+                        "remote_order_id": "remote-123",
+                    }
+                ]
+            }
+        )
+        push_order_snapshots(self.integration, session=first_session)
+        state = ClientSyncOrderState.objects.get(order=self.order)
+        self.assertEqual(state.status, ClientSyncOrderState.Status.SYNCED)
+
+        method = PaymentMethod.objects.create(name="Наличные", code="cash")
+        with self.captureOnCommitCallbacks(execute=True):
+            Payment.objects.create(
+                payment_type=Payment.PaymentType.INCOME,
+                status=Payment.PaymentStatus.COMPLETED,
+                amount=1000,
+                payment_method=method,
+                order=self.order,
+                created_by=self.user,
+                payment_date=timezone.now(),
+            )
+
+        state.refresh_from_db()
+        self.assertEqual(state.status, ClientSyncOrderState.Status.PENDING)
+
+        second_session = FakeSession(
+            post_payload={
+                "orders": [
+                    {
+                        "crm_order_id": self.order.id,
+                        "remote_order_id": "remote-123",
+                    }
+                ]
+            }
+        )
+        result = push_order_snapshots(self.integration, session=second_session)
+
+        self.assertEqual(result.pushed, 1)
+        order_payload = second_session.posts[0]["json"]["orders"][0]
+        self.assertEqual(order_payload["payments"][0]["amount"], "1000.00")
+        self.assertEqual(order_payload["payments"][0]["payment_method"], "Наличные")
+
+    def test_push_network_error_marks_order_state_error(self):
+        result = push_order_snapshots(self.integration, session=FailingPostSession())
+
+        self.assertEqual(result.errors, 1)
+        state = ClientSyncOrderState.objects.get(order=self.order)
+        self.assertEqual(state.status, ClientSyncOrderState.Status.ERROR)
+        self.assertIn("timeout", state.last_error)
+        self.integration.refresh_from_db()
+        self.assertIn("timeout", self.integration.last_error)
+
     def test_pull_rejects_approval_from_other_organization(self):
         other_org = Organization.objects.create(name="Other Org")
         other_shop = Shop.objects.create(name="Other Shop", code="SPB01")
@@ -331,6 +395,57 @@ class ClientSyncTestCase(TestCase):
         self.assertEqual(
             mark_posts[0]["json"]["crm_order_number"],
             action.related_order.order_number,
+        )
+
+    def test_portal_repair_request_is_idempotent_by_external_action_id(self):
+        existing = Order.objects.create(
+            shop=self.shop,
+            customer=self.customer,
+            device=self.device,
+            problem_description="Повторная заявка",
+            cost_estimate=0,
+            created_by=self.user,
+            notes="Заявка клиента из внешнего кабинета. Action: act-request-repeat",
+        )
+        session = FakeSession(
+            get_payload={
+                "actions": [
+                    {
+                        "id": "act-request-repeat",
+                        "type": "repair_request.created",
+                        "payload": {
+                            "client_order_id": 77,
+                            "customer": {
+                                "first_name": self.customer.first_name,
+                                "last_name": self.customer.last_name,
+                                "phone": str(self.customer.phone),
+                                "email": self.customer.email,
+                            },
+                            "device": {
+                                "device_type": "Смартфон",
+                                "brand": "Apple",
+                                "model_name": "iPhone 15",
+                            },
+                            "order": {
+                                "problem_description": "Повторная заявка",
+                                "cost_estimate": 0,
+                            },
+                        },
+                    }
+                ]
+            }
+        )
+
+        result = pull_pending_actions(self.integration, session=session)
+
+        self.assertEqual(result.applied, 1)
+        action = ClientSyncAction.objects.get(external_id="act-request-repeat")
+        self.assertEqual(action.related_order_id, existing.id)
+        self.assertEqual(
+            Order.objects.filter(
+                notes__contains="Action: act-request-repeat",
+            ).count(),
+            1,
         )
 
     def test_push_marketing_snapshot_posts_payload(self):
