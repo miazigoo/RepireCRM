@@ -16,6 +16,16 @@ export interface MessageResponse {
   success?: boolean;
 }
 
+export interface ProfileUpdateRequest {
+  first_name?: string;
+  last_name?: string;
+  middle_name?: string;
+  email?: string;
+  phone?: string;
+  profile_status?: string;
+  bio?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -91,6 +101,33 @@ export class AuthService {
 
   changePassword(payload: ChangePasswordRequest): Observable<MessageResponse> {
     return this.apiService.post<MessageResponse>('/auth/change-password', payload);
+  }
+
+  getAvailableShops(): Observable<Shop[]> {
+    return this.apiService.get<Shop[]>('/auth/shops');
+  }
+
+  updateProfile(payload: ProfileUpdateRequest): Observable<User> {
+    return this.apiService.put<User>('/auth/profile', payload).pipe(
+      tap(user => {
+        this.currentUserSubject.next(user);
+        if (user.current_shop) {
+          this.currentShopSubject.next(user.current_shop);
+        }
+      })
+    );
+  }
+
+  updateAvatar(file: File): Observable<User> {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    return this.apiService.postForm<User>('/auth/profile/avatar', formData).pipe(
+      tap(user => this.currentUserSubject.next(user))
+    );
+  }
+
+  getProfileStatistics(params?: Record<string, unknown>): Observable<any> {
+    return this.apiService.get<any>('/auth/profile/statistics', params);
   }
 
   isAuthenticated(): boolean {

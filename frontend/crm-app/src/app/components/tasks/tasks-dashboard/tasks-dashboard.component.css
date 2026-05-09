@@ -83,6 +83,11 @@
   color: var(--color-success);
 }
 
+.paid-card .summary-icon {
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  color: var(--color-accent);
+}
+
 .summary-info h3 {
   margin: 0;
   color: var(--color-text-primary);

@@ -72,6 +72,12 @@ export class UserFormComponent implements OnInit {
         is_director: [false],
         shop_ids: [[]],
         is_active: [true],
+        profile_status: [''],
+        bio: [''],
+        compensation_type: ['fixed'],
+        fixed_order_payment: [0],
+        service_commission_percent: [0],
+        product_commission_percent: [0],
       },
       { validators: this.passwordMatchValidator },
     );
@@ -130,6 +136,12 @@ export class UserFormComponent implements OnInit {
       role_id: user.role?.id,
       is_director: user.is_director,
       is_active: user.is_active,
+      profile_status: user.profile_status || '',
+      bio: user.bio || '',
+      compensation_type: user.compensation_type || 'fixed',
+      fixed_order_payment: user.fixed_order_payment || 0,
+      service_commission_percent: user.service_commission_percent || 0,
+      product_commission_percent: user.product_commission_percent || 0,
     });
 
     // Set selected shops
@@ -211,6 +223,12 @@ export class UserFormComponent implements OnInit {
           is_director: formData.is_director,
           shop_ids: formData.shop_ids,
           is_active: formData.is_active,
+          profile_status: formData.profile_status,
+          bio: formData.bio,
+          compensation_type: formData.compensation_type,
+          fixed_order_payment: Number(formData.fixed_order_payment || 0),
+          service_commission_percent: Number(formData.service_commission_percent || 0),
+          product_commission_percent: Number(formData.product_commission_percent || 0),
         };
 
         this.adminService.updateUser(this.userId!, updateData).subscribe({
@@ -234,6 +252,12 @@ export class UserFormComponent implements OnInit {
           role_id: formData.role_id,
           shop_ids: formData.shop_ids,
           is_director: formData.is_director,
+          profile_status: formData.profile_status,
+          bio: formData.bio,
+          compensation_type: formData.compensation_type,
+          fixed_order_payment: Number(formData.fixed_order_payment || 0),
+          service_commission_percent: Number(formData.service_commission_percent || 0),
+          product_commission_percent: Number(formData.product_commission_percent || 0),
         };
 
         this.adminService.createUser(createData).subscribe({

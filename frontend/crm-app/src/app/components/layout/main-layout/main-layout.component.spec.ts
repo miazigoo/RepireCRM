@@ -6,7 +6,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { provideRouter, Router, RouterLink } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { of } from 'rxjs';
-import { AdminService } from '../../../services/admin.service';
+import { AuthService } from '../../../services/auth.service';
 import { NotificationService } from '../../../services/notification.service';
 import { OrdersService } from '../../../services/orders.service';
 import { selectCurrentShop, selectCurrentUser } from '../../../store/auth/auth.selectors';
@@ -27,6 +27,16 @@ describe('MainLayoutComponent', () => {
           last_name: 'User',
           is_director: true,
           role: { name: 'Директор' },
+          available_shops: [
+            {
+              id: 1,
+              name: 'Ремонт+ Москва Центр',
+              code: 'MSK01',
+              is_active: true,
+              timezone: 'Europe/Moscow',
+              currency: 'RUB',
+            },
+          ],
         } as any);
       }
 
@@ -52,9 +62,9 @@ describe('MainLayoutComponent', () => {
         { provide: BreakpointObserver, useValue: { observe: () => of({ matches: false }) } },
         { provide: MatDialog, useValue: { open: jasmine.createSpy('open') } },
         {
-          provide: AdminService,
+          provide: AuthService,
           useValue: {
-            getShops: jasmine.createSpy('getShops').and.returnValue(of([
+            getAvailableShops: jasmine.createSpy('getAvailableShops').and.returnValue(of([
               {
                 id: 1,
                 name: 'Ремонт+ Москва Центр',
@@ -104,8 +114,10 @@ describe('MainLayoutComponent', () => {
 
     expect(targets).toContain('/dashboard');
     expect(targets).toContain('/orders');
+    expect(targets).toContain('/tasks');
     expect(targets).toContain('/customers');
     expect(targets).toContain('/inventory');
+    expect(targets).toContain('/services');
     expect(targets).toContain('/notifications');
     expect(targets).toContain('/reports');
     expect(targets).toContain('/admin');

@@ -22,11 +22,11 @@
           <span>Текущая точка</span>
         </div>
 
-        <div class="workspace-name" *ngIf="currentShop && !currentUser?.is_director; else noSidebarShop">
+        <div class="workspace-name" *ngIf="currentShop; else noSidebarShop">
           {{ currentShop.name }}
         </div>
         <ng-template #noSidebarShop>
-          <div class="workspace-name" *ngIf="!currentUser?.is_director">Рабочее пространство</div>
+          <div class="workspace-name">Рабочее пространство</div>
         </ng-template>
 
         <div class="workspace-code" *ngIf="currentShop?.code">
@@ -34,7 +34,7 @@
         </div>
 
         <mat-select
-          *ngIf="currentUser?.is_director"
+          *ngIf="availableShops.length > 1"
           class="shop-select"
           [value]="currentShop?.id"
           (selectionChange)="switchShop($event.value)"

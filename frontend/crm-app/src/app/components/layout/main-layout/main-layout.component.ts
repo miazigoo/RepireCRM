@@ -21,8 +21,8 @@ import * as AuthActions from '../../../store/auth/auth.actions';
 import { User, Shop } from '../../../core/models/models';
 import { HelpGuideDialogComponent } from '../../help/help-guide-dialog/help-guide-dialog.component';
 import { NotificationService } from '../../../services/notification.service';
-import { AdminService } from '../../../services/admin.service';
 import { OrdersService } from '../../../services/orders.service';
+import { AuthService } from '../../../services/auth.service';
 
 interface NavigationItem {
   label: string;
@@ -81,8 +81,10 @@ export class MainLayoutComponent implements OnInit {
       items: [
         { label: 'Панель', icon: 'dashboard', route: '/dashboard' },
         { label: 'Заказы', icon: 'assignment', route: '/orders', badge: 'pendingOrdersCount' },
+        { label: 'Задачи', icon: 'task_alt', route: '/tasks' },
         { label: 'Клиенты', icon: 'people', route: '/customers' },
-        { label: 'Склад', icon: 'inventory_2', route: '/inventory' }
+        { label: 'Склад', icon: 'inventory_2', route: '/inventory' },
+        { label: 'Услуги', icon: 'home_repair_service', route: '/services' }
       ]
     },
     {
@@ -118,6 +120,7 @@ export class MainLayoutComponent implements OnInit {
     '/inventory/items/new': 'Новый товар',
     '/inventory/purchase-orders/new': 'Заказ поставщику',
     '/notifications': 'Уведомления',
+    '/services': 'Услуги',
     '/reports': 'Отчеты',
     '/finance': 'Финансы',
     '/tasks': 'Задачи',
@@ -137,8 +140,8 @@ export class MainLayoutComponent implements OnInit {
     private router: Router,
     private dialog: MatDialog,
     private notificationService: NotificationService,
-    private adminService: AdminService,
-    private ordersService: OrdersService
+    private ordersService: OrdersService,
+    private authService: AuthService
   ) {
     this.isHandset$ = this.breakpointObserver.observe(Breakpoints.Handset)
       .pipe(
@@ -159,7 +162,8 @@ export class MainLayoutComponent implements OnInit {
 
     this.currentUser$.subscribe(user => {
       this.currentUser = user;
-      if (user?.is_director) {
+      this.availableShops = user?.available_shops || [];
+      if (user && this.availableShops.length === 0) {
         this.loadAvailableShops();
       }
     });
@@ -231,7 +235,7 @@ export class MainLayoutComponent implements OnInit {
   }
 
   private loadAvailableShops(): void {
-    this.adminService.getShops().subscribe({
+    this.authService.getAvailableShops().subscribe({
       next: shops => {
         this.availableShops = shops.filter(shop => shop.is_active);
       },

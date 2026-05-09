@@ -60,10 +60,34 @@ class AdditionalServiceSchema(Schema):
     category: str
     description: Optional[str] = None
     price: float
+    is_active: bool = True
+    shop_ids: List[int] = []
 
     @staticmethod
     def resolve_price(obj):
         return float(obj.price)
+
+    @staticmethod
+    def resolve_shop_ids(obj):
+        return list(obj.shops.values_list("id", flat=True))
+
+
+class AdditionalServiceCreateSchema(Schema):
+    name: str
+    category: str = "other"
+    description: Optional[str] = None
+    price: float
+    is_active: bool = True
+    shop_ids: List[int] = []
+
+
+class AdditionalServiceUpdateSchema(Schema):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
+    is_active: Optional[bool] = None
+    shop_ids: Optional[List[int]] = None
 
 
 class OrderServiceSchema(Schema):

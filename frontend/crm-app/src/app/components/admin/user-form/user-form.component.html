@@ -127,6 +127,51 @@
           </div>
         </div>
 
+        <div class="form-section">
+          <h3>Профиль и оплата</h3>
+
+          <div class="form-row">
+            <mat-form-field>
+              <mat-label>Статус в профиле</mat-label>
+              <input matInput formControlName="profile_status" placeholder="На смене, Москва Центр" />
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Схема оплаты</mat-label>
+              <mat-select formControlName="compensation_type">
+                <mat-option value="fixed">Фикс за заказ</mat-option>
+                <mat-option value="commission">Процент</mat-option>
+                <mat-option value="mixed">Фикс + процент</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <mat-form-field class="full-width">
+            <mat-label>Описание</mat-label>
+            <textarea matInput rows="3" formControlName="bio"></textarea>
+          </mat-form-field>
+
+          <div class="form-row">
+            <mat-form-field>
+              <mat-label>Фикс за выполненный заказ</mat-label>
+              <input matInput type="number" min="0" formControlName="fixed_order_payment" />
+              <span matTextSuffix>₽</span>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>% с услуг</mat-label>
+              <input matInput type="number" min="0" max="100" formControlName="service_commission_percent" />
+              <span matTextSuffix>%</span>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>% с продаж товара</mat-label>
+              <input matInput type="number" min="0" max="100" formControlName="product_commission_percent" />
+              <span matTextSuffix>%</span>
+            </mat-form-field>
+          </div>
+        </div>
+
         <div class="form-section" *ngIf="isEditMode">
           <h3>Статус</h3>
 

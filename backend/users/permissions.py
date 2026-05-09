@@ -105,6 +105,12 @@ PERMISSION_DEFINITIONS: tuple[PermissionDefinition, ...] = (
         "Видеть остатки и наличие по выбранному филиалу.",
     ),
     PermissionDefinition(
+        "inventory.view_other_shop_stock",
+        "Смотреть остатки других филиалов",
+        "inventory",
+        "Проверять наличие товаров в филиалах, которые не выбраны текущими.",
+    ),
+    PermissionDefinition(
         "inventory.add_movement",
         "Двигать склад",
         "inventory",
@@ -207,6 +213,12 @@ PERMISSION_DEFINITIONS: tuple[PermissionDefinition, ...] = (
         "Менять статус, прогресс и параметры задач.",
     ),
     PermissionDefinition(
+        "tasks.view_all_tasks",
+        "Видеть задачи сотрудников",
+        "tasks",
+        "Просматривать задачи других сотрудников и филиалов.",
+    ),
+    PermissionDefinition(
         "tasks.view_template",
         "Просматривать шаблоны задач",
         "tasks",
@@ -297,6 +309,12 @@ PERMISSION_DEFINITIONS: tuple[PermissionDefinition, ...] = (
         "Привязывать магазины к аккаунтам сотрудников.",
     ),
     PermissionDefinition(
+        "users.manage_compensation",
+        "Настраивать оплату сотрудников",
+        "users",
+        "Задавать фикс за заказ, проценты с услуг и продаж товаров.",
+    ),
+    PermissionDefinition(
         "users.manage_permissions",
         "Управлять ролями и правами",
         "users",
@@ -319,11 +337,15 @@ DEFAULT_ROLE_PERMISSIONS: dict[str, tuple[str, ...] | str] = {
         "inventory.view_inventory",
         "inventory.view_item",
         "inventory.view_stock",
+        "inventory.view_other_shop_stock",
         "reports.view_dashboard",
         "reports.view_financial",
+        "reports.view_analytics",
         "tasks.view_task",
         "tasks.add_task",
         "tasks.change_task",
+        "tasks.view_all_tasks",
+        "users.view_user",
     ),
     "technician": (
         "orders.view_order",

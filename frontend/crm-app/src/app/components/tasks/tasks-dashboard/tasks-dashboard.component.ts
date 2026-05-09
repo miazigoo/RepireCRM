@@ -10,6 +10,7 @@ import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -19,24 +20,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { TasksService } from '../../../services/tasks.service';
+import { TasksService, Task, TaskPayload } from '../../../services/tasks.service';
 import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl';
-
-interface Task {
-  id: number;
-  title: string;
-  description: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'overdue';
-  priority: 'low' | 'normal' | 'high' | 'urgent';
-  assignment_type: 'individual' | 'shop' | 'all_shops' | 'role';
-  assigned_to?: string;
-  assigned_shop?: string;
-  due_date?: string;
-  created_by: string;
-  created_at: string;
-  progress_percent: number;
-  category?: string;
-}
+import { AdminService } from '../../../services/admin.service';
+import { AuthService } from '../../../services/auth.service';
+import { Shop, User } from '../../../core/models/models';
+import { TaskDialogComponent } from '../task-dialog/task-dialog.component';
 
 interface TasksSummary {
   total_tasks: number;
@@ -44,6 +33,8 @@ interface TasksSummary {
   overdue_tasks: number;
   due_today: number;
   priority_breakdown: Record<string, number>;
+  completed_this_month?: number;
+  paid_tasks_amount?: number;
 }
 
 @Component({
@@ -62,6 +53,7 @@ interface TasksSummary {
     MatTabsModule,
     MatChipsModule,
     MatMenuModule,
+    MatDialogModule,
     MatProgressBarModule,
     MatBadgeModule,
     MatTooltipModule,
@@ -92,12 +84,17 @@ export class TasksDashboardComponent implements OnInit {
     due_today: 0,
     priority_breakdown: {}
   };
+  users: User[] = [];
+  shops: Shop[] = [];
 
   selectedTab = 0; // 0 - Все задачи, 1 - Мои задачи, 2 - Созданные мной
 
   constructor(
     private fb: FormBuilder,
     private tasksService: TasksService,
+    private adminService: AdminService,
+    private authService: AuthService,
+    private dialog: MatDialog,
     private snackBar: MatSnackBar
   ) {
     this.filtersForm = this.fb.group({
@@ -111,6 +108,7 @@ export class TasksDashboardComponent implements OnInit {
   ngOnInit(): void {
     this.loadTasksSummary();
     this.loadTasks();
+    this.loadAssignees();
     this.setupFilters();
   }
 
@@ -220,6 +218,32 @@ export class TasksDashboardComponent implements OnInit {
     }
   }
 
+  getKindLabel(kind: string): string {
+    switch (kind) {
+      case 'urgent': return 'Срочная';
+      case 'global': return 'Глобальная';
+      case 'planned': return 'Плановая';
+      case 'regular': return 'Обычная';
+      default: return kind;
+    }
+  }
+
+  getSubstatusLabel(substatus: string): string {
+    switch (substatus) {
+      case 'new': return 'Новая';
+      case 'accepted': return 'Принята';
+      case 'waiting': return 'Ожидает';
+      case 'blocked': return 'Заблокирована';
+      case 'review': return 'На проверке';
+      case 'done': return 'Готово';
+      default: return substatus;
+    }
+  }
+
+  formatMoney(value: number | undefined): string {
+    return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value || 0)} ₽`;
+  }
+
   getProgressColor(progress: number): string {
     if (progress >= 80) return 'primary';
     if (progress >= 50) return 'accent';
@@ -243,14 +267,57 @@ export class TasksDashboardComponent implements OnInit {
   }
 
   createTask(): void {
-    this.snackBar.open('Форма создания задач будет добавлена отдельным экраном', 'Закрыть', {
-      duration: 3500
+    const dialogRef = this.dialog.open(TaskDialogComponent, {
+      width: 'min(880px, calc(100vw - 28px))',
+      maxWidth: '880px',
+      panelClass: 'task-dialog-panel',
+      autoFocus: false,
+      data: {
+        users: this.users,
+        shops: this.shops,
+      },
+    });
+
+    dialogRef.afterClosed().subscribe((payload?: TaskPayload) => {
+      if (!payload) {
+        return;
+      }
+      this.tasksService.createTask(payload).subscribe({
+        next: () => {
+          this.loadTasks();
+          this.loadTasksSummary();
+          this.snackBar.open('Задача создана', 'Закрыть', { duration: 2500 });
+        },
+        error: (error) => this.showError(error, 'Не удалось создать задачу'),
+      });
     });
   }
 
   editTask(task: Task): void {
-    this.snackBar.open(`Редактирование: ${task.title}`, 'Закрыть', {
-      duration: 3000
+    const dialogRef = this.dialog.open(TaskDialogComponent, {
+      width: 'min(880px, calc(100vw - 28px))',
+      maxWidth: '880px',
+      panelClass: 'task-dialog-panel',
+      autoFocus: false,
+      data: {
+        task,
+        users: this.users,
+        shops: this.shops,
+      },
+    });
+
+    dialogRef.afterClosed().subscribe((payload?: Partial<Task>) => {
+      if (!payload) {
+        return;
+      }
+      this.tasksService.updateTask(task.id, payload).subscribe({
+        next: () => {
+          this.loadTasks();
+          this.loadTasksSummary();
+          this.snackBar.open('Задача обновлена', 'Закрыть', { duration: 2500 });
+        },
+        error: (error) => this.showError(error, 'Не удалось обновить задачу'),
+      });
     });
   }
 
@@ -287,9 +354,7 @@ export class TasksDashboardComponent implements OnInit {
   }
 
   viewTask(task: Task): void {
-    this.snackBar.open(`Задача: ${task.title}`, 'Закрыть', {
-      duration: 3000
-    });
+    this.editTask(task);
   }
 
   addComment(task: Task): void {
@@ -312,6 +377,25 @@ export class TasksDashboardComponent implements OnInit {
     const message = error?.error?.detail || error?.error?.error || fallback;
     this.snackBar.open(message, 'Закрыть', {
       duration: 4000
+    });
+  }
+
+  private loadAssignees(): void {
+    this.adminService.getUsers(1, 100).subscribe({
+      next: (users) => {
+        this.users = users;
+      },
+      error: () => {
+        this.users = [];
+      }
+    });
+    this.authService.getAvailableShops().subscribe({
+      next: (shops) => {
+        this.shops = shops;
+      },
+      error: () => {
+        this.shops = [];
+      }
     });
   }
 }

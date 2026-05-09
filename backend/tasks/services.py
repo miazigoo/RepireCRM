@@ -7,12 +7,20 @@ from notifications.services import notification_service
 
 from .models import Task, TaskCategory, TaskTemplate
 
+TASK_NOTIFICATION_TYPES = {
+    "task_assigned": ("Задача назначена", "assignment_ind", "primary"),
+    "task_status_change": ("Статус задачи", "published_with_changes", "accent"),
+    "task_comment": ("Комментарий к задаче", "comment", "primary"),
+    "task_overdue": ("Задача просрочена", "warning", "warn"),
+}
+
 
 class TaskService:
     """Сервис для работы с задачами"""
 
     def notify_assignees(self, task):
         """Уведомить исполнителей о новой задаче"""
+        self._ensure_notification_types()
         assignees = task.get_assignees()
 
         for assignee in assignees:
@@ -35,14 +43,15 @@ class TaskService:
 
     def notify_status_change(self, task, old_status):
         """Уведомить о смене статуса задачи"""
+        self._ensure_notification_types()
         # Уведомляем создателя задачи
         if task.created_by:
             notification_service.create_notification(
                 notification_type_code="task_status_change",
                 title=f"Изменен статус задачи: {task.title}",
                 message=(
-                    f'Статус изменен с "{task.get_status_display()}" '
-                    f'на "{old_status}"'
+                    f'Статус изменен с "{old_status}" '
+                    f'на "{task.get_status_display()}"'
                 ),
                 recipient=task.created_by,
                 priority="low",
@@ -53,14 +62,19 @@ class TaskService:
 
     def notify_new_comment(self, task, comment):
         """Уведомить о новом комментарии"""
+        self._ensure_notification_types()
         # Собираем всех участников обсуждения
         participants = set()
         participants.add(task.created_by)
         participants.update(task.get_assignees())
-        participants.update(task.comments.values_list("author", flat=True))
+        comment_author_ids = task.comments.values_list("author_id", flat=True)
+        participants.update(
+            comment.author.__class__.objects.filter(id__in=comment_author_ids)
+        )
 
         # Исключаем автора комментария
         participants.discard(comment.author)
+        participants.discard(None)
 
         for participant in participants:
             notification_service.create_notification(
@@ -72,6 +86,20 @@ class TaskService:
                 related_object_type="task",
                 related_object_id=task.id,
                 action_url=f"/tasks/{task.id}",
+            )
+
+    def _ensure_notification_types(self):
+        from notifications.models import NotificationType
+
+        for code, (name, icon, color) in TASK_NOTIFICATION_TYPES.items():
+            NotificationType.objects.get_or_create(
+                code=code,
+                defaults={
+                    "name": name,
+                    "description": "Автоматическое уведомление по задачам",
+                    "icon": icon,
+                    "color": color,
+                },
             )
 
     def auto_create_tasks_for_order(self, order):
@@ -99,6 +127,7 @@ class TaskService:
 
     def check_overdue_tasks(self):
         """Проверить просроченные задачи (для cron)"""
+        self._ensure_notification_types()
         overdue_tasks = Task.objects.filter(
             due_date__lt=timezone.now(),
             status__in=[Task.Status.PENDING, Task.Status.IN_PROGRESS],

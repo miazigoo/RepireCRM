@@ -101,6 +101,18 @@ export class OrdersService {
     return this.apiService.get<AdditionalService[]>(`${this.endpoint}/additional-services`);
   }
 
+  createAdditionalService(data: Partial<AdditionalService> & { shop_ids?: number[] }): Observable<AdditionalService> {
+    return this.apiService.post<AdditionalService>(`${this.endpoint}/additional-services`, data);
+  }
+
+  updateAdditionalService(id: number, data: Partial<AdditionalService> & { shop_ids?: number[] }): Observable<AdditionalService> {
+    return this.apiService.put<AdditionalService>(`${this.endpoint}/additional-services/${id}`, data);
+  }
+
+  deleteAdditionalService(id: number): Observable<{ success: boolean }> {
+    return this.apiService.delete<{ success: boolean }>(`${this.endpoint}/additional-services/${id}`);
+  }
+
   getDeviceModels(): Observable<DeviceModel[]> {
     return this.apiService.get<DeviceModel[]>(`${this.endpoint}/device-models`);
   }

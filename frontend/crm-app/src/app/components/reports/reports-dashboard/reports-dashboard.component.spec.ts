@@ -56,10 +56,12 @@ describe('ReportsDashboardComponent', () => {
     reportsService = jasmine.createSpyObj<ReportsService>('ReportsService', [
       'getDashboardMetrics',
       'getFinancialReport',
+      'getEmployeesReport',
       'exportDashboard',
     ]);
     reportsService.getDashboardMetrics.and.returnValue(of(metrics));
     reportsService.getFinancialReport.and.returnValue(of(financialReport));
+    reportsService.getEmployeesReport.and.returnValue(of({ period: { date_from: '', date_to: '' }, items: [] }));
     reportsService.exportDashboard.and.returnValue(of(new Blob()));
 
     await TestBed.configureTestingModule({

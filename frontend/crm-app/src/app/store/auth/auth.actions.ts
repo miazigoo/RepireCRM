@@ -32,5 +32,5 @@ export const switchShop = createAction(
 
 export const switchShopSuccess = createAction(
   '[Auth] Switch Shop Success',
-  props<{ shop: Shop }>()
+  props<{ user: User; shop: Shop }>()
 );

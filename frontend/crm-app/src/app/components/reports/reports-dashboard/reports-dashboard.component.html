@@ -323,6 +323,41 @@
           </canvas>
         </div>
       </article>
+
+      <article class="panel employees-panel" *ngIf="employeeReport?.items?.length">
+        <header class="panel-header">
+          <div>
+            <span class="panel-kicker">Сотрудники</span>
+            <h2>Заказы, задачи и оплата</h2>
+          </div>
+          <span class="panel-counter">{{ employeeReport?.items?.length }} человек</span>
+        </header>
+
+        <div class="employee-list">
+          <div class="employee-row" *ngFor="let employee of employeeReport?.items?.slice(0, 8)">
+            <div>
+              <strong>{{ employee.employee_name }}</strong>
+              <span>{{ employee.role || 'Роль не назначена' }}</span>
+            </div>
+            <div>
+              <small>Заказы</small>
+              <b>{{ employee.orders.completed }}</b>
+            </div>
+            <div>
+              <small>Выручка</small>
+              <b>{{ formatCurrency(employee.orders.revenue + employee.sales.revenue) }}</b>
+            </div>
+            <div>
+              <small>Задачи</small>
+              <b>{{ employee.tasks.completed }}</b>
+            </div>
+            <div>
+              <small>Оплата</small>
+              <b>{{ formatCurrency(employee.compensation.estimated_salary) }}</b>
+            </div>
+          </div>
+        </div>
+      </article>
     </section>
   </ng-container>
 </div>

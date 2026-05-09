@@ -2,10 +2,12 @@ from decimal import Decimal
 from typing import List, Optional
 
 from django.db import transaction
-from django.db.models import F, Q
+from django.db.models import F, Prefetch, Q
 from django.shortcuts import get_object_or_404
 from ninja import Body, Router
 from ninja.pagination import paginate
+
+from shops.models import Shop
 
 from .inventory_schemas import (
     AddBarcodeInputSchema,
@@ -51,6 +53,18 @@ def _scope_to_current_shop(request, queryset, shop_field: str = "shop"):
     return queryset.filter(**{f"{shop_field}__in": request.auth.get_available_shops()})
 
 
+def _resolve_stock_shop(request, shop_id: int | None = None):
+    current_shop = getattr(request, "current_shop", None)
+    if shop_id:
+        shop = get_object_or_404(Shop, id=shop_id, is_active=True)
+        if request.auth.can_access_shop(shop):
+            return shop
+        if request.auth.has_permission("inventory.view_other_shop_stock"):
+            return shop
+        raise PermissionError("Нет прав смотреть остатки выбранного филиала")
+    return current_shop
+
+
 def _get_accessible_sale(request, sale_id: int) -> RetailSale:
     sale = get_object_or_404(RetailSale, id=sale_id)
     current_shop = getattr(request, "current_shop", None)
@@ -63,7 +77,9 @@ def _get_accessible_sale(request, sale_id: int) -> RetailSale:
 
 @router.get("/items", response=List[InventoryItemSchema])
 @paginate
-def list_inventory_items(request, search: str = None, category_id: int = None):
+def list_inventory_items(
+    request, search: str = None, category_id: int = None, shop_id: int = None
+):
     """Список товаров"""
     if not request.auth.has_permission("inventory.view_item"):
         raise PermissionError("Нет прав для просмотра товаров")
@@ -73,9 +89,16 @@ def list_inventory_items(request, search: str = None, category_id: int = None):
         raise PermissionError("Магазин не выбран")
 
     # Товары видны если у них есть остаток в текущем магазине ИЛИ это активные товары
+    selected_shop = _resolve_stock_shop(request, shop_id)
+    balances = StockBalance.objects.select_related("shop")
+    if selected_shop:
+        balances = balances.filter(shop=selected_shop)
+    else:
+        balances = balances.filter(shop__in=request.auth.get_available_shops())
+
     queryset = (
         InventoryItem.objects.select_related("category", "primary_supplier")
-        .prefetch_related("stock_balances")
+        .prefetch_related(Prefetch("stock_balances", queryset=balances))
         .filter(is_active=True)
     )
 
@@ -102,9 +125,8 @@ def get_stock_balances(request, shop_id: int = None, low_stock_only: bool = Fals
         item__is_active=True
     )
 
-    # Фильтрация по магазину
     if shop_id:
-        shop = get_object_or_404(request.auth.get_available_shops(), id=shop_id)
+        shop = _resolve_stock_shop(request, shop_id)
         queryset = queryset.filter(shop=shop)
     else:
         queryset = _scope_to_current_shop(request, queryset)

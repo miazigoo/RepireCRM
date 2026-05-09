@@ -1,0 +1,112 @@
+<form class="task-dialog" [formGroup]="taskForm" (ngSubmit)="submit()">
+  <header>
+    <div>
+      <span>{{ data.task ? 'Редактирование поручения' : 'Новое поручение' }}</span>
+      <h2>{{ data.task?.title || 'Создать задачу' }}</h2>
+    </div>
+    <button mat-icon-button mat-dialog-close type="button" aria-label="Закрыть">
+      <mat-icon>close</mat-icon>
+    </button>
+  </header>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Название</mat-label>
+    <input matInput formControlName="title">
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Описание</mat-label>
+    <textarea matInput rows="4" formControlName="description"></textarea>
+  </mat-form-field>
+
+  <div class="form-grid">
+    <mat-form-field appearance="outline">
+      <mat-label>Назначить</mat-label>
+      <mat-select formControlName="assignment_type">
+        <mat-option value="individual">Сотруднику</mat-option>
+        <mat-option value="shop">Магазину</mat-option>
+        <mat-option value="all_shops">Всем магазинам</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" *ngIf="taskForm.get('assignment_type')?.value === 'individual'">
+      <mat-label>Сотрудник</mat-label>
+      <mat-select formControlName="assigned_to_id">
+        <mat-option *ngFor="let user of data.users" [value]="user.id">
+          {{ getUserName(user) }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" *ngIf="taskForm.get('assignment_type')?.value === 'shop'">
+      <mat-label>Магазин</mat-label>
+      <mat-select formControlName="assigned_shop_id">
+        <mat-option *ngFor="let shop of data.shops" [value]="shop.id">{{ shop.name }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <div class="form-grid three">
+    <mat-form-field appearance="outline">
+      <mat-label>Приоритет</mat-label>
+      <mat-select formControlName="priority">
+        <mat-option *ngFor="let priority of priorities" [value]="priority.value">
+          {{ priority.label }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Тип</mat-label>
+      <mat-select formControlName="kind">
+        <mat-option *ngFor="let kind of kinds" [value]="kind.value">{{ kind.label }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Подстатус</mat-label>
+      <mat-select formControlName="substatus">
+        <mat-option *ngFor="let substatus of substatuses" [value]="substatus.value">
+          {{ substatus.label }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <div class="form-grid three">
+    <mat-form-field appearance="outline">
+      <mat-label>Статус</mat-label>
+      <mat-select formControlName="status">
+        <mat-option *ngFor="let status of statuses" [value]="status.value">{{ status.label }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Срок</mat-label>
+      <input matInput type="datetime-local" formControlName="due_date">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Прогресс</mat-label>
+      <input matInput type="number" min="0" max="100" formControlName="progress_percent">
+      <span matTextSuffix>%</span>
+    </mat-form-field>
+  </div>
+
+  <section class="payment-box">
+    <mat-slide-toggle formControlName="is_paid">Оплачиваемое поручение</mat-slide-toggle>
+    <mat-form-field appearance="outline">
+      <mat-label>Сумма оплаты</mat-label>
+      <input matInput type="number" min="0" formControlName="payment_amount">
+      <span matTextSuffix>₽</span>
+    </mat-form-field>
+  </section>
+
+  <footer>
+    <button mat-button mat-dialog-close type="button">Отмена</button>
+    <button mat-flat-button type="submit">
+      <mat-icon>save</mat-icon>
+      Сохранить
+    </button>
+  </footer>
+</form>

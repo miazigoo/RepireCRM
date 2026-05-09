@@ -13,9 +13,11 @@ class TaskCreateSchema(Schema):
     # Необязательные
     category_id: Optional[int] = None
     priority: Optional[str] = "normal"  # "low" | "normal" | "high" | "urgent"
+    kind: Optional[str] = "regular"  # "regular" | "urgent" | "global" | "planned"
     status: Optional[
         str
     ] = "pending"  # "pending" | "in_progress" | "completed" | "cancelled" | "overdue"
+    substatus: Optional[str] = "new"
 
     assigned_to_id: Optional[int] = None
     assigned_shop_id: Optional[int] = None
@@ -26,6 +28,8 @@ class TaskCreateSchema(Schema):
 
     due_date: Optional[datetime] = None
     estimated_hours: Optional[float] = None
+    is_paid: Optional[bool] = False
+    payment_amount: Optional[float] = 0
 
     attachments: Optional[List[Dict[str, Any]]] = None
 
@@ -41,7 +45,9 @@ class TaskUpdateSchema(Schema):
 
     category_id: Optional[int] = None
     priority: Optional[str] = None
+    kind: Optional[str] = None
     status: Optional[str] = None
+    substatus: Optional[str] = None
 
     assignment_type: Optional[str] = None
     assigned_to_id: Optional[int] = None
@@ -54,6 +60,8 @@ class TaskUpdateSchema(Schema):
     due_date: Optional[datetime] = None
     estimated_hours: Optional[float] = None
     actual_hours: Optional[float] = None
+    is_paid: Optional[bool] = None
+    payment_amount: Optional[float] = None
 
     progress_percent: Optional[int] = None
     attachments: Optional[List[Dict[str, Any]]] = None
@@ -69,6 +77,8 @@ class TaskSchema(Schema):
 
     status: str
     priority: str
+    kind: str
+    substatus: str
     assignment_type: str
 
     category_id: Optional[int] = None
@@ -76,9 +86,11 @@ class TaskSchema(Schema):
 
     assigned_to_id: Optional[int] = None
     assigned_to_name: Optional[str] = None
+    assigned_to: Optional[str] = None
 
     assigned_shop_id: Optional[int] = None
     assigned_shop_name: Optional[str] = None
+    assigned_shop: Optional[str] = None
 
     assigned_role_id: Optional[int] = None
     assigned_role_name: Optional[str] = None
@@ -89,9 +101,12 @@ class TaskSchema(Schema):
     due_date: Optional[datetime] = None
     estimated_hours: Optional[float] = None
     actual_hours: Optional[float] = None
+    is_paid: bool
+    payment_amount: float
 
     progress_percent: int
     attachments: List[dict]
+    created_by: Optional[str] = None
 
     created_at: datetime
     updated_at: datetime
@@ -112,8 +127,16 @@ class TaskSchema(Schema):
         return None
 
     @staticmethod
+    def resolve_assigned_to(obj):
+        return TaskSchema.resolve_assigned_to_name(obj)
+
+    @staticmethod
     def resolve_assigned_shop_name(obj):
         return obj.assigned_shop.name if obj.assigned_shop else None
+
+    @staticmethod
+    def resolve_assigned_shop(obj):
+        return TaskSchema.resolve_assigned_shop_name(obj)
 
     @staticmethod
     def resolve_assigned_role_name(obj):
@@ -128,9 +151,20 @@ class TaskSchema(Schema):
         return float(obj.actual_hours) if obj.actual_hours is not None else None
 
     @staticmethod
+    def resolve_payment_amount(obj):
+        return float(obj.payment_amount or 0)
+
+    @staticmethod
     def resolve_attachments(obj):
         return obj.attachments or []
 
     @staticmethod
     def resolve_is_overdue(obj):
         return bool(obj.is_overdue)
+
+    @staticmethod
+    def resolve_created_by(obj):
+        if not obj.created_by:
+            return None
+        full = obj.created_by.get_full_name()
+        return full if full.strip() else obj.created_by.username

@@ -57,6 +57,22 @@ export interface FinancialReport {
   }>;
 }
 
+export interface EmployeeReport {
+  period: {
+    date_from: string;
+    date_to: string;
+  };
+  items: Array<{
+    employee_id: number;
+    employee_name: string;
+    role: string;
+    orders: { accepted: number; completed: number; revenue: number; services_revenue: number };
+    sales: { count: number; revenue: number };
+    tasks: { assigned: number; completed: number; paid_amount: number };
+    compensation: { estimated_salary: number };
+  }>;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -88,6 +104,10 @@ export class ReportsService {
         all_shops: allShops ? true : undefined,
       }),
     );
+  }
+
+  getEmployeesReport(params?: Record<string, unknown>): Observable<EmployeeReport> {
+    return this.apiService.get<EmployeeReport>('/reports/employees', this.cleanParams(params));
   }
 
   exportReport(

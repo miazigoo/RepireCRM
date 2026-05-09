@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils import timezone
@@ -44,6 +46,20 @@ class Task(models.Model):
         ALL_SHOPS = "all_shops", "Всем магазинам"
         ROLE = "role", "По роли"
 
+    class TaskKind(models.TextChoices):
+        REGULAR = "regular", "Обычная"
+        URGENT = "urgent", "Срочная"
+        GLOBAL = "global", "Глобальная"
+        PLANNED = "planned", "Плановая"
+
+    class Substatus(models.TextChoices):
+        NEW = "new", "Новая"
+        ACCEPTED = "accepted", "Принята"
+        WAITING = "waiting", "Ожидает"
+        BLOCKED = "blocked", "Заблокирована"
+        REVIEW = "review", "На проверке"
+        DONE = "done", "Готово"
+
     # Основная информация
     title = models.CharField("Заголовок", max_length=200)
     description = models.TextField("Описание")
@@ -59,8 +75,20 @@ class Task(models.Model):
     priority = models.CharField(
         "Приоритет", max_length=10, choices=Priority.choices, default=Priority.NORMAL
     )
+    kind = models.CharField(
+        "Тип задачи",
+        max_length=12,
+        choices=TaskKind.choices,
+        default=TaskKind.REGULAR,
+    )
     status = models.CharField(
         "Статус", max_length=15, choices=Status.choices, default=Status.PENDING
+    )
+    substatus = models.CharField(
+        "Подстатус",
+        max_length=20,
+        choices=Substatus.choices,
+        default=Substatus.NEW,
     )
 
     # Назначение
@@ -119,6 +147,13 @@ class Task(models.Model):
         decimal_places=2,
         null=True,
         blank=True,
+    )
+    is_paid = models.BooleanField("Оплачиваемая задача", default=False)
+    payment_amount = models.DecimalField(
+        "Оплата за задачу",
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0"),
     )
 
     # Прогресс
@@ -220,6 +255,8 @@ class Task(models.Model):
         if self.status == self.Status.COMPLETED and not self.completed_at:
             self.completed_at = timezone.now()
             self.progress_percent = 100
+            if self.substatus == self.Substatus.NEW:
+                self.substatus = self.Substatus.DONE
 
         super().save(*args, **kwargs)
 

@@ -64,6 +64,11 @@ class Permission(models.Model):
 class User(AbstractUser):
     """Кастомная модель пользователя"""
 
+    class CompensationType(models.TextChoices):
+        FIXED = "fixed", "Фикс за заказ"
+        COMMISSION = "commission", "Процент"
+        MIXED = "mixed", "Фикс + процент"
+
     first_name = models.CharField("Имя", max_length=50)
     last_name = models.CharField("Фамилия", max_length=50)
     middle_name = models.CharField("Отчество", max_length=50, blank=True)
@@ -88,7 +93,35 @@ class User(AbstractUser):
 
     # Дополнительные поля
     avatar = models.ImageField("Аватар", upload_to="avatars/", blank=True, null=True)
+    profile_status = models.CharField("Статус профиля", max_length=120, blank=True)
+    bio = models.TextField("Описание профиля", blank=True)
     is_director = models.BooleanField("Директор", default=False)
+
+    # Условия оплаты
+    compensation_type = models.CharField(
+        "Схема оплаты",
+        max_length=20,
+        choices=CompensationType.choices,
+        default=CompensationType.FIXED,
+    )
+    fixed_order_payment = models.DecimalField(
+        "Фиксированная оплата за заказ",
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+    )
+    service_commission_percent = models.DecimalField(
+        "Процент с услуг",
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+    )
+    product_commission_percent = models.DecimalField(
+        "Процент с продаж товаров",
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+    )
 
     # Метаданные
     created_at = models.DateTimeField(auto_now_add=True)

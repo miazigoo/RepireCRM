@@ -28,7 +28,9 @@ from .models import (
     RepairStage,
 )
 from .orders_schemas import (
+    AdditionalServiceCreateSchema,
     AdditionalServiceSchema,
+    AdditionalServiceUpdateSchema,
     DeviceModelCreateSchema,
     DeviceModelSchema,
     OrderApprovalCreateSchema,
@@ -124,12 +126,12 @@ def list_orders(request, filters: OrderFilterSchema = Query(...)):
         )
     )
 
-    # Фильтрация по магазинам в зависимости от прав
-    if not request.auth.has_permission("orders.view_all_shops"):
+    # Выбранный филиал всегда ограничивает рабочий список заказов.
+    if hasattr(request, "current_shop") and request.current_shop:
+        queryset = queryset.filter(shop=request.current_shop)
+    elif not request.auth.has_permission("orders.view_all_shops"):
         available_shops = request.auth.get_available_shops()
         queryset = queryset.filter(shop__in=available_shops)
-    elif hasattr(request, "current_shop") and request.current_shop:
-        queryset = queryset.filter(shop=request.current_shop)
 
     # Применяем фильтры
     if filters.search:
@@ -188,6 +190,70 @@ def list_additional_services(request):
         ).distinct()
 
     return queryset.order_by("category", "name")
+
+
+def _sync_service_shops(request, service: AdditionalService, shop_ids: list[int]):
+    if not shop_ids:
+        service.shops.clear()
+        return
+    shops = request.auth.get_available_shops().filter(id__in=shop_ids)
+    if shops.count() != len(set(shop_ids)):
+        raise PermissionError("Нет прав назначить услугу одному из филиалов")
+    service.shops.set(shops)
+
+
+@router.post(
+    "/additional-services", response={201: AdditionalServiceSchema, 400: ErrorSchema}
+)
+def create_additional_service(request, data: AdditionalServiceCreateSchema):
+    """Создание фиксированной услуги для заказов."""
+    if not request.auth.has_permission("orders.change_order"):
+        raise PermissionError("Нет прав для управления услугами")
+
+    service = AdditionalService.objects.create(
+        name=data.name.strip(),
+        category=data.category,
+        description=data.description or "",
+        price=data.price,
+        is_active=data.is_active,
+    )
+    _sync_service_shops(request, service, data.shop_ids)
+    return 201, service
+
+
+@router.put(
+    "/additional-services/{service_id}",
+    response={200: AdditionalServiceSchema, 400: ErrorSchema, 404: ErrorSchema},
+)
+def update_additional_service(
+    request, service_id: int, data: AdditionalServiceUpdateSchema
+):
+    """Редактирование услуги."""
+    if not request.auth.has_permission("orders.change_order"):
+        raise PermissionError("Нет прав для управления услугами")
+
+    service = get_object_or_404(AdditionalService, id=service_id)
+    incoming = data.dict(exclude_unset=True)
+    shop_ids = incoming.pop("shop_ids", None)
+    for field, value in incoming.items():
+        if value is not None:
+            setattr(service, field, value)
+    service.save()
+    if shop_ids is not None:
+        _sync_service_shops(request, service, shop_ids)
+    return service
+
+
+@router.delete("/additional-services/{service_id}", response=dict)
+def delete_additional_service(request, service_id: int):
+    """Отключение услуги, чтобы она не предлагалась в новых заказах."""
+    if not request.auth.has_permission("orders.change_order"):
+        raise PermissionError("Нет прав для управления услугами")
+
+    service = get_object_or_404(AdditionalService, id=service_id)
+    service.is_active = False
+    service.save(update_fields=["is_active", "updated_at"])
+    return {"success": True}
 
 
 @router.get("/statistics", response=dict)

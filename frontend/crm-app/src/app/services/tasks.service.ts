@@ -9,14 +9,36 @@ export interface Task {
   description: string;
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'overdue';
   priority: 'low' | 'normal' | 'high' | 'urgent';
+  kind: 'regular' | 'urgent' | 'global' | 'planned';
+  substatus: 'new' | 'accepted' | 'waiting' | 'blocked' | 'review' | 'done';
   assignment_type: 'individual' | 'shop' | 'all_shops' | 'role';
+  assigned_to_id?: number;
+  assigned_to_name?: string;
   assigned_to?: string;
+  assigned_shop_id?: number;
+  assigned_shop_name?: string;
   assigned_shop?: string;
   due_date?: string;
   created_by: string;
   created_at: string;
   progress_percent: number;
   category?: string;
+  is_paid: boolean;
+  payment_amount: number;
+}
+
+export interface TaskPayload {
+  title: string;
+  description: string;
+  assignment_type: 'individual' | 'shop' | 'all_shops' | 'role';
+  assigned_to_id?: number | null;
+  assigned_shop_id?: number | null;
+  priority?: 'low' | 'normal' | 'high' | 'urgent';
+  kind?: 'regular' | 'urgent' | 'global' | 'planned';
+  substatus?: 'new' | 'accepted' | 'waiting' | 'blocked' | 'review' | 'done';
+  due_date?: string | null;
+  is_paid?: boolean;
+  payment_amount?: number;
 }
 
 export interface TasksSummary {
@@ -25,6 +47,8 @@ export interface TasksSummary {
   overdue_tasks: number;
   due_today: number;
   priority_breakdown: Record<string, number>;
+  completed_this_month?: number;
+  paid_tasks_amount?: number;
 }
 
 type TaskListResponse = Task[] | { items: Task[]; count?: number };
@@ -54,7 +78,15 @@ export class TasksService {
     );
   }
 
+  createTask(payload: TaskPayload): Observable<Task> {
+    return this.apiService.post<Task>('/tasks/', payload);
+  }
+
   updateTask(taskId: number, data: Partial<Task>): Observable<Task> {
     return this.apiService.put<Task>(`/tasks/${taskId}`, data);
+  }
+
+  getTaskStatistics(params?: Record<string, unknown>): Observable<any> {
+    return this.apiService.get<any>('/tasks/statistics', params);
   }
 }

@@ -2,13 +2,18 @@
   <section class="profile-hero">
     <div class="hero-main">
       <div class="avatar-frame" aria-hidden="true">
-        <span>{{ initials }}</span>
+        <img *ngIf="currentUser?.avatar; else initialsAvatar" [src]="currentUser?.avatar" alt="">
+        <ng-template #initialsAvatar><span>{{ initials }}</span></ng-template>
       </div>
 
       <div class="hero-copy">
         <span class="eyebrow">Профиль</span>
         <h1>{{ displayName }}</h1>
         <div class="hero-meta">
+          <span *ngIf="currentUser?.profile_status">
+            <mat-icon>radio_button_checked</mat-icon>
+            {{ currentUser?.profile_status }}
+          </span>
           <span>
             <mat-icon>mail</mat-icon>
             {{ currentUser?.email || 'Email не указан' }}
@@ -87,6 +92,94 @@
           <span>{{ currentUser?.is_director ? 'Доступ ко всем филиалам' : 'Работа в текущем филиале' }}</span>
         </div>
       </div>
+    </section>
+
+    <section class="profile-panel edit-panel">
+      <header class="panel-header">
+        <div>
+          <span class="panel-kicker">Публичный профиль</span>
+          <h2>Аватар, статус и описание</h2>
+        </div>
+      </header>
+
+      <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" novalidate>
+        <div class="password-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Фамилия</mat-label>
+            <input matInput formControlName="last_name">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Имя</mat-label>
+            <input matInput formControlName="first_name">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Статус</mat-label>
+            <input matInput formControlName="profile_status" placeholder="На смене">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Телефон</mat-label>
+            <input matInput formControlName="phone">
+          </mat-form-field>
+        </div>
+
+        <mat-form-field appearance="outline" class="full-field">
+          <mat-label>Описание</mat-label>
+          <textarea matInput rows="4" formControlName="bio"></textarea>
+        </mat-form-field>
+
+        <div class="form-actions split">
+          <label class="avatar-upload">
+            <input type="file" accept="image/*" (change)="uploadAvatar($event)">
+            <mat-icon>add_a_photo</mat-icon>
+            <span>Загрузить аватар</span>
+          </label>
+
+          <button mat-flat-button type="submit" [disabled]="savingProfile">
+            <mat-spinner *ngIf="savingProfile" diameter="20"></mat-spinner>
+            <mat-icon *ngIf="!savingProfile">save</mat-icon>
+            <span>{{ savingProfile ? 'Сохранение' : 'Сохранить профиль' }}</span>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="profile-panel salary-panel">
+      <header class="panel-header">
+        <div>
+          <span class="panel-kicker">Текущий месяц</span>
+          <h2>Статистика и расчет оплаты</h2>
+        </div>
+      </header>
+
+      <div class="salary-grid" *ngIf="performanceStats; else salaryEmpty">
+        <div>
+          <span>Заказов выполнено</span>
+          <strong>{{ performanceStats.orders.completed }}</strong>
+        </div>
+        <div>
+          <span>Выручка услуг</span>
+          <strong>{{ performanceStats.orders.services_revenue | number:'1.0-0' }} ₽</strong>
+        </div>
+        <div>
+          <span>Продажи товара</span>
+          <strong>{{ performanceStats.sales.revenue | number:'1.0-0' }} ₽</strong>
+        </div>
+        <div>
+          <span>Оплаченные задачи</span>
+          <strong>{{ performanceStats.tasks.paid_amount | number:'1.0-0' }} ₽</strong>
+        </div>
+        <div class="salary-total">
+          <span>Примерная зарплата</span>
+          <strong>{{ performanceStats.compensation.estimated_salary | number:'1.0-0' }} ₽</strong>
+        </div>
+      </div>
+
+      <ng-template #salaryEmpty>
+        <div class="empty-salary">Статистика пока не рассчитана</div>
+      </ng-template>
     </section>
 
     <section class="profile-panel password-panel">

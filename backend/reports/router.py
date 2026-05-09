@@ -10,6 +10,7 @@ from ninja import Router
 
 from orders.models import Order
 from shops.models import Shop
+from users.statistics import employees_statistics_queryset
 
 from .models import GeneratedReport, ReportTemplate
 from .services import ReportService
@@ -243,6 +244,48 @@ def get_financial_report(
         current_shop=getattr(request, "current_shop", None),
         all_shops=all_shops,
     )
+
+
+@router.get("/employees", response=dict)
+def get_employees_report(
+    request,
+    period: str = "month",
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    shop_id: Optional[int] = None,
+    all_shops: bool = False,
+):
+    """Статистика по сотрудникам: заказы, услуги, продажи, задачи и оплата."""
+    if not request.auth.has_permission("reports.view_dashboard"):
+        raise PermissionError("Нет прав для просмотра отчетов по сотрудникам")
+
+    start_date, end_date, _days = _resolve_period_range(period, date_from, date_to)
+    if all_shops:
+        if not request.auth.can_view_global_statistics():
+            raise PermissionError("Нет прав для общей статистики по филиалам")
+        shops = None
+    elif shop_id:
+        shop = get_object_or_404(Shop, id=shop_id, is_active=True)
+        if not request.auth.can_access_shop(shop):
+            raise PermissionError("Нет доступа к выбранному филиалу")
+        shops = Shop.objects.filter(id=shop.id)
+    elif getattr(request, "current_shop", None) is not None:
+        shops = Shop.objects.filter(id=request.current_shop.id)
+    else:
+        shops = request.auth.get_available_shops()
+
+    return {
+        "period": {
+            "date_from": start_date.isoformat(),
+            "date_to": end_date.isoformat(),
+        },
+        "items": employees_statistics_queryset(
+            request.auth,
+            start_date,
+            end_date,
+            shops=shops,
+        ),
+    }
 
 
 @router.get("/inventory-turnover", response=dict)

@@ -41,9 +41,20 @@ describe('ProfileComponent', () => {
     authService = jasmine.createSpyObj<AuthService>('AuthService', [
       'getCurrentUser',
       'changePassword',
+      'updateProfile',
+      'updateAvatar',
+      'getProfileStatistics',
     ]);
     authService.getCurrentUser.and.returnValue(of(user));
     authService.changePassword.and.returnValue(of({ message: 'Пароль успешно изменен' }));
+    authService.updateProfile.and.returnValue(of(user));
+    authService.updateAvatar.and.returnValue(of(user));
+    authService.getProfileStatistics.and.returnValue(of({
+      orders: { completed: 2, services_revenue: 1500 },
+      sales: { revenue: 3000 },
+      tasks: { paid_amount: 500 },
+      compensation: { estimated_salary: 2000 },
+    }));
 
     snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
 
@@ -101,6 +112,22 @@ describe('ProfileComponent', () => {
     });
     expect(component.savingPassword).toBeFalse();
     expect(component.passwordForm.get('old_password')?.value).toBeNull();
+  });
+
+  it('updates public profile fields through auth API', () => {
+    component.profileForm.patchValue({
+      profile_status: 'На смене',
+      bio: 'Ремонтирую телефоны',
+    });
+
+    component.saveProfile();
+
+    expect(authService.updateProfile).toHaveBeenCalledWith(
+      jasmine.objectContaining({
+        profile_status: 'На смене',
+        bio: 'Ремонтирую телефоны',
+      }),
+    );
   });
 
   it('keeps mismatched password form invalid', () => {

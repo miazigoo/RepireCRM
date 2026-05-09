@@ -14,6 +14,7 @@ describe('OrdersService', () => {
       'post',
       'put',
       'postForm',
+      'delete',
     ]);
 
     TestBed.configureTestingModule({
@@ -161,5 +162,20 @@ describe('OrdersService', () => {
     });
 
     expect(apiService.post).toHaveBeenCalledOnceWith('/orders/device-models', payload);
+  });
+
+  it('manages additional services through the orders catalog API', () => {
+    const servicePayload = { name: 'Бронестекло', category: 'protection', price: 500 };
+    apiService.post.and.returnValue(of({ id: 10, ...servicePayload }));
+    apiService.put.and.returnValue(of({ id: 10, ...servicePayload, price: 600 }));
+    apiService.delete.and.returnValue(of({ success: true }));
+
+    service.createAdditionalService(servicePayload).subscribe();
+    service.updateAdditionalService(10, { price: 600 }).subscribe();
+    service.deleteAdditionalService(10).subscribe();
+
+    expect(apiService.post).toHaveBeenCalledWith('/orders/additional-services', servicePayload);
+    expect(apiService.put).toHaveBeenCalledWith('/orders/additional-services/10', { price: 600 });
+    expect(apiService.delete).toHaveBeenCalledWith('/orders/additional-services/10');
   });
 });

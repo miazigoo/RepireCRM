@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import Sum
@@ -9,6 +11,7 @@ from orders.models import Order
 from shops.models import Shop
 from users.models import Permission, Role
 from users.permissions import CATEGORY_LABELS
+from users.statistics import employees_statistics_queryset, resolve_period_range
 
 router = Router(tags=["Администрирование"])
 
@@ -71,6 +74,13 @@ class AdminUserSchema(Schema):
     is_director: bool
     is_active: bool
     current_shop: AdminShopSchema | None = None
+    avatar: str | None = None
+    profile_status: str = ""
+    bio: str = ""
+    compensation_type: str = "fixed"
+    fixed_order_payment: float = 0
+    service_commission_percent: float = 0
+    product_commission_percent: float = 0
     role: AdminRoleSchema | None = None
     shops: list[AdminShopSchema] = []
     last_login: str | None = None
@@ -87,6 +97,22 @@ class AdminUserSchema(Schema):
     def resolve_last_login(obj):
         return obj.last_login.isoformat() if obj.last_login else None
 
+    @staticmethod
+    def resolve_avatar(obj):
+        return obj.avatar.url if obj.avatar else None
+
+    @staticmethod
+    def resolve_fixed_order_payment(obj):
+        return float(obj.fixed_order_payment or 0)
+
+    @staticmethod
+    def resolve_service_commission_percent(obj):
+        return float(obj.service_commission_percent or 0)
+
+    @staticmethod
+    def resolve_product_commission_percent(obj):
+        return float(obj.product_commission_percent or 0)
+
 
 class UserCreateSchema(Schema):
     username: str
@@ -99,6 +125,12 @@ class UserCreateSchema(Schema):
     role_id: int | None = None
     shop_ids: list[int] = []
     is_director: bool = False
+    profile_status: str | None = None
+    bio: str | None = None
+    compensation_type: str = "fixed"
+    fixed_order_payment: float = 0
+    service_commission_percent: float = 0
+    product_commission_percent: float = 0
 
 
 class UserUpdateSchema(Schema):
@@ -111,6 +143,12 @@ class UserUpdateSchema(Schema):
     shop_ids: list[int] | None = None
     is_director: bool | None = None
     is_active: bool | None = None
+    profile_status: str | None = None
+    bio: str | None = None
+    compensation_type: str | None = None
+    fixed_order_payment: float | None = None
+    service_commission_percent: float | None = None
+    product_commission_percent: float | None = None
 
 
 class PasswordResetSchema(Schema):
@@ -232,6 +270,13 @@ def create_user(request, data: UserCreateSchema):
         _ensure_director_admin(request)
     if data.shop_ids:
         _ensure_admin_permission(request, "users.manage_shop_access")
+    if (
+        data.compensation_type != "fixed"
+        or data.fixed_order_payment
+        or data.service_commission_percent
+        or data.product_commission_percent
+    ):
+        _ensure_admin_permission(request, "users.manage_compensation")
 
     User = get_user_model()
     if User.objects.filter(username=data.username).exists():
@@ -248,6 +293,12 @@ def create_user(request, data: UserCreateSchema):
         phone=data.phone or "",
         role=role,
         is_director=data.is_director,
+        profile_status=data.profile_status or "",
+        bio=data.bio or "",
+        compensation_type=data.compensation_type,
+        fixed_order_payment=data.fixed_order_payment,
+        service_commission_percent=data.service_commission_percent,
+        product_commission_percent=data.product_commission_percent,
     )
     if data.shop_ids:
         _sync_user_shops(request, user, data.shop_ids)
@@ -267,6 +318,14 @@ def update_user(request, user_id: int, data: UserUpdateSchema):
     incoming = data.dict(exclude_unset=True)
     shop_ids = incoming.pop("shop_ids", None)
     role_id = incoming.pop("role_id", None)
+    compensation_fields = {
+        "compensation_type",
+        "fixed_order_payment",
+        "service_commission_percent",
+        "product_commission_percent",
+    }
+    if compensation_fields.intersection(incoming):
+        _ensure_admin_permission(request, "users.manage_compensation")
     if role_id is not None:
         _ensure_admin_permission(request, "users.manage_permissions")
         user.role = Role.objects.filter(id=role_id).first()
@@ -396,6 +455,41 @@ def delete_role(request, role_id: int):
 def list_permissions(request):
     _ensure_admin_permission(request, "users.manage_permissions")
     return Permission.objects.all().order_by("category", "name")
+
+
+@router.get("/employees/statistics", response=dict)
+def get_employees_statistics(
+    request,
+    period: str = "month",
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    all_shops: bool = False,
+):
+    """Статистика сотрудников и расчет оплаты за выбранный период."""
+    _ensure_admin_permission(request, "users.view_user", "reports.view_dashboard")
+    start_date, end_date = resolve_period_range(period, date_from, date_to)
+
+    if all_shops:
+        if not request.auth.can_view_global_statistics():
+            raise PermissionError("Нет прав для общей статистики по филиалам")
+        shops = None
+    elif getattr(request, "current_shop", None) is not None:
+        shops = Shop.objects.filter(id=request.current_shop.id)
+    else:
+        shops = request.auth.get_available_shops()
+
+    return {
+        "period": {
+            "date_from": start_date.isoformat(),
+            "date_to": end_date.isoformat(),
+        },
+        "items": employees_statistics_queryset(
+            request.auth,
+            start_date,
+            end_date,
+            shops=shops,
+        ),
+    }
 
 
 @router.get("/statistics", response=dict)

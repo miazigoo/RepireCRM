@@ -1,0 +1,108 @@
+<div class="services-shell">
+  <section class="services-hero">
+    <div>
+      <span class="eyebrow">Справочник работ</span>
+      <h1>Услуги</h1>
+      <p>Фиксированные работы и быстрые позиции, которые добавляются в заказ и участвуют в расчете оплаты сотрудников.</p>
+    </div>
+    <button mat-stroked-button type="button" (click)="loadServices()" [disabled]="loading">
+      <mat-icon>sync</mat-icon>
+      Обновить
+    </button>
+  </section>
+
+  <section class="services-layout">
+    <form class="service-editor" [formGroup]="serviceForm" (ngSubmit)="saveService()">
+      <header>
+        <span>{{ editingService ? 'Редактирование' : 'Новая услуга' }}</span>
+        <h2>{{ editingService?.name || 'Создать услугу' }}</h2>
+      </header>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Название</mat-label>
+        <input matInput formControlName="name" placeholder="Наклейка бронестекла">
+      </mat-form-field>
+
+      <div class="form-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Категория</mat-label>
+          <mat-select formControlName="category">
+            <mat-option *ngFor="let category of categories" [value]="category.value">
+              {{ category.label }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Стоимость</mat-label>
+          <input matInput type="number" min="0" formControlName="price">
+          <span matTextSuffix>₽</span>
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Описание</mat-label>
+        <textarea matInput rows="4" formControlName="description"></textarea>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Филиалы</mat-label>
+        <mat-select formControlName="shop_ids" multiple>
+          <mat-option *ngFor="let shop of shops" [value]="shop.id">{{ shop.name }}</mat-option>
+        </mat-select>
+        <mat-hint>Если ничего не выбрано, услуга доступна во всех филиалах.</mat-hint>
+      </mat-form-field>
+
+      <mat-slide-toggle formControlName="is_active">Активна</mat-slide-toggle>
+
+      <div class="editor-actions">
+        <button mat-button type="button" (click)="resetForm()">Сбросить</button>
+        <button mat-flat-button type="submit" [disabled]="saving">
+          <mat-spinner *ngIf="saving" diameter="18"></mat-spinner>
+          <mat-icon *ngIf="!saving">save</mat-icon>
+          Сохранить
+        </button>
+      </div>
+    </form>
+
+    <section class="services-list">
+      <div class="list-header">
+        <div>
+          <span class="eyebrow">Каталог</span>
+          <h2>{{ services.length }} услуг</h2>
+        </div>
+        <mat-spinner *ngIf="loading" diameter="28"></mat-spinner>
+      </div>
+
+      <article class="service-card" *ngFor="let service of services; trackBy: trackById">
+        <div class="service-main">
+          <span class="service-category">{{ getCategoryLabel(service.category) }}</span>
+          <h3>{{ service.name }}</h3>
+          <p>{{ service.description || 'Описание не указано' }}</p>
+          <mat-chip-set>
+            <mat-chip>{{ getServiceScope(service) }}</mat-chip>
+            <mat-chip [class.disabled-chip]="service.is_active === false">
+              {{ service.is_active === false ? 'Отключена' : 'Активна' }}
+            </mat-chip>
+          </mat-chip-set>
+        </div>
+        <div class="service-side">
+          <strong>{{ formatMoney(service.price) }}</strong>
+          <div class="card-actions">
+            <button mat-icon-button type="button" matTooltip="Редактировать" (click)="editService(service)">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button type="button" matTooltip="Отключить" (click)="disableService(service)">
+              <mat-icon>visibility_off</mat-icon>
+            </button>
+          </div>
+        </div>
+      </article>
+
+      <div class="empty-state" *ngIf="!loading && services.length === 0">
+        <mat-icon>home_repair_service</mat-icon>
+        <strong>Услуг пока нет</strong>
+      </div>
+    </section>
+  </section>
+</div>

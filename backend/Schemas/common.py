@@ -55,8 +55,35 @@ class UserSchema(Schema):
     is_active: bool
     is_director: bool
     current_shop: Optional[ShopSchema] = None
+    available_shops: list[ShopSchema] = []
     avatar: Optional[str] = None
+    profile_status: Optional[str] = None
+    bio: Optional[str] = None
+    compensation_type: str = "fixed"
+    fixed_order_payment: float = 0
+    service_commission_percent: float = 0
+    product_commission_percent: float = 0
     role: Optional[RoleSchema] = None
+
+    @staticmethod
+    def resolve_available_shops(obj):
+        return obj.get_available_shops()
+
+    @staticmethod
+    def resolve_avatar(obj):
+        return obj.avatar.url if obj.avatar else None
+
+    @staticmethod
+    def resolve_fixed_order_payment(obj):
+        return float(obj.fixed_order_payment or 0)
+
+    @staticmethod
+    def resolve_service_commission_percent(obj):
+        return float(obj.service_commission_percent or 0)
+
+    @staticmethod
+    def resolve_product_commission_percent(obj):
+        return float(obj.product_commission_percent or 0)
 
 
 class PermissionSchema(Schema):

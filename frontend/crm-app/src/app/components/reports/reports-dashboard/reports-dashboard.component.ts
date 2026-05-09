@@ -16,6 +16,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subscription } from 'rxjs';
 import {
   DashboardMetrics,
+  EmployeeReport,
   FinancialReport,
   ReportsService,
 } from '../../../services/reports.service';
@@ -83,6 +84,7 @@ export class ReportsDashboardComponent implements OnInit, OnDestroy {
 
   metrics: DashboardMetrics | null = null;
   financialSummary: FinancialReport['summary'] | null = null;
+  employeeReport: EmployeeReport | null = null;
   filtersForm: FormGroup;
   loading = false;
   chartLoading = false;
@@ -265,6 +267,7 @@ export class ReportsDashboardComponent implements OnInit, OnDestroy {
     this.reportsService.getDashboardMetrics(this.getFilterParams()).subscribe({
       next: (metrics) => {
         this.metrics = metrics;
+        this.loadEmployeeReport();
         this.setupCharts();
         this.lastUpdated = new Date();
         this.loading = false;
@@ -389,6 +392,17 @@ export class ReportsDashboardComponent implements OnInit, OnDestroy {
           this.chartLoading = false;
         },
       });
+  }
+
+  private loadEmployeeReport(): void {
+    this.reportsService.getEmployeesReport(this.getFilterParams()).subscribe({
+      next: report => {
+        this.employeeReport = report;
+      },
+      error: () => {
+        this.employeeReport = null;
+      }
+    });
   }
 
   private configureChartOptions(): void {

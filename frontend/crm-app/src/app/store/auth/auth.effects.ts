@@ -86,6 +86,7 @@ export class AuthEffects {
         this.authService.switchShop(shopId).pipe(
           map(user =>
             AuthActions.switchShopSuccess({
+              user,
               shop: user.current_shop!
             })
           ),

@@ -23,6 +23,12 @@ export interface UserCreateRequest {
   role_id?: number;
   shop_ids: number[];
   is_director?: boolean;
+  profile_status?: string;
+  bio?: string;
+  compensation_type?: 'fixed' | 'commission' | 'mixed';
+  fixed_order_payment?: number;
+  service_commission_percent?: number;
+  product_commission_percent?: number;
 }
 
 export interface UserUpdateRequest {
@@ -35,6 +41,12 @@ export interface UserUpdateRequest {
   shop_ids?: number[];
   is_director?: boolean;
   is_active?: boolean;
+  profile_status?: string;
+  bio?: string;
+  compensation_type?: 'fixed' | 'commission' | 'mixed';
+  fixed_order_payment?: number;
+  service_commission_percent?: number;
+  product_commission_percent?: number;
 }
 
 export interface ShopCreateRequest {
@@ -145,6 +157,10 @@ export class AdminService {
     }
 
     return this.apiService.get<any>('/admin/statistics');
+  }
+
+  getEmployeesStatistics(params?: Record<string, unknown>): Observable<any> {
+    return this.apiService.get<any>('/admin/employees/statistics', params);
   }
 
   getSubscriptionStatus(): Observable<SubscriptionStatus> {

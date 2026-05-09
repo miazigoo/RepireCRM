@@ -82,9 +82,8 @@ class ShopAccessSecurityTests(TestCase):
             "HTTP_X_CURRENT_SHOP": str(shop.id),
         }
 
-    def test_customer_isolation_list_endpoint(self):
-        """❌ User1 НЕ должен видеть customer2 из shop2"""
-        # User1 может видеть только customer1
+    def test_customers_are_shared_between_shops_in_list_endpoint(self):
+        """Клиенты общие между филиалами, список не фильтруется по магазину"""
         response = self.client.get(
             "/api/customers/",
             **self._get_auth_headers(self.user1, self.shop1),
@@ -93,44 +92,40 @@ class ShopAccessSecurityTests(TestCase):
         payload = response.json()
         customers = payload["items"] if isinstance(payload, dict) else payload
 
-        # Проверяем что customer2 не в ответе
         customer_ids = [c["id"] for c in customers]
         self.assertIn(self.customer1.id, customer_ids)
-        self.assertNotIn(self.customer2.id, customer_ids)
+        self.assertIn(self.customer2.id, customer_ids)
 
-    def test_customer_isolation_get_endpoint(self):
-        """❌ User1 НЕ должен получить customer2 из shop2"""
+    def test_customer_detail_is_shared_between_shops(self):
+        """Клиент доступен сотруднику другого филиала при наличии прав"""
         response = self.client.get(
-            f"/api/customers/{self.customer2.id}/",
+            f"/api/customers/{self.customer2.id}",
             **self._get_auth_headers(self.user1, self.shop1),
         )
-        # Должна вернуть 404 так как customer не в магазине user1
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)
 
-    def test_customer_isolation_update_endpoint(self):
-        """❌ User1 НЕ должен обновить customer2 из shop2"""
+    def test_customer_update_is_shared_between_shops(self):
+        """Общий клиент редактируется сотрудником другого филиала при наличии прав"""
         response = self.client.put(
-            f"/api/customers/{self.customer2.id}/",
-            data=json.dumps({"first_name": "Hacked"}),
+            f"/api/customers/{self.customer2.id}",
+            data=json.dumps({"first_name": "Updated"}),
             content_type="application/json",
             **self._get_auth_headers(self.user1, self.shop1),
         )
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)
 
-        # Проверяем что данные не изменились
         self.customer2.refresh_from_db()
-        self.assertEqual(self.customer2.first_name, "Jane")
+        self.assertEqual(self.customer2.first_name, "Updated")
 
-    def test_customer_isolation_delete_endpoint(self):
-        """❌ User1 НЕ должен удалить customer2 из shop2"""
+    def test_customer_delete_is_shared_between_shops(self):
+        """Общий клиент удаляется сотрудником другого филиала при наличии прав"""
         response = self.client.delete(
-            f"/api/customers/{self.customer2.id}/",
+            f"/api/customers/{self.customer2.id}",
             **self._get_auth_headers(self.user1, self.shop1),
         )
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)
 
-        # Проверяем что customer не удален
-        self.assertTrue(Customer.objects.filter(id=self.customer2.id).exists())
+        self.assertFalse(Customer.objects.filter(id=self.customer2.id).exists())
 
 
 class FinanceSecurityTests(TestCase):

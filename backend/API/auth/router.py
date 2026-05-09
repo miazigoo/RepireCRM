@@ -4,14 +4,26 @@ import jwt
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django_ratelimit.decorators import ratelimit
-from ninja import Router
+from ninja import File, Router, Schema
+from ninja.files import UploadedFile
 
 from Schemas.auth.auth import ChangePasswordSchema, LoginSchema, TokenSchema
-from Schemas.common import ErrorSchema, MessageSchema, UserSchema
+from Schemas.common import ErrorSchema, MessageSchema, ShopSchema, UserSchema
+from users.statistics import employee_statistics, resolve_period_range
 
 User = get_user_model()
 
 router = Router(tags=["Аутентификация"])
+
+
+class ProfileUpdateSchema(Schema):
+    first_name: str | None = None
+    last_name: str | None = None
+    middle_name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    profile_status: str | None = None
+    bio: str | None = None
 
 
 @ratelimit(key="ip", rate="5/m", block=True)
@@ -39,7 +51,7 @@ def login(request, credentials: LoginSchema):
     # Загружаем полные данные пользователя с relational fields
     user = (
         User.objects.select_related("role", "current_shop")
-        .prefetch_related("role__permissions")
+        .prefetch_related("role__permissions", "shops")
         .get(id=user.id)
     )
 
@@ -56,10 +68,74 @@ def get_current_user(request):
     """Получение информации о текущем пользователе"""
     user = (
         User.objects.select_related("role", "current_shop")
-        .prefetch_related("role__permissions")
+        .prefetch_related("role__permissions", "shops")
         .get(id=request.auth.id)
     )
     return user
+
+
+@router.get("/shops", response=list[ShopSchema])
+def get_available_shops(request):
+    """Магазины, доступные текущему сотруднику для переключения."""
+    return request.auth.get_available_shops().order_by("name")
+
+
+@router.put("/profile", response=UserSchema)
+def update_profile(request, data: ProfileUpdateSchema):
+    """Обновление публичных данных профиля сотрудника."""
+    user = request.auth
+    allowed_fields = {
+        "first_name",
+        "last_name",
+        "middle_name",
+        "email",
+        "phone",
+        "profile_status",
+        "bio",
+    }
+    update_fields = []
+    for field, value in data.dict(exclude_unset=True).items():
+        if field in allowed_fields and value is not None:
+            setattr(user, field, value)
+            update_fields.append(field)
+
+    if update_fields:
+        user.save(update_fields=update_fields + ["updated_at"])
+
+    return (
+        User.objects.select_related("role", "current_shop")
+        .prefetch_related("role__permissions", "shops")
+        .get(id=user.id)
+    )
+
+
+@router.post("/profile/avatar", response=UserSchema)
+def update_profile_avatar(request, avatar: UploadedFile = File(...)):
+    """Загрузка аватара текущего сотрудника."""
+    user = request.auth
+    user.avatar.save(avatar.name, avatar, save=True)
+    return (
+        User.objects.select_related("role", "current_shop")
+        .prefetch_related("role__permissions", "shops")
+        .get(id=user.id)
+    )
+
+
+@router.get("/profile/statistics", response=dict)
+def get_profile_statistics(
+    request,
+    period: str = "month",
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+):
+    """Личная статистика и расчет примерной зарплаты сотрудника."""
+    start_date, end_date = resolve_period_range(period, date_from, date_to)
+    return employee_statistics(
+        request.auth,
+        start_date,
+        end_date,
+        shops=request.auth.get_available_shops(),
+    )
 
 
 @router.post("/change-password", response={200: MessageSchema, 400: ErrorSchema})
@@ -103,7 +179,7 @@ def switch_shop(request, shop_id: int):
         # Возвращаем обновленного пользователя с relational fields
         user = (
             User.objects.select_related("role", "current_shop")
-            .prefetch_related("role__permissions")
+            .prefetch_related("role__permissions", "shops")
             .get(id=user.id)
         )
         return user

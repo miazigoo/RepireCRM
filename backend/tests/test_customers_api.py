@@ -87,7 +87,7 @@ class CustomersApiTestCase(TestCase):
             "HTTP_X_CURRENT_SHOP": str((shop or self.shop).id),
         }
 
-    def test_customer_list_is_scoped_to_current_shop(self):
+    def test_customer_list_is_common_across_available_shops(self):
         response = self.client.get(
             "/api/customers/",
             data={"page": 1, "page_size": 100},
@@ -97,9 +97,9 @@ class CustomersApiTestCase(TestCase):
         self.assertEqual(response.status_code, 200, response.content)
         payload = response.json()
         names = {item["last_name"] for item in payload["items"]}
-        self.assertEqual(names, {"Иванов"})
+        self.assertEqual(names, {"Иванов", "Петров"})
 
-    def test_customer_detail_and_orders_reject_customer_from_another_shop(self):
+    def test_customer_detail_is_common_but_orders_stay_shop_scoped(self):
         detail_response = self.client.get(
             f"/api/customers/{self.other_customer.id}",
             **self.auth_headers(),
@@ -109,8 +109,9 @@ class CustomersApiTestCase(TestCase):
             **self.auth_headers(),
         )
 
-        self.assertEqual(detail_response.status_code, 404)
-        self.assertEqual(orders_response.status_code, 404)
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertEqual(orders_response.status_code, 200)
+        self.assertEqual(orders_response.json(), [])
 
     def test_create_customer_accepts_minimal_payload(self):
         response = self.client.post(

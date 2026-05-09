@@ -42,8 +42,9 @@ export const authReducer = createReducer(
     isAuthenticated: true
   })),
 
-  on(AuthActions.switchShopSuccess, (state, { shop }) => ({
+  on(AuthActions.switchShopSuccess, (state, { user, shop }) => ({
     ...state,
+    user,
     currentShop: shop
   }))
 );

@@ -51,7 +51,10 @@ export class ProfileComponent implements OnInit {
   hideConfirmPassword = true;
 
   passwordForm: FormGroup;
+  profileForm: FormGroup;
   profileStats: ProfileStat[] = [];
+  performanceStats: any = null;
+  savingProfile = false;
 
   constructor(
     private fb: FormBuilder,
@@ -66,11 +69,23 @@ export class ProfileComponent implements OnInit {
       new_password: ['', [Validators.required, Validators.minLength(8)]],
       confirm_password: ['', Validators.required],
     }, { validators: this.passwordsMatchValidator });
+    this.profileForm = this.fb.group({
+      first_name: [''],
+      last_name: [''],
+      middle_name: [''],
+      email: ['', Validators.email],
+      phone: [''],
+      profile_status: [''],
+      bio: [''],
+    });
   }
 
   ngOnInit(): void {
     this.currentUser$.subscribe(user => {
       this.currentUser = user;
+      if (user) {
+        this.patchProfileForm(user);
+      }
       this.syncProfileStats();
     });
 
@@ -88,7 +103,9 @@ export class ProfileComponent implements OnInit {
       next: user => {
         this.currentUser = user;
         this.currentShop = user.current_shop || this.currentShop;
+        this.patchProfileForm(user);
         this.syncProfileStats();
+        this.loadPerformanceStats();
         this.loadingProfile = false;
       },
       error: () => {
@@ -115,6 +132,44 @@ export class ProfileComponent implements OnInit {
         this.savingPassword = false;
         this.snackBar.open(this.extractErrorMessage(error), 'Закрыть', { duration: 5000 });
       }
+    });
+  }
+
+  saveProfile(): void {
+    if (this.profileForm.invalid) {
+      this.profileForm.markAllAsTouched();
+      return;
+    }
+
+    this.savingProfile = true;
+    this.authService.updateProfile(this.profileForm.getRawValue()).subscribe({
+      next: user => {
+        this.currentUser = user;
+        this.patchProfileForm(user);
+        this.syncProfileStats();
+        this.savingProfile = false;
+        this.snackBar.open('Профиль обновлен', 'Закрыть', { duration: 3000 });
+      },
+      error: error => {
+        this.savingProfile = false;
+        this.snackBar.open(this.extractErrorMessage(error), 'Закрыть', { duration: 5000 });
+      }
+    });
+  }
+
+  uploadAvatar(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    this.authService.updateAvatar(file).subscribe({
+      next: user => {
+        this.currentUser = user;
+        this.snackBar.open('Аватар обновлен', 'Закрыть', { duration: 3000 });
+      },
+      error: error => this.snackBar.open(this.extractErrorMessage(error), 'Закрыть', { duration: 5000 }),
     });
   }
 
@@ -210,10 +265,33 @@ export class ProfileComponent implements OnInit {
       },
       {
         label: 'Статус',
-        value: this.currentUser?.is_active ? 'Активен' : 'Отключен',
+        value: this.currentUser?.profile_status || (this.currentUser?.is_active ? 'Активен' : 'Отключен'),
         icon: this.currentUser?.is_active ? 'verified_user' : 'block',
       },
     ];
+  }
+
+  private patchProfileForm(user: User): void {
+    this.profileForm.patchValue({
+      first_name: user.first_name || '',
+      last_name: user.last_name || '',
+      middle_name: user.middle_name || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      profile_status: user.profile_status || '',
+      bio: user.bio || '',
+    }, { emitEvent: false });
+  }
+
+  private loadPerformanceStats(): void {
+    this.authService.getProfileStatistics({ period: 'month' }).subscribe({
+      next: stats => {
+        this.performanceStats = stats;
+      },
+      error: () => {
+        this.performanceStats = null;
+      }
+    });
   }
 
   private extractErrorMessage(error: any): string {

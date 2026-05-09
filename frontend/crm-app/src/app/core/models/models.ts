@@ -9,7 +9,14 @@ export interface User {
   is_director: boolean;
   is_active: boolean;
   current_shop?: Shop;
+  available_shops?: Shop[];
   avatar?: string;
+  profile_status?: string;
+  bio?: string;
+  compensation_type?: 'fixed' | 'commission' | 'mixed';
+  fixed_order_payment?: number;
+  service_commission_percent?: number;
+  product_commission_percent?: number;
   role?: Role;
   shops?: Shop[];
   last_login?: string;
@@ -130,6 +137,8 @@ export interface AdditionalService {
   category: string;
   description?: string;
   price: number;
+  is_active?: boolean;
+  shop_ids?: number[];
 }
 
 export interface OrderService {
