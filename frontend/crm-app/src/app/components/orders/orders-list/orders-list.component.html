@@ -131,24 +131,29 @@
         </header>
 
         <div class="table-shell" [class.loading]="loading">
-          <table mat-table [dataSource]="dataSource" matSort class="orders-table">
+          <table mat-table [dataSource]="dataSource" multiTemplateDataRows matSort class="orders-table">
             <ng-container matColumnDef="order_number">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Заказ</th>
               <td mat-cell *matCellDef="let order">
-                <a [routerLink]="['/orders', order.id]" class="order-number">
+                <button
+                  type="button"
+                  class="order-number order-number-button"
+                  (click)="toggleOrderDetails(order); $event.stopPropagation()"
+                  [attr.aria-expanded]="isOrderExpanded(order)">
                   <span class="order-mark">#</span>
                   <span>
                     <strong>{{ order.order_number }}</strong>
                     <small>{{ order.created_at | date:'dd.MM.yyyy HH:mm' }}</small>
                   </span>
-                </a>
+                  <mat-icon>{{ isOrderExpanded(order) ? 'expand_less' : 'expand_more' }}</mat-icon>
+                </button>
               </td>
             </ng-container>
 
             <ng-container matColumnDef="customer">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Клиент</th>
               <td mat-cell *matCellDef="let order">
-                <a [routerLink]="['/customers', order.customer.id]" class="client-cell">
+                <a [routerLink]="['/customers', order.customer.id]" class="client-cell" (click)="$event.stopPropagation()">
                   <span class="client-avatar">{{ getCustomerInitials(order) }}</span>
                   <span>
                     <strong>{{ getCustomerFullName(order) }}</strong>
@@ -186,64 +191,84 @@
               </td>
             </ng-container>
 
-            <ng-container matColumnDef="cost">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Финансы</th>
-              <td mat-cell *matCellDef="let order">
-                <div class="money-cell">
-                  <strong>{{ formatMoney(getOrderAmount(order)) }}</strong>
-                  <small *ngIf="order.remaining_payment > 0">
-                    Доплата {{ formatMoney(order.remaining_payment) }}
-                  </small>
-                </div>
-              </td>
-            </ng-container>
+            <ng-container matColumnDef="order_details">
+              <td mat-cell *matCellDef="let order" [attr.colspan]="displayedColumns.length" class="detail-cell">
+                <section class="order-device-detail" *ngIf="isOrderExpanded(order)" (click)="$event.stopPropagation()">
+                  <div class="device-visual" aria-hidden="true">
+                    <mat-icon>devices</mat-icon>
+                  </div>
 
-            <ng-container matColumnDef="created_at">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Создан</th>
-              <td mat-cell *matCellDef="let order">
-                <span class="date-cell">{{ order.created_at | date:'dd.MM.yyyy' }}</span>
-                <small class="time-cell">{{ order.created_at | date:'HH:mm' }}</small>
-              </td>
-            </ng-container>
+                  <div class="detail-content">
+                    <span class="eyebrow">Устройство в заказе</span>
+                    <h3>{{ getDeviceTitle(order) }}</h3>
+                    <p>{{ getProblemSummary(order) }}</p>
 
-            <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef>Действия</th>
-              <td mat-cell *matCellDef="let order">
-                <button mat-icon-button class="row-menu-button" [matMenuTriggerFor]="actionsMenu">
-                  <mat-icon>more_horiz</mat-icon>
-                </button>
-                <mat-menu #actionsMenu="matMenu">
-                  <button mat-menu-item [routerLink]="['/orders', order.id]">
-                    <mat-icon>visibility</mat-icon>
-                    <span>Карточка заказа</span>
-                  </button>
-                  <button mat-menu-item [routerLink]="['/orders', order.id, 'edit']">
-                    <mat-icon>edit</mat-icon>
-                    <span>Редактировать</span>
-                  </button>
-                  <mat-divider></mat-divider>
-                  <button mat-menu-item (click)="changeStatus(order)">
-                    <mat-icon>timeline</mat-icon>
-                    <span>Статусы и этапы</span>
-                  </button>
-                </mat-menu>
+                    <div class="device-facts" *ngIf="getDeviceFacts(order).length > 0">
+                      <div class="device-fact" *ngFor="let fact of getDeviceFacts(order)">
+                        <span>{{ fact.label }}</span>
+                        <strong>{{ fact.value }}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="detail-actions">
+                    <button mat-flat-button class="primary-action" type="button" (click)="openOrder(order)">
+                      <mat-icon>visibility</mat-icon>
+                      Карточка заказа
+                    </button>
+                    <a mat-stroked-button [routerLink]="['/orders', order.id, 'edit']">
+                      <mat-icon>edit</mat-icon>
+                      Редактировать
+                    </a>
+                  </div>
+                </section>
               </td>
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+            <tr
+              mat-row
+              *matRowDef="let row; columns: displayedColumns;"
+              class="order-data-row"
+              [class.expanded]="isOrderExpanded(row)"
+              tabindex="0"
+              [attr.aria-expanded]="isOrderExpanded(row)"
+              [attr.aria-label]="'Показать устройство заказа ' + row.order_number"
+              (click)="toggleOrderDetails(row)"
+              (keydown.enter)="toggleOrderDetails(row)"
+              (keydown.space)="toggleOrderDetails(row); $event.preventDefault()">
+            </tr>
+            <tr
+              mat-row
+              *matRowDef="let row; columns: detailColumns;"
+              class="order-detail-row"
+              [class.expanded]="isOrderExpanded(row)">
+            </tr>
           </table>
 
           <div class="mobile-list">
-            <article class="order-card" *ngFor="let order of orders; trackBy: trackById">
+            <article
+              class="order-card"
+              *ngFor="let order of orders; trackBy: trackById"
+              [class.expanded]="isOrderExpanded(order)"
+              tabindex="0"
+              [attr.aria-expanded]="isOrderExpanded(order)"
+              (click)="toggleOrderDetails(order)"
+              (keydown.enter)="toggleOrderDetails(order)"
+              (keydown.space)="toggleOrderDetails(order); $event.preventDefault()">
               <div class="card-topline">
-                <a [routerLink]="['/orders', order.id]" class="order-number">
+                <button
+                  type="button"
+                  class="order-number order-number-button"
+                  (click)="toggleOrderDetails(order); $event.stopPropagation()"
+                  [attr.aria-expanded]="isOrderExpanded(order)">
                   <span class="order-mark">#</span>
                   <span>
                     <strong>{{ order.order_number }}</strong>
                     <small>{{ order.created_at | date:'dd.MM.yyyy HH:mm' }}</small>
                   </span>
-                </a>
+                  <mat-icon>{{ isOrderExpanded(order) ? 'expand_less' : 'expand_more' }}</mat-icon>
+                </button>
                 <span class="status-chip" [ngClass]="order.status">
                   {{ getStatusLabel(order.status) }}
                 </span>
@@ -259,11 +284,28 @@
                 <span class="priority-chip" [ngClass]="order.priority">
                   {{ getPriorityLabel(order.priority) }}
                 </span>
-                <strong>{{ formatMoney(getOrderAmount(order)) }}</strong>
-                <a mat-icon-button [routerLink]="['/orders', order.id]" aria-label="Открыть заказ">
-                  <mat-icon>arrow_forward</mat-icon>
-                </a>
+                <span>{{ getProblemSummary(order) }}</span>
               </div>
+
+              <section class="mobile-device-detail" *ngIf="isOrderExpanded(order)" (click)="$event.stopPropagation()">
+                <div class="device-facts" *ngIf="getDeviceFacts(order).length > 0">
+                  <div class="device-fact" *ngFor="let fact of getDeviceFacts(order)">
+                    <span>{{ fact.label }}</span>
+                    <strong>{{ fact.value }}</strong>
+                  </div>
+                </div>
+
+                <div class="detail-actions">
+                  <button mat-flat-button class="primary-action" type="button" (click)="openOrder(order)">
+                    <mat-icon>visibility</mat-icon>
+                    Карточка заказа
+                  </button>
+                  <a mat-stroked-button [routerLink]="['/orders', order.id, 'edit']">
+                    <mat-icon>edit</mat-icon>
+                    Редактировать
+                  </a>
+                </div>
+              </section>
             </article>
           </div>
 

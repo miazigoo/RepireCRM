@@ -40,6 +40,8 @@ describe('OrdersListComponent', () => {
       id: 1,
       color: 'Черный',
       storage_capacity: '128 ГБ',
+      serial_number: 'SN123456',
+      imei: '356789012345678',
       model: {
         id: 1,
         name: 'iPhone 13',
@@ -47,6 +49,8 @@ describe('OrdersListComponent', () => {
         device_type: { id: 1, name: 'Смартфон' },
       },
     },
+    device_condition: 'Следы эксплуатации на корпусе',
+    accessories: 'Коробка и кабель',
   } as Order;
 
   beforeEach(async () => {
@@ -70,14 +74,44 @@ describe('OrdersListComponent', () => {
 
   it('renders the redesigned orders registry without legacy cards or RUB text', () => {
     const text = normalizeText(fixture.nativeElement);
+    const headerCells = fixture.nativeElement.querySelectorAll(
+      '.mat-mdc-header-cell',
+    ) as NodeListOf<HTMLElement>;
+    const headers = Array.from(headerCells).map(cell => normalizeText(cell));
 
     expect(text).toContain('Сервисная очередь');
     expect(text).toContain('Рабочий список');
     expect(text).toContain('ORD-SPB01-000002');
     expect(text).toContain('900 ₽');
     expect(text).not.toContain('RUB');
+    expect(headers).toEqual(['Заказ', 'Клиент', 'Устройство', 'Статус', 'Приоритет']);
+    expect(headers).not.toContain('Финансы');
+    expect(headers).not.toContain('Создан');
+    expect(headers).not.toContain('Действия');
     expect(fixture.nativeElement.querySelector('.orders-page')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('mat-card')).toBeFalsy();
+  });
+
+  it('expands a row with device details and card actions', () => {
+    expect(fixture.nativeElement.querySelector('.order-device-detail')).toBeFalsy();
+
+    const row = fixture.nativeElement.querySelector('.order-data-row') as HTMLElement;
+    row.click();
+    fixture.detectChanges();
+
+    const detail = fixture.nativeElement.querySelector('.order-device-detail') as HTMLElement;
+    const text = normalizeText(detail);
+
+    expect(detail).toBeTruthy();
+    expect(text).toContain('Устройство в заказе');
+    expect(text).toContain('Apple iPhone 13');
+    expect(text).toContain('Не включается');
+    expect(text).toContain('Тип');
+    expect(text).toContain('Смартфон');
+    expect(text).toContain('Серийный номер');
+    expect(text).toContain('SN123456');
+    expect(text).toContain('Карточка заказа');
+    expect(text).toContain('Редактировать');
   });
 
   it('exposes operational metrics from the loaded orders', () => {

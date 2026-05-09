@@ -241,14 +241,13 @@
 
 .orders-table {
   width: 100%;
-  min-width: 980px;
+  min-width: 780px;
   background: transparent !important;
 }
 
 .order-number,
 .client-cell,
-.device-cell,
-.money-cell {
+.device-cell {
   min-width: 0;
 
   strong,
@@ -279,6 +278,33 @@
   gap: 11px;
   color: var(--color-text-primary);
   text-decoration: none;
+}
+
+.order-number-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+
+  mat-icon {
+    margin-left: auto;
+    color: var(--orders-muted);
+    transition: color 160ms ease;
+  }
+
+  &:hover mat-icon,
+  &:focus-visible mat-icon {
+    color: var(--color-primary);
+  }
+
+  &:focus-visible {
+    border-radius: 8px;
+    outline: 2px solid var(--color-primary);
+    outline-offset: 4px;
+  }
 }
 
 .order-mark,
@@ -365,27 +391,145 @@
   }
 }
 
-.money-cell strong {
-  color: var(--color-success);
+.order-data-row {
+  cursor: pointer;
+  transition: background-color 160ms ease;
+
+  &.expanded {
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent) !important;
+
+    .order-number-button mat-icon {
+      color: var(--color-primary);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -3px;
+  }
 }
 
-.money-cell small {
-  color: var(--color-danger);
+.order-detail-row {
+  height: 0;
+
+  &.expanded {
+    background: color-mix(in srgb, var(--color-primary) 4%, transparent);
+  }
 }
 
-.date-cell,
-.time-cell {
-  display: block;
+.detail-cell {
+  padding: 0 12px 14px !important;
 }
 
-.time-cell {
-  margin-top: 2px;
-  color: var(--orders-muted);
-  font-size: 12px;
+.order-device-detail {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: stretch;
+  margin: 0 0 4px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--orders-border));
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 48%),
+    var(--orders-panel-strong);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 35%, transparent);
 }
 
-.row-menu-button {
-  color: var(--color-text-primary) !important;
+.device-visual {
+  display: grid;
+  min-height: 82px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 26%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--panel-background));
+  color: var(--color-primary);
+
+  mat-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 42px;
+  }
+}
+
+.detail-content {
+  min-width: 0;
+
+  h3,
+  p {
+    margin: 0;
+  }
+
+  h3 {
+    margin-top: 5px;
+    color: var(--color-text-primary);
+    font-size: 20px;
+    font-weight: 950;
+    line-height: 1.2;
+  }
+
+  p {
+    margin-top: 8px;
+    color: var(--orders-muted);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+}
+
+.device-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.device-fact {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--orders-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel-background) 76%, transparent);
+
+  span,
+  strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  span {
+    color: var(--orders-muted);
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  strong {
+    margin-top: 4px;
+    color: var(--color-text-primary);
+    font-size: 13px;
+    font-weight: 950;
+    white-space: nowrap;
+  }
+}
+
+.detail-actions {
+  display: flex;
+  min-width: 190px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+
+  a,
+  button {
+    width: 100%;
+    min-height: 42px;
+    font-weight: 950;
+  }
+
+  a {
+    color: var(--color-text-primary) !important;
+  }
 }
 
 .mobile-list {
@@ -397,6 +541,19 @@
   border: 1px solid var(--orders-border);
   border-radius: 8px;
   background: var(--orders-panel-strong);
+  cursor: pointer;
+
+  &.expanded {
+    border-color: color-mix(in srgb, var(--color-primary) 34%, var(--orders-border));
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 9%, transparent), transparent 52%),
+      var(--orders-panel-strong);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+  }
 }
 
 .card-topline,
@@ -405,6 +562,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.card-topline .order-number-button {
+  width: auto;
+  flex: 1 1 auto;
 }
 
 .card-body {
@@ -426,9 +588,27 @@
 .card-stats {
   margin-top: 14px;
 
-  strong {
-    color: var(--color-success);
-    font-weight: 950;
+  > span:not(.priority-chip) {
+    overflow: hidden;
+    color: var(--orders-muted);
+    font-size: 13px;
+    font-weight: 850;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.mobile-device-detail {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--orders-border);
+
+  .device-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-actions {
+    margin-top: 12px;
   }
 }
 

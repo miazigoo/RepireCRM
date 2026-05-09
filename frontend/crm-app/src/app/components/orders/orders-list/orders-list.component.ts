@@ -10,9 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
-import { MatDividerModule } from '@angular/material/divider';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { OrdersService } from '../../../services/orders.service';
@@ -38,9 +36,7 @@ import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl'
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
-    MatMenuModule,
     MatSnackBarModule,
-    MatDividerModule
   ],
   templateUrl: './orders-list.component.html',
   styleUrl: './orders-list.component.scss',
@@ -64,16 +60,15 @@ export class OrdersListComponent implements OnInit {
     'customer',
     'device',
     'status',
-    'priority',
-    'cost',
-    'created_at',
-    'actions'
+    'priority'
   ];
 
+  detailColumns: string[] = ['order_details'];
   dataSource = new MatTableDataSource<Order>();
   filtersForm: FormGroup;
   loading = false;
   lastUpdatedAt: Date | null = null;
+  expandedOrderId: number | null = null;
 
   readonly statusOptions: Array<{ value: OrderStatus | ''; label: string }> = [
     { value: '', label: 'Все статусы' },
@@ -210,7 +205,15 @@ export class OrdersListComponent implements OnInit {
     });
   }
 
-  changeStatus(order: Order): void {
+  toggleOrderDetails(order: Order): void {
+    this.expandedOrderId = this.expandedOrderId === order.id ? null : order.id;
+  }
+
+  isOrderExpanded(order: Order): boolean {
+    return this.expandedOrderId === order.id;
+  }
+
+  openOrder(order: Order): void {
     this.router.navigate(['/orders', order.id]);
   }
 
@@ -256,6 +259,26 @@ export class OrdersListComponent implements OnInit {
 
   getDeviceMeta(order: Order): string {
     return [order.device.color, order.device.storage_capacity].filter(Boolean).join(' · ') || 'Без уточнений';
+  }
+
+  getDeviceFacts(order: Order): Array<{ label: string; value: string }> {
+    const facts = [
+      { label: 'Тип', value: order.device.model.device_type?.name },
+      { label: 'Цвет', value: order.device.color },
+      { label: 'Память', value: order.device.storage_capacity },
+      { label: 'Серийный номер', value: order.device.serial_number },
+      { label: 'IMEI', value: order.device.imei },
+      { label: 'Состояние', value: order.device_condition },
+      { label: 'Комплектация', value: order.accessories }
+    ];
+
+    return facts
+      .filter(item => Boolean(item.value))
+      .map(item => ({ label: item.label, value: String(item.value) }));
+  }
+
+  getProblemSummary(order: Order): string {
+    return order.problem_description || 'Описание неисправности пока не указано';
   }
 
   getOrderAmount(order: Order): number {
