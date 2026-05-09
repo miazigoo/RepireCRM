@@ -143,6 +143,7 @@ cython_debug/
 .idea/
 /.handler-saves/
 conf.txt
+a.txt
 /.vscode
 frontend/crm-app/.vscode
 /.vscode/*

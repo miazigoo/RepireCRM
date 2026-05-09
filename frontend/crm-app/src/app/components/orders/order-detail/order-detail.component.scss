@@ -299,7 +299,7 @@
 
 .order-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 330px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   align-items: start;
 }
@@ -312,13 +312,32 @@
 }
 
 .order-sidebar {
-  position: sticky;
-  top: 18px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: start;
 }
 
 .details-panel,
 .sidebar-panel {
   padding: 18px;
+}
+
+.order-sidebar > .sidebar-panel {
+  min-width: 0;
+}
+
+.customer-panel,
+.device-panel,
+.warranty-panel,
+.handover-panel {
+  grid-column: span 3;
+}
+
+.finance-panel {
+  grid-column: span 6;
+}
+
+.timeline-panel {
+  grid-column: span 3;
 }
 
 .details-panel {
@@ -898,13 +917,20 @@
 }
 
 @media (max-width: 1300px) {
-  .order-workspace {
-    grid-template-columns: 1fr;
+  .order-sidebar {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
-  .order-sidebar {
-    position: static;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .customer-panel,
+  .device-panel,
+  .warranty-panel,
+  .handover-panel,
+  .timeline-panel {
+    grid-column: span 3;
+  }
+
+  .finance-panel {
+    grid-column: span 6;
   }
 }
 
@@ -942,11 +968,23 @@
   .metrics-grid,
   .status-rail,
   .story-grid,
-  .order-sidebar,
   .stage-form-grid,
   .approval-form,
   .repair-stage {
     grid-template-columns: 1fr;
+  }
+
+  .order-sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-panel,
+  .device-panel,
+  .warranty-panel,
+  .handover-panel,
+  .finance-panel,
+  .timeline-panel {
+    grid-column: 1 / -1;
   }
 
   .stage-description-field,

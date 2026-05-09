@@ -546,7 +546,7 @@
       </section>
     </main>
 
-    <aside class="order-sidebar">
+    <aside class="order-sidebar" aria-label="Сводка заказа">
       <section class="sidebar-panel customer-panel">
         <span class="customer-avatar">{{ getCustomerInitials(order) }}</span>
         <span class="eyebrow">Клиент</span>
@@ -575,7 +575,7 @@
         </div>
       </section>
 
-      <section class="sidebar-panel">
+      <section class="sidebar-panel device-panel">
         <span class="eyebrow">Устройство</span>
         <h2>{{ getDeviceTitle(order) }}</h2>
         <p>{{ getDeviceMeta(order) }}</p>
@@ -646,7 +646,7 @@
         </section>
       </ng-template>
 
-      <section class="sidebar-panel">
+      <section class="sidebar-panel finance-panel">
         <span class="eyebrow">Финансы</span>
         <h2>{{ formatMoney(getOrderAmount(order)) }}</h2>
 
@@ -767,7 +767,7 @@
         </div>
       </section>
 
-      <section class="sidebar-panel">
+      <section class="sidebar-panel timeline-panel">
         <span class="eyebrow">Временная линия</span>
         <h2>Сроки</h2>
 
