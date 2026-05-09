@@ -52,6 +52,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - media_data:/app/media
       - static_data:/app/static
@@ -80,6 +82,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - media_data:/app/media
       - static_data:/app/static
@@ -95,6 +99,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - media_data:/app/media
       - static_data:/app/static
@@ -110,6 +116,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - media_data:/app/media
       - static_data:/app/static
