@@ -6,6 +6,7 @@ COPY frontend/crm-app/package*.json ./
 RUN npm ci
 
 COPY frontend/crm-app/ .
+ENV NODE_OPTIONS=--max-old-space-size=1536
 RUN npm run build:prod
 
 FROM nginx:1.27-alpine
