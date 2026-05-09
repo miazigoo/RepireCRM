@@ -8,15 +8,30 @@
     </div>
 
     <div class="header-actions">
-      <button mat-raised-button color="primary" (click)="createTask()">
+      <button mat-raised-button color="primary" type="button" (click)="createTask()">
         <mat-icon>add_task</mat-icon>
         Новая задача
       </button>
 
-      <button mat-button type="button" (click)="showTemplatesNotice()">
+      <button mat-button type="button" [matMenuTriggerFor]="templatesMenu">
         <mat-icon>description</mat-icon>
         Шаблоны
       </button>
+
+      <mat-menu #templatesMenu="matMenu" class="templates-menu">
+        <button
+          mat-menu-item
+          type="button"
+          *ngFor="let template of templates"
+          (click)="createTaskFromTemplate(template)">
+          <mat-icon>article</mat-icon>
+          <span>{{ template.name }}</span>
+        </button>
+        <button mat-menu-item type="button" disabled *ngIf="templates.length === 0">
+          <mat-icon>info</mat-icon>
+          <span>Шаблонов пока нет</span>
+        </button>
+      </mat-menu>
     </div>
   </div>
 

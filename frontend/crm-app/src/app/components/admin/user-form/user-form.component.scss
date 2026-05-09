@@ -135,7 +135,7 @@
 
 .shop-access-card:hover {
   border-color: color-mix(in srgb, var(--color-primary) 34%, var(--color-border));
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--color-shadow) 12%, transparent);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
   transform: translateY(-1px);
 }
 

@@ -2,7 +2,7 @@
 <div class="shop-management-container">
   <div class="header">
     <h1>Управление магазинами</h1>
-    <button mat-raised-button color="primary" (click)="showCreateForm()" *ngIf="!showForm">
+    <button mat-raised-button color="primary" type="button" (click)="showCreateForm()" *ngIf="!showForm">
       <mat-icon>add</mat-icon>
       Новый магазин
     </button>
@@ -147,7 +147,7 @@
           <ng-container matColumnDef="address">
             <th mat-header-cell *matHeaderCellDef>Адрес</th>
             <td mat-cell *matCellDef="let shop">
-              <span class="shop-address" *ngIf="shop.address; else noAddress">
+              <span class="shop-address" *ngIf="shop.address; else noAddress" [attr.title]="shop.address">
                 {{ shop.address }}
               </span>
               <ng-template #noAddress>

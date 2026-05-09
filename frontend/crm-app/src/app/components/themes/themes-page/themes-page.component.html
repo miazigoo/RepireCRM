@@ -102,7 +102,8 @@
                 [value]="getThemeColor(theme, slot.key)"
                 [attr.aria-label]="slot.label + ': ' + theme.displayName"
                 (click)="$event.stopPropagation()"
-                (input)="updateThemeColor(theme, slot.key, $event)">
+                (input)="updateThemeColor(theme, slot.key, $event)"
+                (change)="updateThemeColor(theme, slot.key, $event)">
               <span [style.background]="getThemeColor(theme, slot.key)"></span>
             </label>
           </div>

@@ -49,7 +49,7 @@ import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl'
     MatDividerModule,
   ],
   templateUrl: './user-management.component.html',
-  styleUrl: './user-management.component.css',
+  styleUrl: './user-management.component.scss',
   providers: [{ provide: MatPaginatorIntl, useClass: RussianPaginatorIntl }],
 })
 export class UserManagementComponent implements OnInit {
@@ -232,6 +232,20 @@ export class UserManagementComponent implements OnInit {
   }
 
   getShopsNames(user: User): string {
+    const shops = user.shops || [];
+
+    if (shops.length === 0) {
+      return 'Нет доступа';
+    }
+
+    if (shops.length === 1) {
+      return shops[0].name;
+    }
+
+    return `${shops[0].name} +${shops.length - 1}`;
+  }
+
+  getShopsFullNames(user: User): string {
     return user.shops?.map((shop: Shop) => shop.name).join(', ') || 'Нет доступа';
   }
 }

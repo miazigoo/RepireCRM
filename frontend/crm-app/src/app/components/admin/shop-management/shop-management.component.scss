@@ -147,13 +147,11 @@
 
 .shop-address {
   display: block;
-  max-width: 240px;
-  overflow: hidden;
+  max-width: 300px;
   color: var(--color-text-secondary);
   font-size: 13px;
   font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
 }
 
 .phone-link,

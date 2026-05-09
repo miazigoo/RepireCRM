@@ -33,7 +33,7 @@ import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl'
     MatDialogModule, MatSnackBarModule, MatSlideToggleModule, MatDividerModule
   ],
   templateUrl: './shop-management.component.html',
-  styleUrl: './shop-management.component.css',
+  styleUrl: './shop-management.component.scss',
   providers: [{ provide: MatPaginatorIntl, useClass: RussianPaginatorIntl }]
 })
 export class ShopManagementComponent implements OnInit {
@@ -83,7 +83,7 @@ export class ShopManagementComponent implements OnInit {
       name: ['', [Validators.required, Validators.maxLength(100)]],
       code: ['', [Validators.required, Validators.maxLength(10), Validators.pattern(/^[A-Z0-9]+$/)]],
       address: [''],
-      phone: ['', Validators.pattern(/^\+?[1-9]\d{1,14}$/)],
+      phone: ['', Validators.pattern(/^\+?[0-9\s().-]{7,24}$/)],
       email: ['', Validators.email],
       timezone: ['Europe/Moscow', Validators.required],
       currency: ['RUB', Validators.required]

@@ -51,6 +51,7 @@
   grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
   gap: 18px;
   align-items: start;
+  min-width: 0;
 }
 
 .service-editor {
@@ -89,6 +90,7 @@
 
 .services-list {
   display: grid;
+  min-width: 0;
   gap: 12px;
   padding: 18px;
 }
@@ -108,6 +110,7 @@
 
 .service-card {
   display: grid;
+  min-width: 0;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
   padding: 16px;
@@ -159,6 +162,22 @@
 
 .disabled-chip {
   opacity: 0.72;
+}
+
+:host ::ng-deep .service-card {
+  .mat-mdc-chip-set {
+    max-width: 100%;
+  }
+
+  .mat-mdc-chip {
+    max-width: 100%;
+  }
+
+  .mdc-evolution-chip__text-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .empty-state {

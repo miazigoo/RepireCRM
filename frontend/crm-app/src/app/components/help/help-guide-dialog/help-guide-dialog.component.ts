@@ -41,7 +41,7 @@ interface CalculationGuide {
     MatTabsModule,
   ],
   templateUrl: './help-guide-dialog.component.html',
-  styleUrl: './help-guide-dialog.component.css',
+  styleUrl: './help-guide-dialog.component.scss',
 })
 export class HelpGuideDialogComponent {
   readonly workflowSteps: GuideStep[] = [

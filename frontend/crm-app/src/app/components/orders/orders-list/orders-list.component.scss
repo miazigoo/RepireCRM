@@ -241,7 +241,7 @@
 
 .orders-table {
   width: 100%;
-  min-width: 1120px;
+  min-width: 980px;
   background: transparent !important;
 }
 
@@ -560,7 +560,7 @@
     .mat-mdc-cell,
     .mat-mdc-header-cell {
       border-bottom-color: var(--orders-border) !important;
-      padding-inline: 16px;
+      padding-inline: 12px;
     }
 
     .mat-mdc-row:hover {
@@ -608,17 +608,19 @@
   }
 }
 
-@media (max-width: 980px) {
-  .metrics-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
+@media (max-width: 1500px) {
   .filters-form {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(240px, 1fr) minmax(180px, 1fr);
   }
 
   .clear-filters {
     grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 980px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

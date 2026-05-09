@@ -61,7 +61,7 @@ interface RecentTransaction {
     BaseChartDirective
   ],
   templateUrl: './finance-dashboard.component.html',
-  styleUrl: './finance-dashboard.component.css'
+  styleUrl: './finance-dashboard.component.scss'
 })
 export class FinanceDashboardComponent implements OnInit {
   filtersForm: FormGroup;

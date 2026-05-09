@@ -49,7 +49,7 @@ interface PermissionsByCategory {
     MatDividerModule,
   ],
   templateUrl: './role-management.component.html',
-  styleUrl: './role-management.component.css',
+  styleUrl: './role-management.component.scss',
   providers: [{ provide: MatPaginatorIntl, useClass: RussianPaginatorIntl }],
 })
 export class RoleManagementComponent implements OnInit {

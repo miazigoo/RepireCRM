@@ -2,7 +2,7 @@
 <div class="user-management-container">
   <div class="header">
     <h1>Управление пользователями</h1>
-    <button mat-raised-button color="primary" routerLink="/admin/users/new">
+    <button mat-raised-button color="primary" type="button" routerLink="/admin/users/new">
       <mat-icon>person_add</mat-icon>
       Новый пользователь
     </button>
@@ -38,7 +38,7 @@
           </mat-select>
         </mat-form-field>
 
-        <button mat-button (click)="clearFilters()">
+        <button mat-button type="button" (click)="clearFilters()">
           <mat-icon>clear</mat-icon>
           Очистить
         </button>
@@ -102,7 +102,9 @@
           <ng-container matColumnDef="shops">
             <th mat-header-cell *matHeaderCellDef>Магазины</th>
             <td mat-cell *matCellDef="let user">
-              <span class="shops-info">{{ getShopsNames(user) }}</span>
+              <span class="shops-info" [attr.title]="getShopsFullNames(user)">
+                {{ getShopsNames(user) }}
+              </span>
             </td>
           </ng-container>
 

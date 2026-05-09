@@ -28,7 +28,7 @@ import { InventoryService } from '../../../services/inventory.service';
     MatSnackBarModule
   ],
   templateUrl: './inventory-item-form.component.html',
-  styleUrl: './inventory-item-form.component.css'
+  styleUrl: './inventory-item-form.component.scss'
 })
 export class InventoryItemFormComponent {
   loading = false;

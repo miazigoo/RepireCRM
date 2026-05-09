@@ -39,7 +39,7 @@ import { User, Role, Shop } from '../../../core/models/models';
     MatSnackBarModule,
   ],
   templateUrl: './user-form.component.html',
-  styleUrl: './user-form.component.css',
+  styleUrl: './user-form.component.scss',
 })
 export class UserFormComponent implements OnInit {
   userForm: FormGroup;
@@ -67,7 +67,7 @@ export class UserFormComponent implements OnInit {
         last_name: ['', [Validators.required, Validators.maxLength(50)]],
         middle_name: ['', Validators.maxLength(50)],
         email: ['', [Validators.required, Validators.email]],
-        phone: ['', Validators.pattern(/^\+?[1-9]\d{1,14}$/)],
+        phone: ['', Validators.pattern(/^\+?[0-9\s().-]{7,24}$/)],
         role_id: [''],
         is_director: [false],
         shop_ids: [[]],

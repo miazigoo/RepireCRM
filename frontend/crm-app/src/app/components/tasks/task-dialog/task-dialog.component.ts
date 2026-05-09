@@ -12,7 +12,7 @@ import { Shop, User } from '../../../core/models/models';
 import { Task, TaskPayload } from '../../../services/tasks.service';
 
 export interface TaskDialogData {
-  task?: Task | null;
+  task?: Partial<Task> | null;
   users: User[];
   shops: Shop[];
 }

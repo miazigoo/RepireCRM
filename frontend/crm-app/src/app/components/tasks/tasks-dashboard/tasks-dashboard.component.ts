@@ -20,7 +20,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { TasksService, Task, TaskPayload } from '../../../services/tasks.service';
+import { TasksService, Task, TaskPayload, TaskTemplate } from '../../../services/tasks.service';
 import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl';
 import { AdminService } from '../../../services/admin.service';
 import { AuthService } from '../../../services/auth.service';
@@ -64,7 +64,7 @@ interface TasksSummary {
     MatSnackBarModule
   ],
   templateUrl: './tasks-dashboard.component.html',
-  styleUrl: './tasks-dashboard.component.css',
+  styleUrl: './tasks-dashboard.component.scss',
   providers: [{ provide: MatPaginatorIntl, useClass: RussianPaginatorIntl }]
 })
 export class TasksDashboardComponent implements OnInit {
@@ -86,6 +86,7 @@ export class TasksDashboardComponent implements OnInit {
   };
   users: User[] = [];
   shops: Shop[] = [];
+  templates: TaskTemplate[] = [];
 
   selectedTab = 0; // 0 - Все задачи, 1 - Мои задачи, 2 - Созданные мной
 
@@ -109,6 +110,7 @@ export class TasksDashboardComponent implements OnInit {
     this.loadTasksSummary();
     this.loadTasks();
     this.loadAssignees();
+    this.loadTemplates();
     this.setupFilters();
   }
 
@@ -267,12 +269,36 @@ export class TasksDashboardComponent implements OnInit {
   }
 
   createTask(): void {
+    this.openTaskDialog();
+  }
+
+  createTaskFromTemplate(template: TaskTemplate): void {
+    const title = this.cleanTemplateText(template.title_template) || template.name;
+    const draft: Partial<Task> = {
+      title,
+      description: title,
+      priority: template.default_priority || 'normal',
+      kind: 'planned',
+      substatus: 'new',
+      status: 'pending',
+      assignment_type: 'individual',
+      is_paid: false,
+      payment_amount: 0,
+      progress_percent: 0,
+      category: template.category || undefined,
+    };
+
+    this.openTaskDialog(draft);
+  }
+
+  private openTaskDialog(task?: Partial<Task>): void {
     const dialogRef = this.dialog.open(TaskDialogComponent, {
       width: 'min(880px, calc(100vw - 28px))',
       maxWidth: '880px',
       panelClass: 'task-dialog-panel',
       autoFocus: false,
       data: {
+        task,
         users: this.users,
         shops: this.shops,
       },
@@ -363,12 +389,6 @@ export class TasksDashboardComponent implements OnInit {
     });
   }
 
-  showTemplatesNotice(): void {
-    this.snackBar.open('Шаблоны задач доступны в API, отдельный экран еще не подключен', 'Закрыть', {
-      duration: 3500
-    });
-  }
-
   getObjectKeys(obj: any): string[] {
     return Object.keys(obj);
   }
@@ -397,5 +417,20 @@ export class TasksDashboardComponent implements OnInit {
         this.shops = [];
       }
     });
+  }
+
+  private loadTemplates(): void {
+    this.tasksService.getTaskTemplates().subscribe({
+      next: templates => {
+        this.templates = templates;
+      },
+      error: () => {
+        this.templates = [];
+      },
+    });
+  }
+
+  private cleanTemplateText(value: string): string {
+    return value.replace(/\{[^}]+\}/g, '').replace(/\s+/g, ' ').trim();
   }
 }

@@ -51,6 +51,15 @@ export interface TasksSummary {
   paid_tasks_amount?: number;
 }
 
+export interface TaskTemplate {
+  id: number;
+  name: string;
+  category?: string | null;
+  title_template: string;
+  default_priority: Task['priority'];
+  estimated_hours?: number | null;
+}
+
 type TaskListResponse = Task[] | { items: Task[]; count?: number };
 
 @Injectable({
@@ -88,5 +97,11 @@ export class TasksService {
 
   getTaskStatistics(params?: Record<string, unknown>): Observable<any> {
     return this.apiService.get<any>('/tasks/statistics', params);
+  }
+
+  getTaskTemplates(): Observable<TaskTemplate[]> {
+    return this.apiService.get<TaskTemplate[]>('/tasks/templates').pipe(
+      catchError(() => of([]))
+    );
   }
 }

@@ -35,7 +35,7 @@ import {
     MatTabsModule
   ],
   templateUrl: './client-portal.component.html',
-  styleUrl: './client-portal.component.css'
+  styleUrl: './client-portal.component.scss'
 })
 export class ClientPortalComponent implements OnInit {
   customer: PortalCustomer | null = null;

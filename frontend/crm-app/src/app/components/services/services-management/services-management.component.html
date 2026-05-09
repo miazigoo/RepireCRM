@@ -80,7 +80,7 @@
           <h3>{{ service.name }}</h3>
           <p>{{ service.description || 'Описание не указано' }}</p>
           <mat-chip-set>
-            <mat-chip>{{ getServiceScope(service) }}</mat-chip>
+            <mat-chip [matTooltip]="getFullServiceScope(service)">{{ getServiceScope(service) }}</mat-chip>
             <mat-chip [class.disabled-chip]="service.is_active === false">
               {{ service.is_active === false ? 'Отключена' : 'Активна' }}
             </mat-chip>

@@ -172,10 +172,36 @@ export class ServicesManagementComponent implements OnInit {
     if (!service.shop_ids?.length) {
       return 'Все филиалы';
     }
+
     const names = this.shops
       .filter((shop) => service.shop_ids?.includes(shop.id))
       .map((shop) => shop.name);
-    return names.join(', ') || `${service.shop_ids.length} филиалов`;
+
+    if (names.length === 0 || names.length === this.shops.length) {
+      return 'Все филиалы';
+    }
+
+    if (names.length === 1) {
+      return names[0];
+    }
+
+    return `${names[0]} +${names.length - 1}`;
+  }
+
+  getFullServiceScope(service: AdditionalService): string {
+    if (!service.shop_ids?.length) {
+      return 'Доступна во всех филиалах';
+    }
+
+    const names = this.shops
+      .filter((shop) => service.shop_ids?.includes(shop.id))
+      .map((shop) => shop.name);
+
+    if (names.length === 0 || names.length === this.shops.length) {
+      return 'Доступна во всех филиалах';
+    }
+
+    return names.join(', ');
   }
 
   formatMoney(value: number): string {

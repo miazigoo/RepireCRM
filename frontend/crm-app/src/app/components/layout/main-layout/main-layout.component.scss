@@ -126,6 +126,7 @@ $mobile-breakpoint: 768px;
 
 .workspace-panel {
   @include sidebar-surface;
+  min-width: 0;
   padding: 14px;
   border-radius: $radius-sm;
   backdrop-filter: var(--panel-backdrop-filter);
@@ -169,6 +170,20 @@ $mobile-breakpoint: 768px;
 .shop-select {
   width: 100%;
   margin-top: 8px;
+}
+
+:host ::ng-deep .sidenav .shop-select {
+  .mat-mdc-select-trigger,
+  .mat-mdc-select-value {
+    min-width: 0;
+  }
+
+  .mat-mdc-select-value-text {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .primary-nav-action {
@@ -384,6 +399,7 @@ $mobile-breakpoint: 768px;
 }
 
 .content-container {
+  box-sizing: border-box;
   min-height: 100vh;
   padding: var(--content-padding);
   background: var(--color-background);
@@ -391,8 +407,10 @@ $mobile-breakpoint: 768px;
   background-size: var(--app-background-size);
 
   > * {
+    box-sizing: border-box;
+    width: 100%;
     max-width: var(--content-max-width);
-    margin-inline: 0 auto;
+    margin-inline: var(--content-margin-inline, 0);
   }
 }
 

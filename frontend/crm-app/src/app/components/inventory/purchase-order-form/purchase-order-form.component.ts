@@ -32,7 +32,7 @@ import {
     MatSnackBarModule
   ],
   templateUrl: './purchase-order-form.component.html',
-  styleUrl: './purchase-order-form.component.css'
+  styleUrl: './purchase-order-form.component.scss'
 })
 export class PurchaseOrderFormComponent implements OnInit {
   loading = false;
