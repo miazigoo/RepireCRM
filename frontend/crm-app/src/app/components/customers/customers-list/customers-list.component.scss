@@ -12,6 +12,7 @@
   width: min(100%, 1480px);
   margin: 0 auto;
   color: var(--color-text-primary);
+  container: customers-page / inline-size;
 }
 
 .customers-hero,
@@ -176,6 +177,7 @@
 .filters-panel,
 .customers-panel,
 .sidebar-panel {
+  min-width: 0;
   padding: 18px;
 }
 
@@ -225,6 +227,8 @@
 
 .table-shell {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
   overflow: auto;
   border: 1px solid var(--customers-border);
   border-radius: 8px;
@@ -540,17 +544,92 @@
   }
 }
 
+@container customers-page (max-width: 1180px) {
+  .customers-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .customers-sidebar {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container customers-page (max-width: 980px) {
+  .metrics-grid,
+  .filters-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .clear-filters {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 1280px) {
+  .metrics-grid,
+  .filters-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .clear-filters {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 980px) {
   .metrics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .filters-form {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .clear-filters {
     grid-column: 1 / -1;
+  }
+}
+
+@container customers-page (max-width: 720px) {
+  .customers-hero {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 20px;
+
+    h1 {
+      font-size: 29px;
+    }
+  }
+
+  .metrics-grid,
+  .filters-form,
+  .customers-sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-header {
+    flex-direction: column;
+  }
+
+  .panel-meta {
+    justify-content: flex-start;
+  }
+
+  .table-shell {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .customers-table,
+  :host ::ng-deep .customers-page .mat-mdc-paginator {
+    display: none;
+  }
+
+  .mobile-list {
+    display: grid;
+    gap: 12px;
   }
 }
 
