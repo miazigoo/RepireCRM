@@ -10,6 +10,7 @@ from ninja.security import HttpBearer
 from API.admin_router import router as admin_router
 from API.auth.router import router as auth_router
 from client_portal.router import router as client_portal_router
+from client_sync.router import router as client_sync_router
 from customers.router import router as customers_router
 from documents.router import router as documents_router
 from finance.router import router as finance_router
@@ -118,4 +119,5 @@ api.add_router("/tasks", tasks_router)
 api.add_router("/notifications", notifications_router)
 api.add_router("/shops", shops_router)
 api.add_router("/finance", finance_router)
+api.add_router("/client-sync", client_sync_router)
 api.add_router("/admin", admin_router)

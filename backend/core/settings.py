@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "reports",
     "tasks",
     "analytics",
+    "client_sync",
 ]
 
 MIDDLEWARE = [

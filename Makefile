@@ -19,7 +19,7 @@ NODE_PATH_BIN ?= /home/b00bs/.nvm/versions/node/v22.19.0/bin
 ANGULAR_BUILD_DIR ?= /tmp/repaircrm-angular-build
 
 .PHONY: help up rebuild down restart ps logs logs-backend logs-frontend migrate makemigrations shell dbshell npm install \
-	tests backend-tests frontend-tests lint backend-lint build smoke mock mock-small reset-mock superuser clean
+	tests backend-tests frontend-tests lint backend-lint build smoke client-sync mock mock-small reset-mock superuser clean
 
 help: ## Показать команды Makefile
 	@awk 'BEGIN {FS = ":.*##"; printf "\nRepair CRM commands:\n"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  make %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -84,6 +84,9 @@ build: ## Angular build без записи в root-owned dist
 
 smoke: ## Проверить live API по запущенному стенду
 	python3 scripts/api_smoke.py --base-url $(BACKEND_URL) --username $(TEST_USER) --password '$(TEST_PASSWORD)'
+
+client-sync: ## Ручной запуск синхронизации с внешним клиентским backend
+	$(COMPOSE) exec -T $(BACKEND) python manage.py sync_client_portal
 
 mock: up migrate ## Пересоздать большую demo-базу за год
 	$(COMPOSE) exec -T $(BACKEND) python manage.py create_test_data --reset-demo --months $(MOCK_MONTHS) --orders $(MOCK_ORDERS) --customers $(MOCK_CUSTOMERS)
