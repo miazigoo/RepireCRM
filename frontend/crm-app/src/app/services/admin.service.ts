@@ -59,6 +59,80 @@ export interface ShopCreateRequest {
   currency: string;
 }
 
+export interface ClientPortalIntegration {
+  id: number;
+  organization_id: number;
+  organization_name: string;
+  enabled: boolean;
+  configured: boolean;
+  base_url?: string | null;
+  tenant_key: string;
+  client_domain?: string | null;
+  auth_policy: 'phone_or_email' | 'phone_only' | 'email_only' | string;
+  support_phone?: string | null;
+  support_email?: string | null;
+  brand_name?: string | null;
+  accent_color?: string | null;
+  portal_banner_enabled: boolean;
+  portal_banner_title?: string | null;
+  portal_banner_subtitle?: string | null;
+  portal_banner_image_url?: string | null;
+  portal_banner_link_url?: string | null;
+  api_key_configured: boolean;
+  last_push_at?: string | null;
+  last_pull_at?: string | null;
+  last_error?: string | null;
+}
+
+export type ClientPortalIntegrationUpdate = Partial<
+  Pick<
+    ClientPortalIntegration,
+    | 'enabled'
+    | 'base_url'
+    | 'tenant_key'
+    | 'client_domain'
+    | 'auth_policy'
+    | 'support_phone'
+    | 'support_email'
+    | 'brand_name'
+    | 'accent_color'
+    | 'portal_banner_enabled'
+    | 'portal_banner_title'
+    | 'portal_banner_subtitle'
+    | 'portal_banner_image_url'
+    | 'portal_banner_link_url'
+  >
+> & {
+  api_key?: string;
+};
+
+export interface ClientSyncStatus {
+  integration: ClientPortalIntegration;
+  order_states: Record<string, number>;
+  actions: Record<string, number>;
+}
+
+export interface ClientSyncRunResult {
+  pushed: number;
+  skipped: number;
+  pulled: number;
+  applied: number;
+  errors: number;
+}
+
+export interface ClientSyncAction {
+  id: number;
+  external_id: string;
+  action_type: string;
+  status: string;
+  related_order_id?: number | null;
+  related_task_id?: number | null;
+  error_message?: string | null;
+  received_at: string;
+  applied_at?: string | null;
+  synced_back_at?: string | null;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -185,5 +259,27 @@ export class AdminService {
       plan_code: planCode,
       payment_method_type: paymentMethodType,
     });
+  }
+
+  getClientSyncStatus(): Observable<ClientSyncStatus> {
+    return this.apiService.get<ClientSyncStatus>('/client-sync/status');
+  }
+
+  updateClientSyncIntegration(
+    data: ClientPortalIntegrationUpdate,
+  ): Observable<ClientPortalIntegration> {
+    return this.apiService.put<ClientPortalIntegration>('/client-sync/integration', data);
+  }
+
+  runClientSync(push = true, pull = true, limit = 100): Observable<ClientSyncRunResult> {
+    return this.apiService.post<ClientSyncRunResult>('/client-sync/run', {
+      push,
+      pull,
+      limit,
+    });
+  }
+
+  getClientSyncActions(limit = 20): Observable<ClientSyncAction[]> {
+    return this.apiService.get<ClientSyncAction[]>('/client-sync/actions', { limit });
   }
 }

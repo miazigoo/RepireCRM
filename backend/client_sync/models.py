@@ -37,6 +37,28 @@ class ClientPortalIntegration(models.Model):
     support_email = models.EmailField("Email поддержки", blank=True)
     brand_name = models.CharField("Название бренда", max_length=120, blank=True)
     accent_color = models.CharField("Акцентный цвет", max_length=20, blank=True)
+    portal_banner_enabled = models.BooleanField(
+        "Показывать рекламный баннер в клиентском кабинете",
+        default=False,
+    )
+    portal_banner_title = models.CharField(
+        "Заголовок баннера",
+        max_length=200,
+        blank=True,
+    )
+    portal_banner_subtitle = models.CharField(
+        "Подзаголовок баннера",
+        max_length=500,
+        blank=True,
+    )
+    portal_banner_image_url = models.URLField(
+        "Картинка баннера (URL)",
+        blank=True,
+    )
+    portal_banner_link_url = models.URLField(
+        "Ссылка при клике на баннер",
+        blank=True,
+    )
     last_push_at = models.DateTimeField("Последний push заказов", null=True, blank=True)
     last_pull_at = models.DateTimeField(
         "Последний pull действий", null=True, blank=True

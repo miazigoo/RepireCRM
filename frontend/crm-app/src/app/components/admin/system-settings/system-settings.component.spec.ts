@@ -1,19 +1,49 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { of } from 'rxjs';
+import { AdminService, ClientSyncStatus } from '../../../services/admin.service';
 import { SystemSettingsComponent } from './system-settings.component';
 
 describe('SystemSettingsComponent', () => {
   let fixture: ComponentFixture<SystemSettingsComponent>;
   let component: SystemSettingsComponent;
+  let adminService: jasmine.SpyObj<AdminService>;
 
   const storageKey = 'repairCrmSystemSettings';
+  const clientSyncStatus: ClientSyncStatus = {
+    integration: {
+      id: 1,
+      organization_id: 1,
+      organization_name: 'Repair',
+      enabled: false,
+      configured: false,
+      tenant_key: 'org-1',
+      auth_policy: 'phone_or_email',
+      portal_banner_enabled: false,
+      api_key_configured: false,
+    },
+    order_states: {},
+    actions: {},
+  };
 
   beforeEach(async () => {
     localStorage.clear();
+    adminService = jasmine.createSpyObj<AdminService>('AdminService', [
+      'getClientSyncStatus',
+      'getClientSyncActions',
+      'updateClientSyncIntegration',
+      'runClientSync',
+    ]);
+    adminService.getClientSyncStatus.and.returnValue(of(clientSyncStatus));
+    adminService.getClientSyncActions.and.returnValue(of([]));
+    adminService.updateClientSyncIntegration.and.returnValue(of(clientSyncStatus.integration));
+    adminService.runClientSync.and.returnValue(
+      of({ pushed: 0, skipped: 0, pulled: 0, applied: 0, errors: 0 })
+    );
 
     await TestBed.configureTestingModule({
       imports: [SystemSettingsComponent],
-      providers: [provideNoopAnimations()],
+      providers: [provideNoopAnimations(), { provide: AdminService, useValue: adminService }],
     }).compileComponents();
   });
 
@@ -38,6 +68,7 @@ describe('SystemSettingsComponent', () => {
     expect(element.textContent).toContain('Общие');
     expect(element.textContent).toContain('Уведомления');
     expect(element.textContent).toContain('Безопасность');
+    expect(element.textContent).toContain('Клиентский кабинет');
     expect(element.textContent).toContain('Резервное копирование');
   });
 

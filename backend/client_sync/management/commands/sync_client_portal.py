@@ -24,7 +24,14 @@ class Command(BaseCommand):
 
         push = not options["pull_only"]
         pull = not options["push_only"]
-        total = {"integrations": 0, "pushed": 0, "pulled": 0, "applied": 0, "errors": 0}
+        total = {
+            "integrations": 0,
+            "pushed": 0,
+            "skipped": 0,
+            "pulled": 0,
+            "applied": 0,
+            "errors": 0,
+        }
         for integration in queryset:
             result = sync_client_service(
                 integration,
@@ -33,11 +40,12 @@ class Command(BaseCommand):
                 limit=max(1, min(options["limit"], 500)),
             )
             total["integrations"] += 1
-            for key in ("pushed", "pulled", "applied", "errors"):
+            for key in ("pushed", "skipped", "pulled", "applied", "errors"):
                 total[key] += result.get(key, 0)
             self.stdout.write(
                 self.style.SUCCESS(
                     f"{integration.organization}: pushed={result.get('pushed', 0)} "
+                    f"skipped={result.get('skipped', 0)} "
                     f"pulled={result.get('pulled', 0)} "
                     f"applied={result.get('applied', 0)} "
                     f"errors={result.get('errors', 0)}"

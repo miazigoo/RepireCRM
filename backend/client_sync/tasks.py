@@ -6,7 +6,14 @@ from .services import sync_client_service
 
 @shared_task(name="client_sync.tasks.sync_client_portals")
 def sync_client_portals(limit: int = 100):
-    result = {"integrations": 0, "pushed": 0, "pulled": 0, "applied": 0, "errors": 0}
+    result = {
+        "integrations": 0,
+        "pushed": 0,
+        "skipped": 0,
+        "pulled": 0,
+        "applied": 0,
+        "errors": 0,
+    }
     integrations = ClientPortalIntegration.objects.filter(
         enabled=True,
         base_url__gt="",
@@ -16,6 +23,7 @@ def sync_client_portals(limit: int = 100):
         current = sync_client_service(integration, limit=limit)
         result["integrations"] += 1
         result["pushed"] += current.get("pushed", 0)
+        result["skipped"] += current.get("skipped", 0)
         result["pulled"] += current.get("pulled", 0)
         result["applied"] += current.get("applied", 0)
         result["errors"] += current.get("errors", 0)

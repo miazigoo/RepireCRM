@@ -14,12 +14,13 @@ from client_sync.models import (
 )
 from client_sync.services import (
     pull_pending_actions,
+    push_marketing_snapshot,
     push_order_snapshots,
     serialize_order_snapshot,
 )
 from customers.models import Customer
 from device.models import Device, DeviceBrand, DeviceModel, DeviceType
-from orders.models import Order, OrderApproval
+from orders.models import Order, OrderApproval, RepairStage
 from shops.models import Organization, Shop, ShopSettings
 from users.models import Permission, Role
 
@@ -166,13 +167,14 @@ class ClientSyncTestCase(TestCase):
         result = push_order_snapshots(self.integration, session=session)
 
         self.assertEqual(result.pushed, 1)
-        self.assertEqual(len(session.posts), 1)
+        order_posts = [p for p in session.posts if "orders/upsert" in p["url"]]
+        self.assertEqual(len(order_posts), 1)
         self.assertEqual(
-            session.posts[0]["headers"]["X-Sync-Token"],
+            order_posts[0]["headers"]["X-Sync-Token"],
             "sync-secret",
         )
         self.assertEqual(
-            session.posts[0]["json"]["orders"][0]["order_number"],
+            order_posts[0]["json"]["orders"][0]["order_number"],
             self.order.order_number,
         )
         state = ClientSyncOrderState.objects.get(order=self.order)
@@ -218,3 +220,126 @@ class ClientSyncTestCase(TestCase):
         self.assertTrue(
             session.posts[0]["url"].endswith("/api/sync/actions/act-1/mark-synced")
         )
+
+    def test_child_order_change_marks_synced_order_pending(self):
+        session = FakeSession(
+            post_payload={
+                "orders": [
+                    {
+                        "crm_order_id": self.order.id,
+                        "remote_order_id": "remote-123",
+                    }
+                ]
+            }
+        )
+        push_order_snapshots(self.integration, session=session)
+        state = ClientSyncOrderState.objects.get(order=self.order)
+        self.assertEqual(state.status, ClientSyncOrderState.Status.SYNCED)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            RepairStage.objects.create(
+                order=self.order,
+                title="Фото до ремонта",
+                description="Клиенту видно",
+                created_by=self.user,
+            )
+
+        state.refresh_from_db()
+        self.assertEqual(state.status, ClientSyncOrderState.Status.PENDING)
+
+    def test_pull_rejects_approval_from_other_organization(self):
+        other_org = Organization.objects.create(name="Other Org")
+        other_shop = Shop.objects.create(name="Other Shop", code="SPB01")
+        ShopSettings.objects.create(shop=other_shop, organization=other_org)
+        other_order = Order.objects.create(
+            shop=other_shop,
+            customer=self.customer,
+            device=self.device,
+            problem_description="Другая организация",
+            cost_estimate=1000,
+            created_by=self.user,
+        )
+        approval = OrderApproval.objects.create(
+            order=other_order,
+            title="Чужое согласование",
+            amount=1000,
+            requested_by=self.user,
+        )
+        session = FakeSession(
+            get_payload={
+                "actions": [
+                    {
+                        "id": "act-foreign",
+                        "type": "approval.decided",
+                        "payload": {
+                            "crm_approval_id": approval.id,
+                            "status": "approved",
+                        },
+                    }
+                ]
+            }
+        )
+
+        result = pull_pending_actions(self.integration, session=session)
+
+        self.assertEqual(result.pulled, 1)
+        self.assertEqual(result.errors, 1)
+        approval.refresh_from_db()
+        self.assertEqual(approval.status, OrderApproval.StatusChoices.PENDING)
+        action = ClientSyncAction.objects.get(external_id="act-foreign")
+        self.assertEqual(action.status, ClientSyncAction.Status.ERROR)
+        self.assertIn("does not belong", action.error_message)
+
+    def test_portal_repair_request_mark_synced_contains_crm_order_number(self):
+        session = FakeSession(
+            get_payload={
+                "actions": [
+                    {
+                        "id": "act-request",
+                        "type": "repair_request.created",
+                        "payload": {
+                            "client_order_id": 55,
+                            "customer": {
+                                "first_name": self.customer.first_name,
+                                "last_name": self.customer.last_name,
+                                "phone": str(self.customer.phone),
+                                "email": self.customer.email,
+                            },
+                            "device": {
+                                "device_type": "Смартфон",
+                                "brand": "Apple",
+                                "model_name": "iPhone 15",
+                            },
+                            "order": {
+                                "problem_description": "Разбит экран после падения",
+                                "cost_estimate": 0,
+                            },
+                        },
+                    }
+                ]
+            }
+        )
+
+        result = pull_pending_actions(self.integration, session=session)
+
+        self.assertEqual(result.applied, 1)
+        action = ClientSyncAction.objects.get(external_id="act-request")
+        self.assertIsNotNone(action.related_order_id)
+        mark_posts = [p for p in session.posts if "mark-synced" in p["url"]]
+        self.assertEqual(len(mark_posts), 1)
+        self.assertEqual(mark_posts[0]["json"]["crm_order_id"], action.related_order_id)
+        self.assertEqual(
+            mark_posts[0]["json"]["crm_order_number"],
+            action.related_order.order_number,
+        )
+
+    def test_push_marketing_snapshot_posts_payload(self):
+        session = FakeSession()
+        ok = push_marketing_snapshot(self.integration, session=session)
+        self.assertTrue(ok)
+        self.assertEqual(len(session.posts), 1)
+        self.assertTrue(session.posts[0]["url"].endswith("/api/sync/marketing/upsert"))
+        payload = session.posts[0]["json"]
+        self.assertEqual(payload["tenant_key"], "test-company")
+        self.assertIn("promotions", payload)
+        self.assertIn("banner", payload)

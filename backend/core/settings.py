@@ -300,4 +300,8 @@ CELERY_BEAT_SCHEDULE = {
         "task": "analytics.tasks.save_monthly_snapshots",
         "schedule": 60 * 60 * 24,  # раз в сутки
     },
+    "client-sync-portals-every-minute": {
+        "task": "client_sync.tasks.sync_client_portals",
+        "schedule": 60,
+    },
 }

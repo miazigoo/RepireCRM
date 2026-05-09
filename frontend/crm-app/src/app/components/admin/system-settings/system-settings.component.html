@@ -217,6 +217,192 @@
       </div>
     </mat-tab>
 
+    <mat-tab label="Клиентский кабинет">
+      <div class="tab-content">
+        <section class="settings-card">
+          <header class="panel-header">
+            <div>
+              <span class="panel-kicker">Портал клиента</span>
+              <h2>Синхронизация и бренд</h2>
+            </div>
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="runClientSync()"
+              [disabled]="clientSyncRunning || clientSyncLoading || !clientSyncStatus?.integration?.configured">
+              <mat-spinner diameter="18" *ngIf="clientSyncRunning"></mat-spinner>
+              <span *ngIf="!clientSyncRunning">Запустить sync</span>
+            </button>
+          </header>
+
+          <div class="sync-summary" *ngIf="clientSyncStatus as status">
+            <span>
+              <small>Состояние</small>
+              <strong>{{ status.integration.configured ? 'Настроен' : 'Не настроен' }}</strong>
+            </span>
+            <span>
+              <small>Заказы</small>
+              <strong>{{ status.order_states['pending'] || 0 }} / {{ status.order_states['error'] || 0 }}</strong>
+            </span>
+            <span>
+              <small>Действия</small>
+              <strong>{{ status.actions['received'] || 0 }} / {{ status.actions['error'] || 0 }}</strong>
+            </span>
+            <span>
+              <small>Последний push</small>
+              <strong>{{ status.integration.last_push_at ? (status.integration.last_push_at | date:'dd.MM HH:mm') : 'нет' }}</strong>
+            </span>
+          </div>
+
+          <div class="message-inline warning" *ngIf="clientSyncStatus?.integration?.last_error">
+            {{ clientSyncStatus?.integration?.last_error }}
+          </div>
+
+          <form [formGroup]="clientSyncForm" (ngSubmit)="saveClientSyncSettings()">
+            <div class="settings-section">
+              <h3>Подключение</h3>
+              <div class="toggle-row">
+                <mat-slide-toggle formControlName="enabled" color="primary">
+                  Клиентский кабинет включен
+                </mat-slide-toggle>
+                <span class="muted" *ngIf="clientSyncStatus?.integration?.api_key_configured">
+                  Sync token сохранен
+                </span>
+              </div>
+
+              <div class="form-grid">
+                <mat-form-field appearance="outline">
+                  <mat-label>URL клиентского backend</mat-label>
+                  <input matInput formControlName="base_url" placeholder="https://client.company.ru">
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Sync API ключ</mat-label>
+                  <input matInput formControlName="api_key" type="password" autocomplete="new-password">
+                  <mat-hint>Оставьте пустым, чтобы не менять ключ</mat-hint>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Tenant key</mat-label>
+                  <input matInput formControlName="tenant_key">
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Домен кабинета</mat-label>
+                  <input matInput formControlName="client_domain" placeholder="https://lk.company.ru">
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Политика входа</mat-label>
+                  <select matNativeControl formControlName="auth_policy">
+                    <option value="phone_or_email">Телефон или email</option>
+                    <option value="phone_only">Только телефон</option>
+                    <option value="email_only">Только email</option>
+                  </select>
+                </mat-form-field>
+              </div>
+            </div>
+
+            <mat-divider></mat-divider>
+
+            <div class="settings-section">
+              <h3>Бренд и поддержка</h3>
+              <div class="form-grid">
+                <mat-form-field appearance="outline">
+                  <mat-label>Название бренда</mat-label>
+                  <input matInput formControlName="brand_name">
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Акцентный цвет</mat-label>
+                  <input matInput formControlName="accent_color" placeholder="#0f766e">
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Телефон поддержки</mat-label>
+                  <input matInput formControlName="support_phone">
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Email поддержки</mat-label>
+                  <input matInput formControlName="support_email" type="email">
+                  <mat-error>{{ getFieldError(clientSyncForm, 'support_email') }}</mat-error>
+                </mat-form-field>
+              </div>
+            </div>
+
+            <mat-divider></mat-divider>
+
+            <div class="settings-section">
+              <h3>Баннер в кабинете</h3>
+              <div class="toggle-row">
+                <mat-slide-toggle formControlName="portal_banner_enabled" color="primary">
+                  Показывать баннер
+                </mat-slide-toggle>
+              </div>
+
+              <div class="form-grid">
+                <mat-form-field appearance="outline">
+                  <mat-label>Заголовок</mat-label>
+                  <input matInput formControlName="portal_banner_title">
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Подзаголовок</mat-label>
+                  <input matInput formControlName="portal_banner_subtitle">
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>URL картинки</mat-label>
+                  <input matInput formControlName="portal_banner_image_url">
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>URL ссылки</mat-label>
+                  <input matInput formControlName="portal_banner_link_url">
+                </mat-form-field>
+              </div>
+            </div>
+
+            <div class="sync-result" *ngIf="clientSyncResult">
+              pushed={{ clientSyncResult.pushed }},
+              skipped={{ clientSyncResult.skipped }},
+              pulled={{ clientSyncResult.pulled }},
+              applied={{ clientSyncResult.applied }},
+              errors={{ clientSyncResult.errors }}
+            </div>
+
+            <div class="form-actions">
+              <button mat-flat-button type="submit" [disabled]="clientSyncSaving || clientSyncLoading">
+                <mat-spinner diameter="20" *ngIf="clientSyncSaving"></mat-spinner>
+                <span *ngIf="!clientSyncSaving">Сохранить</span>
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section class="settings-card sync-actions-card" *ngIf="clientSyncActions.length">
+          <header class="panel-header">
+            <div>
+              <span class="panel-kicker">Журнал</span>
+              <h2>Последние действия клиента</h2>
+            </div>
+          </header>
+
+          <div class="sync-action-list">
+            <article *ngFor="let action of clientSyncActions">
+              <div>
+                <strong>{{ action.action_type }}</strong>
+                <span>{{ action.external_id }}</span>
+              </div>
+              <span>{{ action.status }}</span>
+              <small>{{ action.received_at | date:'dd.MM.yyyy HH:mm' }}</small>
+            </article>
+          </div>
+        </section>
+      </div>
+    </mat-tab>
+
     <mat-tab label="Резервное копирование">
       <div class="tab-content">
         <section class="settings-card">

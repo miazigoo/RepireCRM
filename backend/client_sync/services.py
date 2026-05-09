@@ -10,12 +10,13 @@ from urllib.parse import urljoin
 import requests
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.utils import timezone
 
 from customers.models import Customer, CustomerShopHistory
 from device.models import Device, DeviceBrand, DeviceModel, DeviceType
 from orders.models import Order, OrderApproval, OrderAuditLog
+from promotions.models import Promotion
 from shops.models import Organization, Shop
 from tasks.models import Task, TaskCategory
 
@@ -65,6 +66,46 @@ def get_or_create_integration(
 
 def organization_shops(organization: Organization):
     return Shop.objects.filter(settings__organization=organization, is_active=True)
+
+
+def mark_order_for_sync(order: Order) -> None:
+    """Mark an order snapshot as dirty for every enabled portal integration."""
+    if not getattr(order, "id", None) or not getattr(order, "shop_id", None):
+        return
+
+    organization_id = (
+        Shop.objects.filter(id=order.shop_id)
+        .values_list("settings__organization_id", flat=True)
+        .first()
+    )
+    if not organization_id:
+        return
+
+    integrations = ClientPortalIntegration.objects.filter(
+        organization_id=organization_id,
+        enabled=True,
+    )
+    for integration in integrations:
+        state, created = ClientSyncOrderState.objects.get_or_create(
+            integration=integration,
+            order=order,
+            defaults={"status": ClientSyncOrderState.Status.PENDING},
+        )
+        if created:
+            continue
+        if state.status != ClientSyncOrderState.Status.PENDING or state.last_error:
+            state.status = ClientSyncOrderState.Status.PENDING
+            state.last_error = ""
+            state.save(update_fields=["status", "last_error", "updated_at"])
+
+
+def order_belongs_to_integration(
+    integration: ClientPortalIntegration,
+    order: Order,
+) -> bool:
+    return (
+        organization_shops(integration.organization).filter(id=order.shop_id).exists()
+    )
 
 
 def integration_headers(integration: ClientPortalIntegration) -> dict[str, str]:
@@ -349,6 +390,94 @@ def push_order_snapshots(
     return result
 
 
+def promotions_for_client_portal(integration: ClientPortalIntegration):
+    shops = organization_shops(integration.organization)
+    shop_ids = list(shops.values_list("id", flat=True))
+    if not shop_ids:
+        return Promotion.objects.none()
+    now = timezone.now()
+    return (
+        Promotion.objects.filter(is_active=True)
+        .filter(Q(starts_at__isnull=True) | Q(starts_at__lte=now))
+        .filter(Q(ends_at__isnull=True) | Q(ends_at__gte=now))
+        .annotate(_shop_count=Count("shops", distinct=True))
+        .filter(Q(_shop_count=0) | Q(shops__in=shop_ids))
+        .distinct()
+        .prefetch_related("codes")
+        .order_by("-created_at")[:50]
+    )
+
+
+def serialize_promotion_for_portal(promotion: Promotion) -> dict[str, Any]:
+    now = timezone.now()
+    codes: list[str] = []
+    for code in promotion.codes.filter(is_active=True):
+        if code.starts_at and code.starts_at > now:
+            continue
+        if code.ends_at and code.ends_at < now:
+            continue
+        codes.append(code.code)
+    return {
+        "crm_promotion_id": promotion.id,
+        "title": promotion.name,
+        "description": promotion.description or "",
+        "discount_type": promotion.discount_type,
+        "value": str(promotion.value),
+        "max_discount_amount": serialize_money(promotion.max_discount_amount),
+        "min_order_amount": str(promotion.min_order_amount),
+        "starts_at": serialize_datetime(promotion.starts_at),
+        "ends_at": serialize_datetime(promotion.ends_at),
+        "promo_codes": codes[:20],
+        "auto_apply": promotion.auto_apply,
+    }
+
+
+def build_marketing_banner_dict(
+    integration: ClientPortalIntegration,
+) -> dict[str, Any] | None:
+    if not integration.portal_banner_enabled:
+        return None
+    return {
+        "title": integration.portal_banner_title or "",
+        "subtitle": integration.portal_banner_subtitle or "",
+        "image_url": integration.portal_banner_image_url or None,
+        "link_url": integration.portal_banner_link_url or None,
+        "active": True,
+    }
+
+
+def push_marketing_snapshot(
+    integration: ClientPortalIntegration,
+    session: requests.Session | None = None,
+) -> bool:
+    if not integration.is_configured:
+        return True
+    session = session or requests.Session()
+    promotions = [
+        serialize_promotion_for_portal(p)
+        for p in promotions_for_client_portal(integration)
+    ]
+    banner = build_marketing_banner_dict(integration)
+    response = session.post(
+        build_sync_url(integration, "/api/sync/marketing/upsert"),
+        headers=integration_headers(integration),
+        json={
+            "tenant_key": integration.tenant_key,
+            "sent_at": serialize_datetime(timezone.now()),
+            "promotions": promotions,
+            "banner": banner,
+        },
+        timeout=DEFAULT_TIMEOUT_SECONDS,
+    )
+    if response.status_code >= 400:
+        integration.last_error = response.text[:1000]
+        integration.save(update_fields=["last_error", "updated_at"])
+        return False
+    integration.last_error = ""
+    integration.save(update_fields=["last_error", "updated_at"])
+    return True
+
+
 def pull_pending_actions(
     integration: ClientPortalIntegration,
     limit: int = 100,
@@ -406,6 +535,8 @@ def sync_client_service(
         result.pushed += push_result.pushed
         result.skipped += push_result.skipped
         result.errors += push_result.errors
+        if not push_marketing_snapshot(integration):
+            result.errors += 1
     if pull:
         pull_result = pull_pending_actions(integration, limit=limit)
         result.pulled += pull_result.pulled
@@ -490,6 +621,9 @@ def mark_action_synced(
         json={
             "status": action.status,
             "crm_order_id": action.related_order_id,
+            "crm_order_number": (
+                action.related_order.order_number if action.related_order_id else None
+            ),
             "crm_task_id": action.related_task_id,
             "error": action.error_message,
         },
@@ -519,7 +653,9 @@ def _apply_approval_decision(action: ClientSyncAction) -> None:
     }:
         raise ClientSyncError("approval.decided status must be approved or rejected")
 
-    approval = OrderApproval.objects.select_related("order").get(id=approval_id)
+    approval = OrderApproval.objects.select_related("order__shop").get(id=approval_id)
+    if not order_belongs_to_integration(action.integration, approval.order):
+        raise ClientSyncError("approval.decided order does not belong to integration")
     if approval.status != OrderApproval.StatusChoices.PENDING:
         action.related_order = approval.order
         return
@@ -614,6 +750,7 @@ def _apply_repair_request(action: ClientSyncAction) -> None:
             message="Заказ создан из внешнего клиентского кабинета",
             changes={"external_action_id": action.external_id},
         )
+        mark_order_for_sync(order)
 
 
 def _customer_from_payload(payload: dict[str, Any]) -> Customer | None:
@@ -667,7 +804,7 @@ def _create_task_from_action(
             "icon": "support_agent",
         },
     )
-    order = _order_from_payload(action.payload)
+    order = _order_from_payload(action.integration, action.payload)
     task = Task.objects.create(
         title=f"{title_prefix}: {action.action_type}",
         description=json.dumps(action.payload, ensure_ascii=False, indent=2),
@@ -688,10 +825,14 @@ def _create_task_from_action(
     return task
 
 
-def _order_from_payload(payload: dict[str, Any]) -> Order | None:
+def _order_from_payload(
+    integration: ClientPortalIntegration,
+    payload: dict[str, Any],
+) -> Order | None:
     order_id = payload.get("crm_order_id") or payload.get("order_id")
     order_number = payload.get("order_number")
-    queryset = Order.objects.all()
+    shops = organization_shops(integration.organization)
+    queryset = Order.objects.filter(shop__in=shops)
     if order_id:
         return queryset.filter(id=order_id).first()
     if order_number:

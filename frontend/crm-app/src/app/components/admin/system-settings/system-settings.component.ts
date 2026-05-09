@@ -1,6 +1,6 @@
 // frontend/crm-app/src/app/components/admin/system-settings/system-settings.component.ts
 import { Component, OnInit } from '@angular/core';
-import { NgIf, NgFor } from '@angular/common';
+import { NgIf, NgFor, DatePipe } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -10,6 +10,15 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatDividerModule } from '@angular/material/divider';
+import { finalize } from 'rxjs';
+import {
+  AdminService,
+  ClientPortalIntegration,
+  ClientPortalIntegrationUpdate,
+  ClientSyncAction,
+  ClientSyncRunResult,
+  ClientSyncStatus,
+} from '../../../services/admin.service';
 
 interface SystemSettings {
   general: {
@@ -56,7 +65,7 @@ interface SettingsOverviewItem {
   selector: 'app-system-settings',
   standalone: true,
   imports: [
-    NgIf, NgFor, ReactiveFormsModule,
+    NgIf, NgFor, DatePipe, ReactiveFormsModule,
     MatFormFieldModule, MatInputModule,
     MatButtonModule, MatSlideToggleModule,
     MatProgressSpinnerModule, MatSnackBarModule, MatTabsModule, MatDividerModule
@@ -71,9 +80,16 @@ export class SystemSettingsComponent implements OnInit {
   notificationsForm!: FormGroup;
   securityForm!: FormGroup;
   backupForm!: FormGroup;
+  clientSyncForm!: FormGroup;
 
   loading = false;
+  clientSyncLoading = false;
+  clientSyncSaving = false;
+  clientSyncRunning = false;
   settings: SystemSettings | null = null;
+  clientSyncStatus: ClientSyncStatus | null = null;
+  clientSyncActions: ClientSyncAction[] = [];
+  clientSyncResult: ClientSyncRunResult | null = null;
   settingsOverview: SettingsOverviewItem[] = [
     { label: 'Каналы', value: 'Email + Push', tone: 'primary' },
     { label: 'Сессия', value: '480 мин', tone: 'accent' },
@@ -82,12 +98,14 @@ export class SystemSettingsComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private adminService: AdminService
   ) {}
 
   ngOnInit(): void {
     this.initializeForms();
     this.loadSettings();
+    this.loadClientSyncStatus();
   }
 
   private initializeForms(): void {
@@ -123,6 +141,24 @@ export class SystemSettingsComponent implements OnInit {
       backup_frequency_hours: [24, [Validators.required, Validators.min(1)]],
       backup_retention_days: [30, [Validators.required, Validators.min(7)]],
       backup_location: ['/backups/', Validators.required]
+    });
+
+    this.clientSyncForm = this.fb.group({
+      enabled: [false],
+      base_url: [''],
+      api_key: [''],
+      tenant_key: [''],
+      client_domain: [''],
+      auth_policy: ['phone_or_email'],
+      support_phone: [''],
+      support_email: ['', Validators.email],
+      brand_name: [''],
+      accent_color: [''],
+      portal_banner_enabled: [false],
+      portal_banner_title: [''],
+      portal_banner_subtitle: [''],
+      portal_banner_image_url: [''],
+      portal_banner_link_url: [''],
     });
   }
 
@@ -196,6 +232,47 @@ export class SystemSettingsComponent implements OnInit {
     this.snackBar.open('Резервная копия создана успешно', 'Закрыть', { duration: 3000 });
   }
 
+  saveClientSyncSettings(): void {
+    if (this.clientSyncForm.invalid) {
+      this.clientSyncForm.markAllAsTouched();
+      return;
+    }
+
+    const payload = this.cleanSyncPayload(
+      this.clientSyncForm.getRawValue() as Record<string, unknown>
+    );
+    this.clientSyncSaving = true;
+    this.adminService.updateClientSyncIntegration(payload)
+      .pipe(finalize(() => (this.clientSyncSaving = false)))
+      .subscribe({
+        next: (integration) => {
+          this.patchClientSyncForm(integration);
+          this.loadClientSyncStatus(false);
+          this.snackBar.open('Настройки клиентского кабинета сохранены', 'Закрыть', { duration: 3000 });
+        },
+        error: (error) => {
+          this.snackBar.open(this.extractApiError(error, 'Не удалось сохранить настройки'), 'Закрыть', { duration: 3500 });
+        },
+      });
+  }
+
+  runClientSync(): void {
+    this.clientSyncRunning = true;
+    this.clientSyncResult = null;
+    this.adminService.runClientSync(true, true, 100)
+      .pipe(finalize(() => (this.clientSyncRunning = false)))
+      .subscribe({
+        next: (result) => {
+          this.clientSyncResult = result;
+          this.loadClientSyncStatus(false);
+          this.snackBar.open('Синхронизация запущена', 'Закрыть', { duration: 3000 });
+        },
+        error: (error) => {
+          this.snackBar.open(this.extractApiError(error, 'Не удалось запустить синхронизацию'), 'Закрыть', { duration: 3500 });
+        },
+      });
+  }
+
   getFieldError(form: FormGroup, fieldName: string): string {
     const control = form.get(fieldName);
     if (control?.errors && control.touched) {
@@ -222,6 +299,74 @@ export class SystemSettingsComponent implements OnInit {
     };
     localStorage.setItem(this.storageKey, JSON.stringify(this.settings));
     this.syncOverview();
+  }
+
+  private loadClientSyncStatus(showLoader = true): void {
+    if (showLoader) {
+      this.clientSyncLoading = true;
+    }
+
+    this.adminService.getClientSyncStatus()
+      .pipe(finalize(() => (this.clientSyncLoading = false)))
+      .subscribe({
+        next: (status) => {
+          this.clientSyncStatus = status;
+          this.patchClientSyncForm(status.integration);
+          this.loadClientSyncActions();
+        },
+        error: () => {
+          this.clientSyncStatus = null;
+          this.clientSyncActions = [];
+        },
+      });
+  }
+
+  private loadClientSyncActions(): void {
+    this.adminService.getClientSyncActions(20).subscribe({
+      next: (actions) => (this.clientSyncActions = actions),
+      error: () => (this.clientSyncActions = []),
+    });
+  }
+
+  private patchClientSyncForm(integration: ClientPortalIntegration): void {
+    this.clientSyncForm.patchValue({
+      enabled: integration.enabled,
+      base_url: integration.base_url || '',
+      api_key: '',
+      tenant_key: integration.tenant_key || '',
+      client_domain: integration.client_domain || '',
+      auth_policy: integration.auth_policy || 'phone_or_email',
+      support_phone: integration.support_phone || '',
+      support_email: integration.support_email || '',
+      brand_name: integration.brand_name || '',
+      accent_color: integration.accent_color || '',
+      portal_banner_enabled: integration.portal_banner_enabled,
+      portal_banner_title: integration.portal_banner_title || '',
+      portal_banner_subtitle: integration.portal_banner_subtitle || '',
+      portal_banner_image_url: integration.portal_banner_image_url || '',
+      portal_banner_link_url: integration.portal_banner_link_url || '',
+    });
+  }
+
+  private cleanSyncPayload(value: Record<string, unknown>): ClientPortalIntegrationUpdate {
+    const payload: Record<string, unknown> = {};
+    Object.entries(value).forEach(([key, currentValue]) => {
+      if (typeof currentValue === 'string') {
+        const trimmed = currentValue.trim();
+        if (key === 'api_key' && !trimmed) {
+          return;
+        }
+        payload[key] = trimmed || null;
+        return;
+      }
+      payload[key] = currentValue;
+    });
+    return payload as ClientPortalIntegrationUpdate;
+  }
+
+  private extractApiError(error: unknown, fallback: string): string {
+    const response = error as { error?: { error?: string; detail?: string } };
+    return response.error?.error || response.error?.detail || fallback;
   }
 
   private syncOverview(): void {

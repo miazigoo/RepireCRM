@@ -10,7 +10,7 @@ describe('AdminService', () => {
   let apiService: jasmine.SpyObj<ApiService>;
 
   beforeEach(() => {
-    apiService = jasmine.createSpyObj<ApiService>('ApiService', ['get', 'post']);
+    apiService = jasmine.createSpyObj<ApiService>('ApiService', ['get', 'post', 'put']);
 
     TestBed.configureTestingModule({
       providers: [AdminService, { provide: ApiService, useValue: apiService }],
@@ -124,6 +124,30 @@ describe('AdminService', () => {
     expect(apiService.post).toHaveBeenCalledOnceWith('/shops/subscription/pay', {
       plan_code: 'monthly',
       payment_method_type: 'sbp',
+    });
+  });
+
+  it('updates client portal integration through client-sync API', () => {
+    const integration = {
+      id: 1,
+      organization_id: 1,
+      organization_name: 'Main',
+      enabled: true,
+      configured: true,
+      tenant_key: 'org-1',
+      auth_policy: 'phone_or_email',
+      portal_banner_enabled: true,
+      api_key_configured: true,
+    };
+    apiService.put.and.returnValue(of(integration));
+
+    service.updateClientSyncIntegration({ enabled: true, portal_banner_enabled: true }).subscribe((result) => {
+      expect(result).toEqual(integration);
+    });
+
+    expect(apiService.put).toHaveBeenCalledOnceWith('/client-sync/integration', {
+      enabled: true,
+      portal_banner_enabled: true,
     });
   });
 });

@@ -49,6 +49,11 @@ def _serialize_integration(
         "support_email": integration.support_email or None,
         "brand_name": integration.brand_name or None,
         "accent_color": integration.accent_color or None,
+        "portal_banner_enabled": integration.portal_banner_enabled,
+        "portal_banner_title": integration.portal_banner_title or None,
+        "portal_banner_subtitle": integration.portal_banner_subtitle or None,
+        "portal_banner_image_url": integration.portal_banner_image_url or None,
+        "portal_banner_link_url": integration.portal_banner_link_url or None,
         "api_key_configured": bool(integration.api_key),
         "last_push_at": integration.last_push_at.isoformat()
         if integration.last_push_at

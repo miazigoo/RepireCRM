@@ -17,6 +17,11 @@ class ClientPortalIntegrationSchema(Schema):
     support_email: Optional[str] = None
     brand_name: Optional[str] = None
     accent_color: Optional[str] = None
+    portal_banner_enabled: bool = False
+    portal_banner_title: Optional[str] = None
+    portal_banner_subtitle: Optional[str] = None
+    portal_banner_image_url: Optional[str] = None
+    portal_banner_link_url: Optional[str] = None
     api_key_configured: bool
     last_push_at: Optional[str] = None
     last_pull_at: Optional[str] = None
@@ -34,6 +39,11 @@ class ClientPortalIntegrationUpdateSchema(Schema):
     support_email: Optional[str] = None
     brand_name: Optional[str] = None
     accent_color: Optional[str] = None
+    portal_banner_enabled: Optional[bool] = None
+    portal_banner_title: Optional[str] = None
+    portal_banner_subtitle: Optional[str] = None
+    portal_banner_image_url: Optional[str] = None
+    portal_banner_link_url: Optional[str] = None
 
 
 class ClientSyncRunSchema(Schema):
