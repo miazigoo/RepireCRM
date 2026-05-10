@@ -465,15 +465,33 @@
 
         <div class="summary-status-grid">
           <div [class.ready]="isCustomerReady">
-            <span>1</span>
+            <span class="summary-step-icon">
+              <svg viewBox="0 0 32 32" aria-hidden="true">
+                <path d="M16 15.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Z" />
+                <path d="M6.5 27.5a9.5 9.5 0 0 1 19 0" />
+              </svg>
+            </span>
             Клиент
           </div>
           <div [class.ready]="isDeviceReady">
-            <span>2</span>
+            <span class="summary-step-icon">
+              <svg viewBox="0 0 32 32" aria-hidden="true">
+                <path d="M10 4.5h12a2.5 2.5 0 0 1 2.5 2.5v18a2.5 2.5 0 0 1-2.5 2.5H10A2.5 2.5 0 0 1 7.5 25V7A2.5 2.5 0 0 1 10 4.5Z" />
+                <path d="M13.5 7.5h5" />
+                <path d="M15 24.5h2" />
+              </svg>
+            </span>
             Устройство
           </div>
           <div [class.ready]="isOrderReady">
-            <span>3</span>
+            <span class="summary-step-icon">
+              <svg viewBox="0 0 32 32" aria-hidden="true">
+                <path d="M8 5.5h16a2.5 2.5 0 0 1 2.5 2.5v18.5H8A2.5 2.5 0 0 1 5.5 24V8A2.5 2.5 0 0 1 8 5.5Z" />
+                <path d="M11 12h10" />
+                <path d="M11 17h10" />
+                <path d="M11 22h6" />
+              </svg>
+            </span>
             Детали
           </div>
         </div>

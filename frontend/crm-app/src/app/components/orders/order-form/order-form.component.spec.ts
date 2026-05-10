@@ -91,6 +91,7 @@ describe('OrderFormComponent', () => {
     expect(text).toContain('Карточка приемки');
     expect(text).toContain('Быстро добавить');
     expect(fixture.nativeElement.querySelectorAll('.panel-icon svg').length).toBeGreaterThan(1);
+    expect(fixture.nativeElement.querySelectorAll('.summary-status-grid svg').length).toBe(3);
   });
 
   it('creates a quick customer and moves to the next step', () => {
