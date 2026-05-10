@@ -98,6 +98,25 @@ class ShopSettings(models.Model):
         "Футер чека/квит.", max_length=200, blank=True
     )
 
+    # Field visit settings
+    field_visit_enabled = models.BooleanField("Выезд мастера включён", default=False)
+    field_visit_service_name = models.CharField(
+        "Название услуги", max_length=100, default="Выезд мастера"
+    )
+    field_visit_base_price = models.DecimalField(
+        "Базовая стоимость", max_digits=10, decimal_places=2, default=0
+    )
+    field_visit_out_of_zone_price = models.DecimalField(
+        "Стоимость за пределами зон", max_digits=10, decimal_places=2, default=0
+    )
+    field_visit_description = models.TextField("Описание услуги", blank=True)
+    field_visit_zones = models.JSONField("Зоны обслуживания", default=list, blank=True)
+    # zones: [{"id": "uuid", "name": "Центр", "price": 0.0,
+    #           "geometry": {"type": "Polygon", "coordinates": [...]}}]
+    field_visit_advance_days = models.PositiveIntegerField(
+        "Предварительная запись за (дней)", default=1
+    )
+
     class Meta:
         db_table = "shop_settings"
         verbose_name = "Настройки магазина"

@@ -1,0 +1,160 @@
+<div class="fv-settings-page">
+  <div class="page-header">
+    <h1>
+      <mat-icon>two_wheeler</mat-icon>
+      Выезд мастера
+    </h1>
+    <p class="subtitle">Настройка услуги вызова мастера к клиенту, зоны обслуживания и тарифы</p>
+  </div>
+
+  <!-- Shop selector -->
+  @if (shops.length > 1) {
+    <div class="shop-tabs">
+      @for (shop of shops; track shop.id) {
+        <button
+          class="shop-tab"
+          [class.active]="selectedShopId === shop.id"
+          (click)="selectShop(shop.id)">
+          {{ shop.name }}
+        </button>
+      }
+    </div>
+  }
+
+  @if (loading) {
+    <div class="loading-center">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+  } @else if (selectedShopId) {
+    <form [formGroup]="form" (ngSubmit)="save()" class="fv-form">
+
+      <!-- Enable toggle -->
+      <mat-card class="fv-card">
+        <mat-card-content>
+          <div class="toggle-row">
+            <div>
+              <strong>Включить услугу «Выезд мастера»</strong>
+              <p class="hint">Клиенты смогут заказать выезд мастера к себе через портал</p>
+            </div>
+            <mat-slide-toggle formControlName="enabled" color="primary"></mat-slide-toggle>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      @if (form.get('enabled')?.value) {
+        <!-- General settings -->
+        <mat-card class="fv-card">
+          <mat-card-header>
+            <mat-card-title>Основные настройки</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="form-grid">
+              <mat-form-field appearance="outline">
+                <mat-label>Название услуги</mat-label>
+                <input matInput formControlName="service_name">
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Предварительная запись за (дней)</mat-label>
+                <input matInput type="number" formControlName="advance_days" min="0">
+                <mat-hint>0 — запись в любое время</mat-hint>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Базовая стоимость (₽)</mat-label>
+                <input matInput type="number" formControlName="base_price" min="0">
+                <mat-hint>Минимальная стоимость выезда</mat-hint>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Стоимость за пределами зон (₽)</mat-label>
+                <input matInput type="number" formControlName="out_of_zone_price" min="0">
+                <mat-hint>Доплата при выезде вне указанных зон</mat-hint>
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="col-span-2">
+                <mat-label>Описание для клиента</mat-label>
+                <textarea matInput formControlName="description" rows="3"
+                  placeholder="Укажите, что входит в услугу, условия, ограничения..."></textarea>
+              </mat-form-field>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Zones -->
+        <mat-card class="fv-card">
+          <mat-card-header>
+            <mat-card-title>Зоны обслуживания</mat-card-title>
+            <mat-card-subtitle>
+              Нарисуйте зоны на карте. Клиент увидит, в какую зону попадает его адрес, и получит соответствующий тариф.
+            </mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <div formArrayName="zones" class="zones-list">
+              @for (zone of zonesArray.controls; track zone; let i = $index) {
+                <div class="zone-item" [formGroupName]="i">
+                  <div class="zone-header">
+                    <mat-form-field appearance="outline" class="zone-name">
+                      <mat-label>Название зоны</mat-label>
+                      <input matInput formControlName="name" placeholder="Центр, Север, Область...">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" class="zone-price">
+                      <mat-label>Тариф (₽)</mat-label>
+                      <input matInput type="number" formControlName="price" min="0">
+                      <mat-hint>0 — входит в базовую цену</mat-hint>
+                    </mat-form-field>
+                    <button mat-icon-button color="warn" type="button"
+                      matTooltip="Удалить зону" (click)="removeZone(i)">
+                      <mat-icon>delete_outline</mat-icon>
+                    </button>
+                  </div>
+
+                  <!-- Yandex Map for this zone -->
+                  <div class="zone-map-container">
+                    <div class="zone-map-tools">
+                      <span class="hint-text">
+                        <mat-icon>info_outline</mat-icon>
+                        Кликайте на карте чтобы задать вершины полигона (мин. 3 точки)
+                      </span>
+                      <button mat-stroked-button type="button" color="warn"
+                        (click)="clearZoneMap(i)" matTooltip="Сбросить полигон">
+                        <mat-icon>clear</mat-icon> Сбросить
+                      </button>
+                    </div>
+                    <div [id]="'ymap-zone-' + i" class="zone-map"
+                      (click)="initMap(i)">
+                      <div class="map-placeholder">
+                        <mat-icon>map</mat-icon>
+                        <span>Нажмите, чтобы активировать карту</span>
+                      </div>
+                    </div>
+                    @if (zone.get('geometry')?.value) {
+                      <div class="zone-map-status">
+                        <mat-icon>check_circle</mat-icon>
+                        Полигон задан
+                      </div>
+                    }
+                  </div>
+                  <mat-divider></mat-divider>
+                </div>
+              }
+            </div>
+            <button mat-stroked-button type="button" (click)="addZone()" class="add-zone-btn">
+              <mat-icon>add_location_alt</mat-icon>
+              Добавить зону
+            </button>
+          </mat-card-content>
+        </mat-card>
+      }
+
+      <div class="form-actions">
+        <button mat-flat-button color="primary" type="submit"
+          [disabled]="form.invalid || saving">
+          @if (saving) {
+            <mat-spinner diameter="18"></mat-spinner>
+          } @else {
+            <mat-icon>save</mat-icon>
+          }
+          Сохранить настройки
+        </button>
+      </div>
+
+    </form>
+  }
+</div>

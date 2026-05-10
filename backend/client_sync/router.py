@@ -1,6 +1,9 @@
+from typing import List
+
 from django.db.models import Count
 from ninja import Router
 
+from shops.models import ShopSettings
 from shops.subscription_services import ensure_shop_organization
 
 from .models import ClientPortalIntegration, ClientSyncAction, ClientSyncOrderState
@@ -30,6 +33,33 @@ def _integration_for_request(request) -> ClientPortalIntegration:
     return get_or_create_integration(organization)
 
 
+def _get_field_visit_config(integration: ClientPortalIntegration) -> dict:
+    shop_settings = (
+        ShopSettings.objects.filter(organization=integration.organization)
+        .select_related("shop")
+        .first()
+    )
+    if shop_settings is None:
+        return {
+            "enabled": False,
+            "service_name": "Выезд мастера",
+            "base_price": 0.0,
+            "out_of_zone_price": 0.0,
+            "description": "",
+            "zones": [],
+            "advance_days": 1,
+        }
+    return {
+        "enabled": shop_settings.field_visit_enabled,
+        "service_name": shop_settings.field_visit_service_name,
+        "base_price": float(shop_settings.field_visit_base_price),
+        "out_of_zone_price": float(shop_settings.field_visit_out_of_zone_price),
+        "description": shop_settings.field_visit_description,
+        "zones": shop_settings.field_visit_zones or [],
+        "advance_days": shop_settings.field_visit_advance_days,
+    }
+
+
 def _serialize_integration(
     integration: ClientPortalIntegration,
 ) -> dict:
@@ -53,13 +83,14 @@ def _serialize_integration(
         "portal_banner_image_url": integration.portal_banner_image_url or None,
         "portal_banner_link_url": integration.portal_banner_link_url or None,
         "api_key_configured": bool(integration.api_key),
-        "last_push_at": integration.last_push_at.isoformat()
-        if integration.last_push_at
-        else None,
-        "last_pull_at": integration.last_pull_at.isoformat()
-        if integration.last_pull_at
-        else None,
+        "last_push_at": (
+            integration.last_push_at.isoformat() if integration.last_push_at else None
+        ),
+        "last_pull_at": (
+            integration.last_pull_at.isoformat() if integration.last_pull_at else None
+        ),
         "last_error": integration.last_error or None,
+        "field_visit": _get_field_visit_config(integration),
     }
 
 
@@ -95,7 +126,7 @@ def update_client_sync_integration(
     if not request.auth.has_permission("settings.change_shop"):
         raise PermissionError("Нет прав для изменения клиентского сервиса")
     integration = _integration_for_request(request)
-    incoming = data.model_dump(exclude_unset=True)
+    incoming = data.dict(exclude_unset=True)
     for field, value in incoming.items():
         if value is None:
             value = ""
@@ -119,7 +150,7 @@ def run_client_sync(request, data: ClientSyncRunSchema):
     )
 
 
-@router.get("/actions", response=list[dict])
+@router.get("/actions", response=List[dict])
 def list_client_sync_actions(request, limit: int = 50):
     if not request.auth.has_permission("settings.view_shop"):
         raise PermissionError("Нет прав для просмотра действий клиентского сервиса")

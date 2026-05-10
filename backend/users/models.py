@@ -96,6 +96,7 @@ class User(AbstractUser):
     avatar = models.ImageField("Аватар", upload_to="avatars/", blank=True, null=True)
     profile_status = models.CharField("Статус профиля", max_length=120, blank=True)
     bio = models.TextField("Описание профиля", blank=True)
+    can_field_visit = models.BooleanField("Может выезжать", default=False)
     is_director = models.BooleanField("Директор", default=False)
 
     # Условия оплаты

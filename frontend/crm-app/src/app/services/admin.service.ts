@@ -23,6 +23,7 @@ export interface UserCreateRequest {
   role_id?: number;
   shop_ids: number[];
   is_director?: boolean;
+  can_field_visit?: boolean;
   profile_status?: string;
   bio?: string;
   compensation_type?: 'fixed' | 'commission' | 'mixed';
@@ -40,6 +41,7 @@ export interface UserUpdateRequest {
   role_id?: number;
   shop_ids?: number[];
   is_director?: boolean;
+  can_field_visit?: boolean;
   is_active?: boolean;
   profile_status?: string;
   bio?: string;
@@ -180,6 +182,7 @@ export class AdminService {
   updateShop(id: number, shopData: Partial<ShopCreateRequest>): Observable<Shop> {
     return this.apiService.put<Shop>(`/admin/shops/${id}`, shopData);
   }
+
 
   deleteShop(id: number): Observable<any> {
     return this.apiService.delete(`/admin/shops/${id}`);

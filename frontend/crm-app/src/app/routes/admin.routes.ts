@@ -28,5 +28,9 @@ export const ADMIN_ROUTES: Routes = [
   {
     path: 'settings',
     loadComponent: () => import('../components/admin/system-settings/system-settings.component').then(m => m.SystemSettingsComponent)
+  },
+  {
+    path: 'field-visit',
+    loadComponent: () => import('../components/admin/field-visit-settings/field-visit-settings.component').then(m => m.FieldVisitSettingsComponent)
   }
 ];

@@ -22,6 +22,7 @@ from notifications.router import router as notifications_router
 from orders.router import router as orders_router
 from promotions.router import router as promotions_router
 from reports.router import router as reports_router
+from shops.field_visit_router import router as field_visit_router
 from shops.router import router as shops_router
 from tasks.router import router as tasks_router
 from users.models import User
@@ -148,6 +149,7 @@ api.add_router("/reports", reports_router)
 api.add_router("/tasks", tasks_router)
 api.add_router("/notifications", notifications_router)
 api.add_router("/shops", shops_router)
+api.add_router("", field_visit_router)
 api.add_router("/finance", finance_router)
 api.add_router("/client-sync", client_sync_router)
 api.add_router("/promotions", promotions_router)

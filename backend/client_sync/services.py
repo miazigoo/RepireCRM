@@ -189,6 +189,23 @@ def serialize_order_snapshot(order: Order) -> dict[str, Any]:
             "color": device.color,
             "storage_capacity": device.storage_capacity,
         },
+        "assigned_master": (
+            {
+                "id": order.assigned_to.id,
+                "name": " ".join(
+                    filter(
+                        None,
+                        [order.assigned_to.last_name, order.assigned_to.first_name],
+                    )
+                ),
+                "display_name": str(order.assigned_to),
+                "avatar_url": (
+                    order.assigned_to.avatar.url if order.assigned_to.avatar else None
+                ),
+            }
+            if order.assigned_to_id
+            else None
+        ),
         "status": order.status,
         "status_display": order.get_status_display(),
         "priority": order.priority,
