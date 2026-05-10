@@ -17,6 +17,7 @@ describe('MainLayoutComponent', () => {
   let store: jasmine.SpyObj<Store>;
 
   beforeEach(async () => {
+    localStorage.removeItem('repaircrm.sidebarCollapsed');
     store = jasmine.createSpyObj<Store>('Store', ['select', 'dispatch']);
     store.select.and.callFake((selector: any) => {
       if (selector === selectCurrentUser) {
@@ -153,5 +154,21 @@ describe('MainLayoutComponent', () => {
       .find(item => item.label === 'Уведомления')!;
 
     expect(fixture.componentInstance.getBadgeValue(notificationItem)).toBe(0);
+  });
+
+  it('shows the current shop once in the workspace switcher', () => {
+    const element: HTMLElement = fixture.nativeElement;
+
+    expect(element.querySelector('.shop-select')).toBeNull();
+    expect(element.querySelectorAll('.workspace-title').length).toBe(1);
+    expect(element.querySelector('.workspace-title')?.textContent?.trim()).toBe('Ремонт+ Москва Центр');
+  });
+
+  it('collapses the desktop sidebar from the header control', () => {
+    fixture.componentInstance.toggleSidebar();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.sidenav.collapsed')).toBeTruthy();
+    expect(localStorage.getItem('repaircrm.sidebarCollapsed')).toBe('true');
   });
 });

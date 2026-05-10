@@ -1,6 +1,7 @@
-<mat-sidenav-container class="sidenav-container">
+<mat-sidenav-container class="sidenav-container" [autosize]="true">
   <mat-sidenav #drawer
                class="sidenav"
+               [class.collapsed]="sidebarCollapsed && (isHandset$ | async) === false"
                fixedInViewport
                [attr.role]="(isHandset$ | async) ? 'dialog' : 'navigation'"
                [mode]="(isHandset$ | async) ? 'over' : 'side'"
@@ -14,6 +15,18 @@
           <h3>Repair CRM</h3>
           <span>Сервисный центр</span>
         </div>
+
+        <button
+          class="sidebar-toggle"
+          type="button"
+          *ngIf="(isHandset$ | async) === false"
+          [attr.aria-label]="sidebarCollapsed ? 'Развернуть меню' : 'Свернуть меню'"
+          [matTooltip]="sidebarCollapsed ? 'Развернуть меню' : 'Свернуть меню'"
+          (click)="toggleSidebar()">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M15 6 9 12l6 6"></path>
+          </svg>
+        </button>
       </div>
 
       <div class="workspace-panel">
@@ -22,28 +35,61 @@
           <span>Текущая точка</span>
         </div>
 
-        <div class="workspace-name" *ngIf="currentShop; else noSidebarShop">
-          {{ currentShop.name }}
-        </div>
-        <ng-template #noSidebarShop>
-          <div class="workspace-name">Рабочее пространство</div>
+        <button
+          *ngIf="availableShops.length > 1; else staticWorkspace"
+          class="workspace-switch"
+          type="button"
+          [matMenuTriggerFor]="shopMenu">
+          <span class="workspace-copy">
+            <strong class="workspace-title">{{ getCurrentShopName() }}</strong>
+            <small *ngIf="currentShop?.code">{{ currentShop?.code }}</small>
+          </span>
+          <svg class="workspace-chevron" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m7 10 5 5 5-5"></path>
+          </svg>
+        </button>
+
+        <ng-template #staticWorkspace>
+          <div class="workspace-switch static">
+            <span class="workspace-copy">
+              <strong class="workspace-title">{{ getCurrentShopName() }}</strong>
+              <small *ngIf="currentShop?.code">{{ currentShop?.code }}</small>
+            </span>
+          </div>
         </ng-template>
 
-        <div class="workspace-code" *ngIf="currentShop?.code">
-          {{ currentShop?.code }}
-        </div>
+        <button
+          *ngIf="availableShops.length > 1; else staticWorkspaceCompact"
+          class="workspace-compact"
+          type="button"
+          [matMenuTriggerFor]="shopMenu"
+          [matTooltip]="getCurrentShopName()">
+          <mat-icon>storefront</mat-icon>
+        </button>
 
-        <mat-select
-          *ngIf="availableShops.length > 1"
-          class="shop-select"
-          [value]="currentShop?.id"
-          (selectionChange)="switchShop($event.value)"
-          placeholder="Выберите магазин">
-          <mat-option *ngFor="let shop of availableShops" [value]="shop.id">
-            {{ shop.name }}
-          </mat-option>
-        </mat-select>
+        <ng-template #staticWorkspaceCompact>
+          <div class="workspace-compact static" [matTooltip]="getCurrentShopName()">
+            <mat-icon>storefront</mat-icon>
+          </div>
+        </ng-template>
       </div>
+
+      <mat-menu #shopMenu="matMenu" class="shop-menu">
+        <button
+          mat-menu-item
+          type="button"
+          class="shop-option"
+          *ngFor="let shop of availableShops"
+          (click)="switchShop(shop.id)">
+          <span class="shop-option-copy">
+            <span>{{ shop.name }}</span>
+            <small *ngIf="shop.code">{{ shop.code }}</small>
+          </span>
+          <svg class="shop-option-check" *ngIf="shop.id === currentShop?.id" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m5 12 4 4 10-10"></path>
+          </svg>
+        </button>
+      </mat-menu>
 
       <button class="primary-nav-action"
               mat-flat-button

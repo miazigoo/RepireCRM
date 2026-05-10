@@ -7,7 +7,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatSelectModule } from '@angular/material/select';
 import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -52,7 +51,6 @@ interface NavigationGroup {
     MatMenuModule,
     MatBadgeModule,
     MatDividerModule,
-    MatSelectModule,
     MatListModule,
     MatTooltipModule,
     MatDialogModule,
@@ -74,6 +72,7 @@ export class MainLayoutComponent implements OnInit {
   pendingOrdersCount = 0;
   notificationsCount = 0;
   currentRouteTitle = 'Панель управления';
+  sidebarCollapsed = false;
 
   navigationGroups: NavigationGroup[] = [
     {
@@ -155,6 +154,7 @@ export class MainLayoutComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.sidebarCollapsed = this.readSidebarCollapsed();
     this.updateRouteTitle(this.router.url);
     this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
@@ -184,6 +184,15 @@ export class MainLayoutComponent implements OnInit {
 
   switchShop(shopId: number): void {
     this.store.dispatch(AuthActions.switchShop({ shopId }));
+  }
+
+  toggleSidebar(): void {
+    this.sidebarCollapsed = !this.sidebarCollapsed;
+    localStorage.setItem('repaircrm.sidebarCollapsed', String(this.sidebarCollapsed));
+  }
+
+  getCurrentShopName(): string {
+    return this.currentShop?.name || 'Рабочее пространство';
   }
 
   logout(): void {
@@ -265,5 +274,9 @@ export class MainLayoutComponent implements OnInit {
 
   private getCleanUrl(url: string): string {
     return url.split('?')[0].replace(/\/\d+(\/edit)?$/, '');
+  }
+
+  private readSidebarCollapsed(): boolean {
+    return localStorage.getItem('repaircrm.sidebarCollapsed') === 'true';
   }
 }
