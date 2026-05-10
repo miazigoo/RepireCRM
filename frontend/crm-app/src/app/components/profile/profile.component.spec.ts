@@ -1,16 +1,19 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Store } from '@ngrx/store';
 import { of } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { selectCurrentShop, selectCurrentUser } from '../../store/auth/auth.selectors';
+import { AvatarCropDialogComponent } from './avatar-crop-dialog/avatar-crop-dialog.component';
 import { ProfileComponent } from './profile.component';
 
 describe('ProfileComponent', () => {
   let fixture: ComponentFixture<ProfileComponent>;
   let component: ProfileComponent;
   let authService: jasmine.SpyObj<AuthService>;
+  let dialog: jasmine.SpyObj<MatDialog>;
   let snackBar: jasmine.SpyObj<MatSnackBar>;
   let store: jasmine.SpyObj<Store>;
 
@@ -57,6 +60,8 @@ describe('ProfileComponent', () => {
     }));
 
     snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
+    dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
+    dialog.open.and.returnValue({ afterClosed: () => of(null) } as any);
 
     store = jasmine.createSpyObj<Store>('Store', ['select']);
     store.select.and.callFake((selector: any) => {
@@ -76,6 +81,7 @@ describe('ProfileComponent', () => {
       providers: [
         provideNoopAnimations(),
         { provide: AuthService, useValue: authService },
+        { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: snackBar },
         { provide: Store, useValue: store },
       ],
@@ -83,6 +89,7 @@ describe('ProfileComponent', () => {
 
     fixture = TestBed.createComponent(ProfileComponent);
     component = fixture.componentInstance;
+    (component as any).dialog = dialog;
     (component as any).snackBar = snackBar;
     fixture.detectChanges();
   });
@@ -134,12 +141,23 @@ describe('ProfileComponent', () => {
   it('uploads a valid avatar through auth API', () => {
     const input = document.createElement('input');
     const file = new File(['avatar'], 'avatar.png', { type: 'image/png' });
+    const croppedFile = new File(['cropped'], 'avatar-avatar.jpg', { type: 'image/jpeg' });
+    spyOn(URL, 'createObjectURL').and.returnValue('blob:avatar');
+    spyOn(URL, 'revokeObjectURL').and.stub();
+    dialog.open.and.returnValue({ afterClosed: () => of(croppedFile) } as any);
     Object.defineProperty(input, 'files', { value: [file] });
     input.value = 'avatar.png';
 
     component.uploadAvatar({ target: input } as any);
 
-    expect(authService.updateAvatar).toHaveBeenCalledWith(file);
+    expect(dialog.open).toHaveBeenCalledWith(
+      AvatarCropDialogComponent,
+      jasmine.objectContaining({
+        data: { sourceUrl: 'blob:avatar', fileName: 'avatar.png' },
+      }),
+    );
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:avatar');
+    expect(authService.updateAvatar).toHaveBeenCalledWith(croppedFile);
     expect(component.savingAvatar).toBeFalse();
     expect(input.value).toBe('');
   });

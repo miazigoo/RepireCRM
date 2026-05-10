@@ -1,17 +1,31 @@
 <div class="profile-shell">
+  <input #avatarFileInput
+         class="avatar-file-input"
+         type="file"
+         accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+         [disabled]="savingAvatar"
+         (change)="uploadAvatar($event)">
+
   <section class="profile-hero">
     <div class="hero-main">
       <div class="avatar-frame" [class.uploading]="savingAvatar">
-        <img *ngIf="currentUser?.avatar; else initialsAvatar" [src]="currentUser?.avatar" alt="">
-        <ng-template #initialsAvatar><span>{{ initials }}</span></ng-template>
-        <label class="avatar-control"
-               [class.disabled]="savingAvatar"
-               title="Заменить аватар"
-               aria-label="Заменить аватар">
-          <input type="file"
-                 accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-                 [disabled]="savingAvatar"
-                 (change)="uploadAvatar($event)">
+        <button *ngIf="currentUser?.avatar; else initialsAvatar"
+                class="avatar-preview-button"
+                type="button"
+                [disabled]="savingAvatar"
+                (click)="openAvatarPreview()"
+                aria-label="Открыть аватар">
+          <img [src]="currentUser?.avatar" alt="">
+        </button>
+        <ng-template #initialsAvatar><span class="avatar-initials">{{ initials }}</span></ng-template>
+
+        <button class="avatar-control"
+                type="button"
+                [class.disabled]="savingAvatar"
+                [disabled]="savingAvatar"
+                (click)="openAvatarFilePicker()"
+                title="Заменить аватар"
+                aria-label="Заменить аватар">
           <span class="avatar-control-icon">
             <mat-spinner *ngIf="savingAvatar" diameter="18"></mat-spinner>
             <svg *ngIf="!savingAvatar" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -19,7 +33,7 @@
               <circle cx="12" cy="13" r="3.25"></circle>
             </svg>
           </span>
-        </label>
+        </button>
       </div>
 
       <div class="hero-copy">
@@ -182,18 +196,18 @@
         </mat-form-field>
 
         <div class="form-actions split">
-          <label class="avatar-upload" [class.disabled]="savingAvatar">
-            <input type="file"
-                   accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-                   [disabled]="savingAvatar"
-                   (change)="uploadAvatar($event)">
+          <button class="avatar-upload"
+                  type="button"
+                  [class.disabled]="savingAvatar"
+                  [disabled]="savingAvatar"
+                  (click)="openAvatarFilePicker()">
             <mat-spinner *ngIf="savingAvatar" diameter="18"></mat-spinner>
             <svg *ngIf="!savingAvatar" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M8.5 7.5 10 5h4l1.5 2.5H18a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9.5a2 2 0 0 1 2-2h2.5Z"></path>
               <circle cx="12" cy="13" r="3.25"></circle>
             </svg>
             <span>{{ savingAvatar ? 'Загрузка' : 'Заменить аватар' }}</span>
-          </label>
+          </button>
 
           <button mat-flat-button type="submit" [disabled]="savingProfile || savingAvatar">
             <mat-spinner *ngIf="savingProfile" diameter="20"></mat-spinner>

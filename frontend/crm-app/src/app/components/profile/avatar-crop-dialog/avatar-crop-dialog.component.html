@@ -1,0 +1,62 @@
+<section class="avatar-crop-dialog">
+  <header>
+    <div>
+      <span>Настройка аватара</span>
+      <h2>Выберите область фото</h2>
+    </div>
+    <button type="button" class="icon-button" (click)="close()" aria-label="Закрыть">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M6 6l12 12"></path>
+        <path d="M18 6 6 18"></path>
+      </svg>
+    </button>
+  </header>
+
+  <mat-dialog-content>
+    <div class="crop-layout">
+      <div class="crop-frame"
+           #cropFrame
+           [class.dragging]="imageLoaded"
+           (pointerdown)="onPointerDown($event)"
+           (pointermove)="onPointerMove($event)"
+           (pointerup)="onPointerUp($event)"
+           (pointercancel)="onPointerUp($event)"
+           (wheel)="onWheel($event)">
+        <img #cropImage
+             [src]="data.sourceUrl"
+             [ngStyle]="imageStyle"
+             alt=""
+             draggable="false"
+             (load)="onImageLoad($event)"
+             (error)="onImageError()">
+        <div class="crop-mask" aria-hidden="true"></div>
+        <div class="crop-empty" *ngIf="imageLoadFailed">Не удалось открыть изображение</div>
+      </div>
+
+      <aside class="crop-tools">
+        <div class="tool-block">
+          <label for="avatar-zoom">Масштаб</label>
+          <input id="avatar-zoom"
+                 type="range"
+                 [min]="minZoom"
+                 [max]="maxZoom"
+                 step="0.01"
+                 [value]="zoom"
+                 [disabled]="!imageLoaded"
+                 (input)="onZoomInput($event)">
+        </div>
+
+        <button mat-stroked-button type="button" (click)="resetCrop()" [disabled]="!imageLoaded">
+          Сбросить
+        </button>
+      </aside>
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="close()">Отмена</button>
+    <button mat-flat-button type="button" (click)="apply()" [disabled]="!imageLoaded">
+      Применить
+    </button>
+  </mat-dialog-actions>
+</section>

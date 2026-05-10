@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,6 +15,11 @@ import { AuthService } from '../../services/auth.service';
 import { Shop, User } from '../../core/models/models';
 import { AppState } from '../../store/app.state';
 import { selectCurrentShop, selectCurrentUser } from '../../store/auth/auth.selectors';
+import { AvatarCropDialogComponent } from './avatar-crop-dialog/avatar-crop-dialog.component';
+import {
+  AvatarPreviewAction,
+  AvatarPreviewDialogComponent,
+} from './avatar-preview-dialog/avatar-preview-dialog.component';
 
 interface ProfileStat {
   label: string;
@@ -28,6 +34,7 @@ interface ProfileStat {
     CommonModule,
     ReactiveFormsModule,
     MatButtonModule,
+    MatDialogModule,
     MatDividerModule,
     MatFormFieldModule,
     MatIconModule,
@@ -39,6 +46,8 @@ interface ProfileStat {
   styleUrl: './profile.component.scss'
 })
 export class ProfileComponent implements OnInit {
+  @ViewChild('avatarFileInput') avatarFileInput?: ElementRef<HTMLInputElement>;
+
   currentUser$: Observable<User | null>;
   currentShop$: Observable<Shop | null>;
 
@@ -62,6 +71,7 @@ export class ProfileComponent implements OnInit {
     private fb: FormBuilder,
     private store: Store<AppState>,
     private authService: AuthService,
+    private dialog: MatDialog,
     private snackBar: MatSnackBar
   ) {
     this.currentUser$ = this.store.select(selectCurrentUser);
@@ -166,32 +176,102 @@ export class ProfileComponent implements OnInit {
       return;
     }
 
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    const validationError = this.validateAvatarFile(file);
+    if (validationError) {
       input.value = '';
-      this.snackBar.open('Загрузите JPG, PNG или WebP', 'Закрыть', { duration: 4000 });
+      this.snackBar.open(validationError, 'Закрыть', { duration: 4000 });
       return;
     }
 
-    if (file.size > this.avatarMaxSizeBytes) {
+    this.openAvatarEditor(URL.createObjectURL(file), file.name, true, () => {
       input.value = '';
-      this.snackBar.open('Аватар должен быть не больше 5 МБ', 'Закрыть', { duration: 4000 });
+    });
+  }
+
+  openAvatarFilePicker(): void {
+    if (this.savingAvatar) {
       return;
     }
 
+    this.avatarFileInput?.nativeElement.click();
+  }
+
+  openAvatarPreview(): void {
+    if (!this.currentUser?.avatar || this.savingAvatar) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(AvatarPreviewDialogComponent, {
+      autoFocus: false,
+      data: {
+        avatarUrl: this.currentUser.avatar,
+        displayName: this.displayName,
+      },
+      panelClass: 'avatar-dialog-panel',
+    });
+
+    dialogRef.afterClosed().subscribe((action: AvatarPreviewAction | null | undefined) => {
+      if (action === 'replace') {
+        this.openAvatarFilePicker();
+        return;
+      }
+
+      if (action === 'edit' && this.currentUser?.avatar) {
+        this.openAvatarEditor(this.currentUser.avatar, 'current-avatar.jpg');
+      }
+    });
+  }
+
+  private saveAvatar(file: File): void {
     this.savingAvatar = true;
     this.authService.updateAvatar(file).subscribe({
       next: user => {
         this.currentUser = user;
         this.savingAvatar = false;
-        input.value = '';
         this.snackBar.open('Аватар обновлен', 'Закрыть', { duration: 3000 });
       },
       error: error => {
         this.savingAvatar = false;
-        input.value = '';
         this.snackBar.open(this.extractErrorMessage(error), 'Закрыть', { duration: 5000 });
       },
     });
+  }
+
+  private openAvatarEditor(
+    sourceUrl: string,
+    fileName: string,
+    revokeSource = false,
+    onClose?: () => void,
+  ): void {
+    const dialogRef = this.dialog.open(AvatarCropDialogComponent, {
+      autoFocus: false,
+      data: { sourceUrl, fileName },
+      panelClass: 'avatar-dialog-panel',
+    });
+
+    dialogRef.afterClosed().subscribe((croppedFile: File | null | undefined) => {
+      if (revokeSource) {
+        URL.revokeObjectURL(sourceUrl);
+      }
+
+      onClose?.();
+
+      if (croppedFile) {
+        this.saveAvatar(croppedFile);
+      }
+    });
+  }
+
+  private validateAvatarFile(file: File): string | null {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      return 'Загрузите JPG, PNG или WebP';
+    }
+
+    if (file.size > this.avatarMaxSizeBytes) {
+      return 'Аватар должен быть не больше 5 МБ';
+    }
+
+    return null;
   }
 
   get displayName(): string {
