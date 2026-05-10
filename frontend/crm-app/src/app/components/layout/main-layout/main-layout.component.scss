@@ -498,6 +498,18 @@ $mobile-breakpoint: 768px;
   font-size: 14px;
   font-weight: 900;
   text-transform: uppercase;
+  overflow: hidden;
+
+  &.has-image {
+    background: color-mix(in srgb, var(--side-accent) 18%, var(--side-control-bg));
+  }
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
 .profile-copy {

@@ -15,6 +15,7 @@ import { AuthService } from '../../services/auth.service';
 import { Shop, User } from '../../core/models/models';
 import { AppState } from '../../store/app.state';
 import { selectCurrentShop, selectCurrentUser } from '../../store/auth/auth.selectors';
+import * as AuthActions from '../../store/auth/auth.actions';
 import { AvatarCropDialogComponent } from './avatar-crop-dialog/avatar-crop-dialog.component';
 import {
   AvatarPreviewAction,
@@ -115,6 +116,7 @@ export class ProfileComponent implements OnInit {
       next: user => {
         this.currentUser = user;
         this.currentShop = user.current_shop || this.currentShop;
+        this.store.dispatch(AuthActions.getCurrentUserSuccess({ user }));
         this.patchProfileForm(user);
         this.syncProfileStats();
         this.loadPerformanceStats();
@@ -157,6 +159,7 @@ export class ProfileComponent implements OnInit {
     this.authService.updateProfile(this.profileForm.getRawValue()).subscribe({
       next: user => {
         this.currentUser = user;
+        this.store.dispatch(AuthActions.getCurrentUserSuccess({ user }));
         this.patchProfileForm(user);
         this.syncProfileStats();
         this.savingProfile = false;
@@ -230,6 +233,7 @@ export class ProfileComponent implements OnInit {
     this.authService.updateAvatar(file).subscribe({
       next: user => {
         this.currentUser = user;
+        this.store.dispatch(AuthActions.getCurrentUserSuccess({ user }));
         this.savingAvatar = false;
         this.snackBar.open('Аватар обновлен', 'Закрыть', { duration: 3000 });
       },

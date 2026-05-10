@@ -152,8 +152,13 @@
                 type="button"
                 matTooltip="Профиль"
                 [matMenuTriggerFor]="userMenu">
-          <span class="profile-avatar">
-            {{ currentUser?.first_name?.charAt(0) || currentUser?.username?.charAt(0) || 'U' }}
+          <span class="profile-avatar" [class.has-image]="currentUser?.avatar && !profileAvatarFailed">
+            <img
+              *ngIf="currentUser?.avatar && !profileAvatarFailed; else profileInitials"
+              [src]="currentUser?.avatar"
+              [alt]="getUserDisplayName()"
+              (error)="onProfileAvatarError()">
+            <ng-template #profileInitials>{{ getUserInitials() }}</ng-template>
           </span>
           <span class="profile-copy">
             <strong>{{ currentUser?.first_name || currentUser?.username }}</strong>

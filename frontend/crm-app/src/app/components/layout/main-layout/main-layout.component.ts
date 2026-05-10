@@ -73,6 +73,8 @@ export class MainLayoutComponent implements OnInit {
   notificationsCount = 0;
   currentRouteTitle = 'Панель управления';
   sidebarCollapsed = false;
+  profileAvatarFailed = false;
+  private profileAvatarUrl: string | null = null;
 
   navigationGroups: NavigationGroup[] = [
     {
@@ -163,6 +165,7 @@ export class MainLayoutComponent implements OnInit {
       });
 
     this.currentUser$.subscribe(user => {
+      this.syncProfileAvatarState(user);
       this.currentUser = user;
       this.availableShops = user?.available_shops || [];
       if (user && this.availableShops.length === 0) {
@@ -193,6 +196,28 @@ export class MainLayoutComponent implements OnInit {
 
   getCurrentShopName(): string {
     return this.currentShop?.name || 'Рабочее пространство';
+  }
+
+  getUserDisplayName(): string {
+    const fullName = [
+      this.currentUser?.first_name,
+      this.currentUser?.last_name,
+    ].filter(Boolean).join(' ');
+
+    return fullName || this.currentUser?.username || 'Пользователь';
+  }
+
+  getUserInitials(): string {
+    const initials = [
+      this.currentUser?.first_name?.charAt(0),
+      this.currentUser?.last_name?.charAt(0),
+    ].filter(Boolean).join('');
+
+    return initials || this.currentUser?.username?.charAt(0)?.toUpperCase() || 'U';
+  }
+
+  onProfileAvatarError(): void {
+    this.profileAvatarFailed = true;
   }
 
   logout(): void {
@@ -278,5 +303,13 @@ export class MainLayoutComponent implements OnInit {
 
   private readSidebarCollapsed(): boolean {
     return localStorage.getItem('repaircrm.sidebarCollapsed') === 'true';
+  }
+
+  private syncProfileAvatarState(user: User | null): void {
+    const nextAvatar = user?.avatar || null;
+    if (nextAvatar !== this.profileAvatarUrl) {
+      this.profileAvatarUrl = nextAvatar;
+      this.profileAvatarFailed = false;
+    }
   }
 }

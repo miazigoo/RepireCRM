@@ -6,6 +6,7 @@ import { Store } from '@ngrx/store';
 import { of } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { selectCurrentShop, selectCurrentUser } from '../../store/auth/auth.selectors';
+import * as AuthActions from '../../store/auth/auth.actions';
 import { AvatarCropDialogComponent } from './avatar-crop-dialog/avatar-crop-dialog.component';
 import { ProfileComponent } from './profile.component';
 
@@ -63,7 +64,7 @@ describe('ProfileComponent', () => {
     dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
     dialog.open.and.returnValue({ afterClosed: () => of(null) } as any);
 
-    store = jasmine.createSpyObj<Store>('Store', ['select']);
+    store = jasmine.createSpyObj<Store>('Store', ['select', 'dispatch']);
     store.select.and.callFake((selector: any) => {
       if (selector === selectCurrentUser) {
         return of(user);
@@ -136,6 +137,7 @@ describe('ProfileComponent', () => {
         bio: 'Ремонтирую телефоны',
       }),
     );
+    expect(store.dispatch).toHaveBeenCalledWith(AuthActions.getCurrentUserSuccess({ user }));
   });
 
   it('uploads a valid avatar through auth API', () => {
@@ -158,6 +160,7 @@ describe('ProfileComponent', () => {
     );
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:avatar');
     expect(authService.updateAvatar).toHaveBeenCalledWith(croppedFile);
+    expect(store.dispatch).toHaveBeenCalledWith(AuthActions.getCurrentUserSuccess({ user }));
     expect(component.savingAvatar).toBeFalse();
     expect(input.value).toBe('');
   });

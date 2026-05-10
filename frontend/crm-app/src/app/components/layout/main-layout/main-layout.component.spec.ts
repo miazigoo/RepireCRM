@@ -27,6 +27,7 @@ describe('MainLayoutComponent', () => {
           first_name: 'Test',
           last_name: 'User',
           is_director: true,
+          avatar: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==',
           role: { name: 'Директор' },
           available_shops: [
             {
@@ -170,5 +171,20 @@ describe('MainLayoutComponent', () => {
 
     expect(fixture.nativeElement.querySelector('.sidenav.collapsed')).toBeTruthy();
     expect(localStorage.getItem('repaircrm.sidebarCollapsed')).toBe('true');
+  });
+
+  it('renders the current user avatar in the account card', () => {
+    const image = fixture.nativeElement.querySelector('.profile-avatar img') as HTMLImageElement;
+
+    expect(image).toBeTruthy();
+    expect(image.getAttribute('src')).toBe('data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==');
+  });
+
+  it('falls back to user initials if the avatar cannot be loaded', () => {
+    fixture.componentInstance.onProfileAvatarError();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.profile-avatar img')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.profile-avatar')?.textContent?.trim()).toBe('TU');
   });
 });
