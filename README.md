@@ -304,35 +304,231 @@ YOOKASSA_CAPTURE=true
 Для локальной разработки можно оставить mock/test настройки и не подключать
 боевые ключи.
 
-## Production
+## Деплой в production
 
-Production compose находится в `docker-compose.yml`. Подробный checklist:
+### Требования к серверу
 
-- [docs/PRODUCTION.md](docs/PRODUCTION.md)
+- Linux (Ubuntu 22.04+), минимум 2 CPU / 2 GB RAM / 20 GB SSD.
+- Docker + Docker Compose v2 (`docker compose version`).
+- Nginx на хосте для проксирования (не в контейнере).
+- Домен с A-записью, указывающей на IP сервера.
+- Порты 80 и 443 открыты в firewall.
 
-Минимальный запуск:
+### 1. Клонирование и размещение
 
 ```bash
-cp .env.production.example .env
-# заполнить SECRET_KEY, POSTGRES_PASSWORD, ALLOWED_HOSTS и домены
-docker compose --env-file .env -f docker-compose.yml up -d --build
+mkdir -p /opt/repaircrm/crm
+cd /opt/repaircrm/crm
+git clone https://github.com/miazigoo/RepireCRM.git .
 ```
+
+### 2. Переменные окружения
+
+```bash
+cp .env.production.example .env.production
+nano .env.production
+```
+
+Обязательные переменные:
+
+```env
+SECRET_KEY=<минимум 50 случайных символов>
+POSTGRES_PASSWORD=<сильный пароль>
+ALLOWED_HOSTS=yourdomain.ru,www.yourdomain.ru,localhost,127.0.0.1
+CSRF_TRUSTED_ORIGINS=https://yourdomain.ru,https://www.yourdomain.ru
+CORS_ALLOWED_ORIGINS=https://yourdomain.ru,https://www.yourdomain.ru
+FRONTEND_URL=https://yourdomain.ru
+```
+
+Сгенерировать `SECRET_KEY`:
+
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(64))"
+```
+
+### 3. Запуск контейнеров
+
+```bash
+docker compose --env-file .env.production -p repaircrm up -d --build
+```
+
+Compose поднимает: `backend` (Daphne/Gunicorn), `frontend` (nginx), `db`
+(PostgreSQL 15), `redis`, `celery-worker`, `celery-beat`,
+`subscription-checker`. Миграции и `collectstatic` выполняются автоматически
+при старте backend.
 
 Проверка:
 
 ```bash
-curl http://localhost/api/health
-docker compose -f docker-compose.yml ps
+docker compose -p repaircrm ps
+curl http://localhost:8080/api/health
 ```
 
-Перед публичным запуском обязательно:
+### 4. Создание суперпользователя
 
-- включить HTTPS на reverse proxy;
-- задать сильные секреты;
-- настроить backup PostgreSQL и media volume;
-- подключить Sentry;
-- настроить реальные SMS/Email-провайдеры;
-- включить `SECURE_SSL_REDIRECT=True` и HSTS только после проверки HTTPS.
+```bash
+DJANGO_SUPERUSER_USERNAME=admin \
+DJANGO_SUPERUSER_EMAIL=admin@yourdomain.ru \
+DJANGO_SUPERUSER_PASSWORD=<сильный пароль> \
+docker compose -p repaircrm exec -T backend \
+  python manage.py runscript init_superuser
+```
+
+### 5. Nginx — хостовый reverse proxy
+
+Конфиг хранится в `deploy/nginx/repaircrm-sites.conf`. Скопируйте и активируйте:
+
+```bash
+cp deploy/nginx/repaircrm-sites.conf /etc/nginx/sites-available/repaircrm-sites.conf
+ln -sf /etc/nginx/sites-available/repaircrm-sites.conf \
+       /etc/nginx/sites-enabled/repaircrm-sites.conf
+rm -f /etc/nginx/sites-enabled/default
+nginx -t && systemctl reload nginx
+```
+
+Пример конфига для домена (без TLS, для проверки перед Certbot):
+
+```nginx
+upstream repaircrm_crm_frontend {
+    server 127.0.0.1:8080;
+    keepalive 32;
+}
+
+server {
+    listen 80;
+    server_name yourdomain.ru www.yourdomain.ru;
+    client_max_body_size 25m;
+
+    location / {
+        proxy_pass         http://repaircrm_crm_frontend;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade $http_upgrade;
+        proxy_set_header   Connection "upgrade";
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+### 6. SSL — Let's Encrypt / Certbot
+
+Установка Certbot:
+
+```bash
+apt install -y certbot python3-certbot-nginx
+```
+
+Выпуск сертификата (Certbot сам изменит nginx и настроит редирект HTTP → HTTPS):
+
+```bash
+certbot --nginx \
+  --non-interactive --agree-tos \
+  --email admin@yourdomain.ru \
+  -d yourdomain.ru -d www.yourdomain.ru \
+  --redirect
+```
+
+Проверка автопродления:
+
+```bash
+certbot renew --dry-run
+# автопродление уже добавлено в systemd timer:
+systemctl status certbot.timer
+```
+
+После получения TLS включите HTTPS-настройки в `.env.production`:
+
+```env
+SECURE_SSL_REDIRECT=True
+SECURE_HSTS_SECONDS=31536000
+SESSION_COOKIE_SECURE=True
+CSRF_COOKIE_SECURE=True
+```
+
+И перезапустите:
+
+```bash
+docker compose -p repaircrm up -d --no-deps backend
+```
+
+### 7. Автозапуск при перезагрузке
+
+Docker Compose запускается через systemd. Создайте unit:
+
+```bash
+cat > /etc/systemd/system/repaircrm.service << 'EOF'
+[Unit]
+Description=Repair CRM Docker stack
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/repaircrm/crm
+ExecStart=docker compose --env-file .env.production -p repaircrm up -d
+ExecStop=docker compose -p repaircrm down
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable repaircrm
+```
+
+### 8. Обновление
+
+```bash
+cd /opt/repaircrm/crm
+git pull
+docker compose --env-file .env.production -p repaircrm up -d --build
+```
+
+### 9. Резервные копии
+
+Дамп PostgreSQL:
+
+```bash
+docker compose -p repaircrm exec -T db \
+  pg_dump -U postgres repair_crm | gzip > backup_$(date +%Y%m%d).sql.gz
+```
+
+Восстановление:
+
+```bash
+gunzip -c backup_20260510.sql.gz | \
+  docker compose -p repaircrm exec -T db \
+    psql -U postgres repair_crm
+```
+
+Media-файлы хранятся в volume `repaircrm_media` — экспорт:
+
+```bash
+docker run --rm -v repaircrm_media:/data -v $(pwd):/backup alpine \
+  tar czf /backup/media_$(date +%Y%m%d).tar.gz -C /data .
+```
+
+### 10. Мониторинг
+
+```bash
+# Состояние контейнеров
+docker compose -p repaircrm ps
+
+# Health API
+curl https://yourdomain.ru/api/health
+
+# Логи backend
+docker compose -p repaircrm logs -f --tail=100 backend
+
+# Логи nginx (хост)
+tail -f /var/log/nginx/error.log
+```
+
+Подробный checklist: [docs/PRODUCTION.md](docs/PRODUCTION.md)
 
 ## Разработка
 
