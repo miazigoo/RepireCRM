@@ -1,5 +1,9 @@
 .avatar-crop-dialog {
-  width: min(780px, 94vw);
+  display: flex;
+  width: 100%;
+  max-height: calc(100vh - 32px);
+  flex-direction: column;
+  overflow: hidden;
   color: var(--color-text-primary);
 
   header {
@@ -7,7 +11,12 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
-    padding: 20px 20px 0;
+    padding: 18px 20px 16px;
+    border-bottom: 1px solid var(--color-border);
+
+    > div {
+      min-width: 0;
+    }
 
     span {
       color: var(--color-primary);
@@ -20,18 +29,29 @@
     h2 {
       margin: 5px 0 0;
       color: var(--color-text-primary);
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 950;
       line-height: 1.12;
+      overflow-wrap: anywhere;
     }
   }
 
   mat-dialog-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0;
     padding: 18px 20px 10px;
+    overflow: auto;
   }
 
   mat-dialog-actions {
-    padding: 8px 20px 20px;
+    flex: 0 0 auto;
+    gap: 10px;
+    min-height: 64px;
+    margin: 0;
+    padding: 12px 20px 16px;
+    border-top: 1px solid var(--color-border);
+    background: var(--panel-background);
   }
 }
 
@@ -64,14 +84,14 @@
 
 .crop-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 360px) minmax(190px, 1fr);
+  grid-template-columns: minmax(280px, 400px) minmax(210px, 1fr);
   gap: 18px;
   align-items: start;
 }
 
 .crop-frame {
   position: relative;
-  width: min(360px, 100%);
+  width: min(400px, 100%);
   aspect-ratio: 1;
   overflow: hidden;
   touch-action: none;
@@ -131,6 +151,7 @@
 .crop-tools {
   display: grid;
   gap: 14px;
+  align-content: start;
   padding: 16px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -160,19 +181,21 @@ button[mat-flat-button] {
 
 @media (max-width: 720px) {
   .avatar-crop-dialog {
-    width: 94vw;
-
     header {
-      padding: 16px 16px 0;
-    }
+      padding: 16px;
 
-    mat-dialog-content {
-      padding: 14px 16px 8px;
+      h2 {
+        font-size: 20px;
+      }
     }
+  }
 
-    mat-dialog-actions {
-      padding: 8px 16px 16px;
-    }
+  .avatar-crop-dialog mat-dialog-content {
+    padding: 14px 16px 10px;
+  }
+
+  .avatar-crop-dialog mat-dialog-actions {
+    padding: 10px 16px 14px;
   }
 
   .crop-layout {
@@ -180,7 +203,18 @@ button[mat-flat-button] {
   }
 
   .crop-frame {
-    width: min(360px, 100%);
+    width: min(380px, 100%);
     margin-inline: auto;
+  }
+
+  .crop-tools {
+    grid-template-columns: 1fr auto;
+    align-items: end;
+  }
+}
+
+@media (max-width: 480px) {
+  .crop-tools {
+    grid-template-columns: 1fr;
   }
 }

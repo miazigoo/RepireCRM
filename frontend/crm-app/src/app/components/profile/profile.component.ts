@@ -207,6 +207,9 @@ export class ProfileComponent implements OnInit {
         avatarUrl: this.currentUser.avatar,
         displayName: this.displayName,
       },
+      width: 'min(760px, calc(100vw - 32px))',
+      maxWidth: 'calc(100vw - 32px)',
+      maxHeight: 'calc(100vh - 32px)',
       panelClass: 'avatar-dialog-panel',
     });
 
@@ -246,6 +249,9 @@ export class ProfileComponent implements OnInit {
     const dialogRef = this.dialog.open(AvatarCropDialogComponent, {
       autoFocus: false,
       data: { sourceUrl, fileName },
+      width: 'min(840px, calc(100vw - 32px))',
+      maxWidth: 'calc(100vw - 32px)',
+      maxHeight: 'calc(100vh - 32px)',
       panelClass: 'avatar-dialog-panel',
     });
 
