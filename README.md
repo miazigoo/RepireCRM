@@ -127,7 +127,7 @@ make mock
 Тестовый пользователь после `make mock`:
 
 ```text
-Логин:  b00bs
+Логин:  demo_user
 Пароль: QwsAzx@2000
 ```
 
@@ -279,7 +279,7 @@ X-Current-Shop: <shop_id>
 ```bash
 curl -X POST http://127.0.0.1:8030/api/auth/login \
   -H 'Content-Type: application/json' \
-  -d '{"username":"b00bs","password":"QwsAzx@2000"}'
+  -d '{"username":"demo_user","password":"<demo_password>"}'
 ```
 
 ## Платежи и ЮKassa
@@ -319,7 +319,7 @@ YOOKASSA_CAPTURE=true
 ```bash
 mkdir -p /opt/repaircrm/crm
 cd /opt/repaircrm/crm
-git clone https://github.com/miazigoo/RepireCRM.git .
+git clone https://github.com/YOUR_ORG/RepireCRM.git .
 ```
 
 ### 2. Переменные окружения
