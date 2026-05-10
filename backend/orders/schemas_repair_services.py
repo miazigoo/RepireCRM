@@ -1,5 +1,3 @@
-from typing import Optional
-
 from ninja import Schema
 
 
@@ -7,14 +5,14 @@ class RepairServiceSchema(Schema):
     id: int
     code: str
     name: str
-    device_type_id: Optional[int] = None
-    brand_id: Optional[int] = None
-    model_id: Optional[int] = None
+    device_type_id: int | None = None
+    brand_id: int | None = None
+    model_id: int | None = None
     default_price: float
     avg_hours: float
     warranty_days: int
     diagnostics_required: bool
-    notes: Optional[str] = None
+    notes: str | None = None
 
     @staticmethod
     def resolve_default_price(obj):

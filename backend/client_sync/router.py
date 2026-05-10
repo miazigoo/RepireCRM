@@ -1,5 +1,3 @@
-from typing import List
-
 from django.db.models import Count
 from ninja import Router
 
@@ -97,7 +95,7 @@ def update_client_sync_integration(
     if not request.auth.has_permission("settings.change_shop"):
         raise PermissionError("Нет прав для изменения клиентского сервиса")
     integration = _integration_for_request(request)
-    incoming = data.dict(exclude_unset=True)
+    incoming = data.model_dump(exclude_unset=True)
     for field, value in incoming.items():
         if value is None:
             value = ""
@@ -121,7 +119,7 @@ def run_client_sync(request, data: ClientSyncRunSchema):
     )
 
 
-@router.get("/actions", response=List[dict])
+@router.get("/actions", response=list[dict])
 def list_client_sync_actions(request, limit: int = 50):
     if not request.auth.has_permission("settings.view_shop"):
         raise PermissionError("Нет прав для просмотра действий клиентского сервиса")

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import List
 
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
@@ -73,7 +72,7 @@ def _sync_promotion_shops(request, promotion: Promotion, shop_ids: list[int]):
     promotion.shops.set(shops)
 
 
-@router.get("/campaigns", response=List[PromotionSchema])
+@router.get("/campaigns", response=list[PromotionSchema])
 def list_promotions(request, include_inactive: bool = False):
     _ensure_permission(request, "promotions.view_promotion")
     queryset = Promotion.objects.prefetch_related("shops")
@@ -89,7 +88,7 @@ def list_promotions(request, include_inactive: bool = False):
 @router.post("/campaigns", response={201: PromotionSchema, 400: ErrorSchema})
 def create_promotion(request, data: PromotionCreateSchema):
     _ensure_permission(request, "promotions.change_promotion")
-    incoming = data.dict()
+    incoming = data.model_dump()
     shop_ids = incoming.pop("shop_ids", [])
     promotion = Promotion.objects.create(created_by=request.auth, **incoming)
     _sync_promotion_shops(request, promotion, shop_ids)
@@ -102,7 +101,7 @@ def create_promotion(request, data: PromotionCreateSchema):
 def update_promotion(request, promotion_id: int, data: PromotionUpdateSchema):
     _ensure_permission(request, "promotions.change_promotion")
     promotion = get_object_or_404(Promotion, id=promotion_id)
-    incoming = data.dict(exclude_unset=True)
+    incoming = data.model_dump(exclude_unset=True)
     shop_ids = incoming.pop("shop_ids", None)
     for field, value in incoming.items():
         setattr(promotion, field, value)
@@ -121,7 +120,7 @@ def disable_promotion(request, promotion_id: int):
     return {"success": True}
 
 
-@router.get("/codes", response=List[PromoCodeSchema])
+@router.get("/codes", response=list[PromoCodeSchema])
 def list_promo_codes(request, include_inactive: bool = False):
     _ensure_permission(request, "promotions.view_promotion")
     queryset = PromoCode.objects.select_related("promotion").prefetch_related(
@@ -158,7 +157,7 @@ def create_promo_code(request, data: PromoCodeCreateSchema):
 def update_promo_code(request, code_id: int, data: PromoCodeUpdateSchema):
     _ensure_permission(request, "promotions.change_promotion")
     promo_code = get_object_or_404(PromoCode, id=code_id)
-    incoming = data.dict(exclude_unset=True)
+    incoming = data.model_dump(exclude_unset=True)
     promotion_id = incoming.pop("promotion_id", None)
     if promotion_id:
         promo_code.promotion = get_object_or_404(Promotion, id=promotion_id)

@@ -1,5 +1,4 @@
 from decimal import Decimal
-from typing import Dict, List, Optional, Tuple
 
 from django.db import transaction
 from django.db.models import Count, F, Q, Sum
@@ -28,7 +27,7 @@ from .models import (
 class InventoryService:
     """Складские операции"""
 
-    def find_item_by_barcode(self, barcode: str) -> Optional[InventoryItem]:
+    def find_item_by_barcode(self, barcode: str) -> InventoryItem | None:
         # Только таблица мульти-ШК
         ib = (
             InventoryItemBarcode.objects.select_related("item")
@@ -37,7 +36,7 @@ class InventoryService:
         )
         return ib.item if ib else None
 
-    def _resolve_item(self, entry: Dict) -> Optional[InventoryItem]:
+    def _resolve_item(self, entry: dict) -> InventoryItem | None:
         """Определить товар по item_id или barcode"""
         if entry.get("item_id"):
             return get_object_or_404(InventoryItem, id=entry["item_id"], is_active=True)
@@ -47,8 +46,8 @@ class InventoryService:
 
     @transaction.atomic
     def receive_items_ad_hoc(
-        self, shop, user: User, items: List[Dict], common_notes: str = ""
-    ) -> Dict:
+        self, shop, user: User, items: list[dict], common_notes: str = ""
+    ) -> dict:
         """
         Приемка без заказа поставщику.
         items: [{"item_id": 1, "barcode": "...", "quantity": 50, ...}]
@@ -136,8 +135,8 @@ class InventoryService:
 
     @transaction.atomic
     def adjust_items_ad_hoc(
-        self, shop, user: User, items: List[Dict], common_notes: str = ""
-    ) -> Dict:
+        self, shop, user: User, items: list[dict], common_notes: str = ""
+    ) -> dict:
         """
         Корректировка/инвентаризация произвольным списком.
         items: [{"item_id": 1, "barcode": "...", "quantity_change": -5, ...}]
@@ -261,7 +260,7 @@ class InventoryService:
 
     @transaction.atomic
     def receive_purchase_order(
-        self, purchase_order: PurchaseOrder, received_items: List[Dict], user: User
+        self, purchase_order: PurchaseOrder, received_items: list[dict], user: User
     ):
         if purchase_order.status in ["cancelled", "received"]:
             raise ValueError("Заказ уже получен или отменен")
@@ -496,7 +495,7 @@ class InventoryService:
         }
 
     # ---------- Аггрегации ----------
-    def get_stock_dashboard(self, user: User, current_shop=None) -> Dict:
+    def get_stock_dashboard(self, user: User, current_shop=None) -> dict:
         qs = StockBalance.objects.select_related("shop", "item", "item__category")
         if current_shop:
             qs = qs.filter(shop=current_shop)
@@ -564,8 +563,8 @@ class InventoryService:
         }
 
     def get_item_stock_by_code(
-        self, user: User, code: Optional[str], barcode: Optional[str], current_shop=None
-    ) -> Dict:
+        self, user: User, code: str | None, barcode: str | None, current_shop=None
+    ) -> dict:
         item = None
         if code:
             item = InventoryItem.objects.filter(
@@ -608,7 +607,7 @@ class InventoryService:
 
     # ---------- Быстрое создание товара ----------
     @transaction.atomic
-    def quick_create_item(self, data: Dict, created_by: User) -> InventoryItem:
+    def quick_create_item(self, data: dict, created_by: User) -> InventoryItem:
         """
         Поддержка списка barcodes в data["barcodes"], поле data["barcode"] опционально.
         """
@@ -618,7 +617,7 @@ class InventoryService:
 
         # игнорируем одиночное barcode как источник «правды»
         # но если пришел barcode отдельно — добавим его в список
-        barcodes: List[str] = list({*(data.get("barcodes") or [])})
+        barcodes: list[str] = list({*(data.get("barcodes") or [])})
         single_bc = (data.get("barcode") or "").strip()
         if single_bc:
             barcodes.append(single_bc)
@@ -667,10 +666,10 @@ class InventoryService:
         self,
         sale: RetailSale,
         user: User,
-        payment_method_id: Optional[int],
-        cash_register_id: Optional[int],
-        description: Optional[str] = "",
-    ) -> Tuple[Dict, Optional[Payment]]:
+        payment_method_id: int | None,
+        cash_register_id: int | None,
+        description: str | None = "",
+    ) -> tuple[dict, Payment | None]:
         # Завершаем продажу (списывает остатки)
         finalize_res = self.finalize_sale(sale, user)
 
@@ -712,7 +711,7 @@ class InventoryService:
 
         return finalize_res, payment_obj
 
-    def get_reorder_suggestions(self, user: User, current_shop=None) -> List[dict]:
+    def get_reorder_suggestions(self, user: User, current_shop=None) -> list[dict]:
         """
         Предложения на перезаказ: товары, у которых available_quantity <= reorder_point.
         Если есть SupplierItem — используем min_order_qty.
@@ -726,7 +725,7 @@ class InventoryService:
         else:
             qs = qs.filter(shop__in=user.get_available_shops())
 
-        suggestions: List[dict] = []
+        suggestions: list[dict] = []
         for b in qs:
             desired = max(b.max_quantity - b.available_quantity, 0)
             supplier_info = SupplierItem.objects.filter(

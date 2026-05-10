@@ -58,6 +58,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "core.middleware.RequestIdMiddleware",  # Attach X-Request-Id for tracing
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -223,7 +224,7 @@ LOGGING = {
         },
         "file": {
             "class": "logging.handlers.RotatingFileHandler",
-            "filename": "logs/repair_crm.log",
+            "filename": str(BASE_DIR / "logs" / "repair_crm.log"),
             "maxBytes": 1024 * 1024 * 10,  # 10MB
             "backupCount": 5,
             "formatter": "json",
@@ -242,7 +243,7 @@ LOGGING = {
         },
     },
 }
-os.makedirs("logs", exist_ok=True)
+os.makedirs(BASE_DIR / "logs", exist_ok=True)
 
 
 SENTRY_DSN = config("SENTRY_DSN", default=None)
@@ -287,21 +288,24 @@ PORTAL_DEFAULT_SHOP_CODE = config("PORTAL_DEFAULT_SHOP_CODE", default="")
 CELERY_BROKER_URL = config("CELERY_BROKER_URL", default=REDIS_URL)
 CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default=REDIS_URL)
 CELERY_TIMEZONE = config("CELERY_TIMEZONE", default="Europe/Moscow")
+
+from celery.schedules import crontab  # noqa: E402
+
 CELERY_BEAT_SCHEDULE = {
     "low-stock-scan-daily": {
         "task": "tasks.tasks.low_stock_scan",
-        "schedule": 60 * 60 * 24,  # раз в сутки
+        "schedule": crontab(hour=3, minute=0),  # 03:00 every day
     },
     "expire-loyalty-points-daily": {
         "task": "loyalty.tasks.expire_points",
-        "schedule": 60 * 60 * 24,
+        "schedule": crontab(hour=3, minute=30),  # 03:30 every day
     },
     "analytics-monthly-snapshot": {
         "task": "analytics.tasks.save_monthly_snapshots",
-        "schedule": 60 * 60 * 24,  # раз в сутки
+        "schedule": crontab(hour=4, minute=0),  # 04:00 every day
     },
     "client-sync-portals-every-minute": {
         "task": "client_sync.tasks.sync_client_portals",
-        "schedule": 60,
+        "schedule": 60,  # every 60 seconds
     },
 }

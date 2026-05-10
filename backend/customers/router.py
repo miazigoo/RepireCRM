@@ -1,5 +1,3 @@
-from typing import List
-
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from ninja import Query, Router
@@ -32,7 +30,7 @@ class CustomerPagination(PageNumberPagination):
     page_size = 20
 
 
-@router.get("/", response=List[CustomerSchema])
+@router.get("/", response=list[CustomerSchema])
 @paginate(CustomerPagination)
 def list_customers(request, filters: CustomerFilterSchema = Query(...)):
     """Получение списка клиентов"""
@@ -99,7 +97,7 @@ def create_customer(request, data: CustomerCreateSchema):
         ):
             return 400, {"error": "Клиент с таким email уже существует"}
 
-        payload = data.dict(exclude_none=True)
+        payload = data.model_dump(exclude_none=True)
         payload["phone"] = phone_e164
 
         customer = Customer.objects.create(**payload, created_by=request.auth)
@@ -134,7 +132,7 @@ def update_customer(request, customer_id: int, data: CustomerUpdateSchema):
     try:
         customer = get_object_or_404(Customer, id=customer_id)
 
-        incoming = data.dict(exclude_unset=True)
+        incoming = data.model_dump(exclude_unset=True)
         for field in BLANK_STRING_FIELDS:
             if incoming.get(field) is None:
                 incoming[field] = ""
@@ -196,7 +194,7 @@ def delete_customer(request, customer_id: int):
         return 404, {"error": "Клиент не найден"}
 
 
-@router.get("/{customer_id}/orders", response=List[dict])
+@router.get("/{customer_id}/orders", response=list[dict])
 def get_customer_orders(request, customer_id: int):
     """Получение заказов клиента"""
     if not request.auth.has_permission("customers.view_customer"):

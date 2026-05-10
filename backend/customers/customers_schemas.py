@@ -1,5 +1,4 @@
 from datetime import date, datetime
-from typing import List, Optional
 
 from ninja import Schema
 
@@ -9,47 +8,47 @@ from Schemas.common import PaginationSchema
 class CustomerCreateSchema(Schema):
     first_name: str
     last_name: str
-    middle_name: Optional[str] = None
+    middle_name: str | None = None
     phone: str
-    email: Optional[str] = None
-    source: Optional[str] = None
-    source_details: Optional[str] = None
-    birth_date: Optional[date] = None
-    notes: Optional[str] = None
-    preferred_channel: Optional[str] = None  # "email" | "sms"
-    marketing_consent: Optional[bool] = False
+    email: str | None = None
+    source: str | None = None
+    source_details: str | None = None
+    birth_date: date | None = None
+    notes: str | None = None
+    preferred_channel: str | None = None  # "email" | "sms"
+    marketing_consent: bool | None = False
 
 
 class CustomerUpdateSchema(Schema):
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    middle_name: Optional[str] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    source: Optional[str] = None
-    source_details: Optional[str] = None
-    birth_date: Optional[date] = None
-    notes: Optional[str] = None
-    preferred_channel: Optional[str] = None
-    marketing_consent: Optional[bool] = None
+    first_name: str | None = None
+    last_name: str | None = None
+    middle_name: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    source: str | None = None
+    source_details: str | None = None
+    birth_date: date | None = None
+    notes: str | None = None
+    preferred_channel: str | None = None
+    marketing_consent: bool | None = None
 
 
 class CustomerSchema(Schema):
     id: int
     first_name: str
     last_name: str
-    middle_name: Optional[str] = None
+    middle_name: str | None = None
     phone: str
-    email: Optional[str] = None
-    source: Optional[str] = None
-    source_details: Optional[str] = None
-    birth_date: Optional[date] = None
-    notes: Optional[str] = None
+    email: str | None = None
+    source: str | None = None
+    source_details: str | None = None
+    birth_date: date | None = None
+    notes: str | None = None
     orders_count: int
     total_spent: float
     created_at: datetime
     updated_at: datetime
-    preferred_channel: Optional[str] = None
+    preferred_channel: str | None = None
     marketing_consent: bool
 
     @staticmethod
@@ -62,13 +61,13 @@ class CustomerSchema(Schema):
 
 
 class CustomerListSchema(Schema):
-    customers: List[CustomerSchema]
+    customers: list[CustomerSchema]
     pagination: PaginationSchema
 
 
 class CustomerFilterSchema(Schema):
-    search: Optional[str] = None
-    source: Optional[str] = None
-    created_from: Optional[date] = None
-    created_to: Optional[date] = None
-    has_orders: Optional[bool] = None
+    search: str | None = None
+    source: str | None = None
+    created_from: date | None = None
+    created_to: date | None = None
+    has_orders: bool | None = None

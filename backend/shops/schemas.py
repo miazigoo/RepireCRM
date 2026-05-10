@@ -1,27 +1,25 @@
-from typing import Optional
-
 from ninja import Schema
 
 
 class OrganizationSchema(Schema):
     id: int
     name: str
-    inn: Optional[str] = None
-    kpp: Optional[str] = None
-    address: Optional[str] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    bank_details: Optional[str] = None
-    website: Optional[str] = None
+    inn: str | None = None
+    kpp: str | None = None
+    address: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    bank_details: str | None = None
+    website: str | None = None
 
 
 class ShopSchema(Schema):
     id: int
     name: str
     code: str
-    address: Optional[str] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
+    address: str | None = None
+    phone: str | None = None
+    email: str | None = None
     is_active: bool
     timezone: str
     currency: str
@@ -37,12 +35,12 @@ class ShopSettingsSchema(Schema):
     auto_order_numbering: bool
     sms_notifications: bool
     email_notifications: bool
-    work_hours_start: Optional[str] = None
-    work_hours_end: Optional[str] = None
+    work_hours_start: str | None = None
+    work_hours_end: str | None = None
     work_days: str
     pos_barcode_enabled: bool
-    organization_id: Optional[int] = None
-    receipt_footer_text: Optional[str] = None
+    organization_id: int | None = None
+    receipt_footer_text: str | None = None
 
     @staticmethod
     def resolve_work_hours_start(obj):
@@ -72,7 +70,7 @@ class SubscriptionChangeSchema(Schema):
 class SubscriptionPaymentCreateSchema(Schema):
     plan_code: str
     payment_method_type: str = "bank_card"
-    return_url: Optional[str] = None
+    return_url: str | None = None
 
 
 class SubscriptionStatusSchema(Schema):

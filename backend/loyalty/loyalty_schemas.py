@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from ninja import Schema
 
@@ -8,13 +7,13 @@ class LoyaltyProgramSchema(Schema):
     id: int
     name: str
     program_type: str
-    description: Optional[str] = None
+    description: str | None = None
     earn_rate: float
     min_order_amount: float
     min_redeem_points: int
     max_redeem_percent: float
     point_value: float
-    points_expire_days: Optional[int] = None
+    points_expire_days: int | None = None
     is_active: bool
 
     @staticmethod
@@ -57,10 +56,10 @@ class PointsTransactionSchema(Schema):
     id: int
     transaction_type: str
     points: int
-    order_id: Optional[int] = None
+    order_id: int | None = None
     description: str
     created_at: datetime
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
 
 
 class LoyaltyRewardSchema(Schema):
@@ -69,14 +68,14 @@ class LoyaltyRewardSchema(Schema):
     reward_type: str
     description: str
     required_points: int
-    required_tier: Optional[str] = None
+    required_tier: str | None = None
     required_orders_count: int
-    discount_percent: Optional[float] = None
-    bonus_points: Optional[int] = None
+    discount_percent: float | None = None
+    bonus_points: int | None = None
     is_active: bool
-    valid_from: Optional[datetime] = None
-    valid_to: Optional[datetime] = None
-    usage_limit: Optional[int] = None
+    valid_from: datetime | None = None
+    valid_to: datetime | None = None
+    usage_limit: int | None = None
 
     @staticmethod
     def resolve_discount_percent(obj):
@@ -86,9 +85,9 @@ class LoyaltyRewardSchema(Schema):
 class CustomerRewardSchema(Schema):
     id: int
     reward: LoyaltyRewardSchema
-    order_id: Optional[int] = None
+    order_id: int | None = None
     received_at: datetime
-    used_at: Optional[datetime] = None
+    used_at: datetime | None = None
     is_used: bool
 
 
@@ -96,4 +95,4 @@ class RedeemPointsSchema(Schema):
     customer_id: int
     order_id: int
     points: int
-    description: Optional[str] = ""
+    description: str | None = ""

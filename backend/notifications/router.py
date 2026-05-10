@@ -1,5 +1,3 @@
-from typing import List
-
 from django.db.models import Q
 from django.utils import timezone
 from ninja import Router
@@ -28,7 +26,7 @@ def _accessible_notifications(request):
     )
 
 
-@router.get("/", response=List[NotificationSchema])
+@router.get("/", response=list[NotificationSchema])
 def get_notifications(
     request, page: int = 1, limit: int = 20, unread_only: bool = True
 ):

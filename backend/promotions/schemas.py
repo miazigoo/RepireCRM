@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List, Optional
 
 from ninja import Schema
 
@@ -7,19 +6,19 @@ from ninja import Schema
 class PromotionSchema(Schema):
     id: int
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     discount_type: str
     value: float
-    max_discount_amount: Optional[float] = None
+    max_discount_amount: float | None = None
     min_order_amount: float
-    starts_at: Optional[datetime] = None
-    ends_at: Optional[datetime] = None
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
     is_active: bool
     auto_apply: bool
     stackable: bool
-    usage_limit: Optional[int] = None
-    per_customer_limit: Optional[int] = None
-    shop_ids: List[int] = []
+    usage_limit: int | None = None
+    per_customer_limit: int | None = None
+    shop_ids: list[int] = []
     used_count: int = 0
     created_at: datetime
     updated_at: datetime
@@ -51,36 +50,36 @@ class PromotionSchema(Schema):
 
 class PromotionCreateSchema(Schema):
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     discount_type: str = "percent"
     value: float
-    max_discount_amount: Optional[float] = None
+    max_discount_amount: float | None = None
     min_order_amount: float = 0
-    starts_at: Optional[datetime] = None
-    ends_at: Optional[datetime] = None
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
     is_active: bool = True
     auto_apply: bool = False
     stackable: bool = False
-    usage_limit: Optional[int] = None
-    per_customer_limit: Optional[int] = None
-    shop_ids: List[int] = []
+    usage_limit: int | None = None
+    per_customer_limit: int | None = None
+    shop_ids: list[int] = []
 
 
 class PromotionUpdateSchema(Schema):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    discount_type: Optional[str] = None
-    value: Optional[float] = None
-    max_discount_amount: Optional[float] = None
-    min_order_amount: Optional[float] = None
-    starts_at: Optional[datetime] = None
-    ends_at: Optional[datetime] = None
-    is_active: Optional[bool] = None
-    auto_apply: Optional[bool] = None
-    stackable: Optional[bool] = None
-    usage_limit: Optional[int] = None
-    per_customer_limit: Optional[int] = None
-    shop_ids: Optional[List[int]] = None
+    name: str | None = None
+    description: str | None = None
+    discount_type: str | None = None
+    value: float | None = None
+    max_discount_amount: float | None = None
+    min_order_amount: float | None = None
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+    is_active: bool | None = None
+    auto_apply: bool | None = None
+    stackable: bool | None = None
+    usage_limit: int | None = None
+    per_customer_limit: int | None = None
+    shop_ids: list[int] | None = None
 
 
 class PromoCodeSchema(Schema):
@@ -88,12 +87,12 @@ class PromoCodeSchema(Schema):
     promotion_id: int
     promotion_name: str
     code: str
-    description: Optional[str] = None
+    description: str | None = None
     is_active: bool
-    starts_at: Optional[datetime] = None
-    ends_at: Optional[datetime] = None
-    usage_limit: Optional[int] = None
-    per_customer_limit: Optional[int] = None
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+    usage_limit: int | None = None
+    per_customer_limit: int | None = None
     used_count: int = 0
     created_at: datetime
     updated_at: datetime
@@ -110,30 +109,30 @@ class PromoCodeSchema(Schema):
 class PromoCodeCreateSchema(Schema):
     promotion_id: int
     code: str
-    description: Optional[str] = None
+    description: str | None = None
     is_active: bool = True
-    starts_at: Optional[datetime] = None
-    ends_at: Optional[datetime] = None
-    usage_limit: Optional[int] = None
-    per_customer_limit: Optional[int] = None
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+    usage_limit: int | None = None
+    per_customer_limit: int | None = None
 
 
 class PromoCodeUpdateSchema(Schema):
-    promotion_id: Optional[int] = None
-    code: Optional[str] = None
-    description: Optional[str] = None
-    is_active: Optional[bool] = None
-    starts_at: Optional[datetime] = None
-    ends_at: Optional[datetime] = None
-    usage_limit: Optional[int] = None
-    per_customer_limit: Optional[int] = None
+    promotion_id: int | None = None
+    code: str | None = None
+    description: str | None = None
+    is_active: bool | None = None
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+    usage_limit: int | None = None
+    per_customer_limit: int | None = None
 
 
 class PromoCodeValidateSchema(Schema):
     code: str
-    order_id: Optional[int] = None
-    customer_id: Optional[int] = None
-    subtotal: Optional[float] = None
+    order_id: int | None = None
+    customer_id: int | None = None
+    subtotal: float | None = None
 
 
 class ApplyPromoCodeSchema(Schema):
@@ -150,10 +149,10 @@ class OrderDiscountSchema(Schema):
     source: str
     label: str
     amount: float
-    promotion_id: Optional[int] = None
-    promotion_name: Optional[str] = None
-    promo_code_id: Optional[int] = None
-    promo_code: Optional[str] = None
+    promotion_id: int | None = None
+    promotion_name: str | None = None
+    promo_code_id: int | None = None
+    promo_code: str | None = None
     created_at: datetime
 
     @staticmethod
@@ -172,9 +171,9 @@ class OrderDiscountSchema(Schema):
 class DiscountQuoteSchema(Schema):
     valid: bool
     message: str
-    code: Optional[str] = None
-    promotion_id: Optional[int] = None
-    promotion_name: Optional[str] = None
+    code: str | None = None
+    promotion_id: int | None = None
+    promotion_name: str | None = None
     subtotal: float = 0
     discount_amount: float = 0
     total_after_discount: float = 0

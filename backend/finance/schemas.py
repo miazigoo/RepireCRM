@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from ninja import Schema
 
@@ -13,9 +12,9 @@ class PaymentMethodSchema(Schema):
 
 class CreateSalePaymentRequest(Schema):
     payment_method_id: int
-    cash_register_id: Optional[int] = None
+    cash_register_id: int | None = None
     amount: float
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class PaymentSchema(Schema):

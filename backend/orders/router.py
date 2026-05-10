@@ -1,5 +1,3 @@
-from typing import List
-
 from django.db import models, transaction
 from django.db.models import Prefetch, Q
 from django.http import Http404
@@ -145,7 +143,7 @@ def _with_order_relations(queryset):
     )
 
 
-@router.get("/", response=List[OrderSchema])
+@router.get("/", response=list[OrderSchema])
 @paginate(OrderPagination)
 def list_orders(request, filters: OrderFilterSchema = Query(...)):
     """Получение списка заказов"""
@@ -204,7 +202,7 @@ def list_orders(request, filters: OrderFilterSchema = Query(...)):
     return queryset.order_by("-created_at")
 
 
-@router.get("/additional-services", response=List[AdditionalServiceSchema])
+@router.get("/additional-services", response=list[AdditionalServiceSchema])
 def list_additional_services(request, include_inactive: bool = False):
     """Получение списка дополнительных услуг"""
     if not request.auth.has_permission("orders.view_order"):
@@ -267,7 +265,7 @@ def update_additional_service(
         raise PermissionError("Нет прав для управления услугами")
 
     service = get_object_or_404(AdditionalService, id=service_id)
-    incoming = data.dict(exclude_unset=True)
+    incoming = data.model_dump(exclude_unset=True)
     shop_ids = incoming.pop("shop_ids", None)
     for field, value in incoming.items():
         if value is not None:
@@ -345,7 +343,7 @@ def get_orders_statistics(request, all_shops: bool = False):
     }
 
 
-@router.get("/repair-services/suggest", response=List[RepairServiceSchema])
+@router.get("/repair-services/suggest", response=list[RepairServiceSchema])
 def suggest_repair_services(request, device_model_id: int):
     """Подсказки типовых работ под конкретную модель"""
     if not request.auth.has_permission("orders.view_order"):
@@ -371,7 +369,7 @@ def suggest_repair_services(request, device_model_id: int):
     return qs.order_by("name")
 
 
-@router.get("/repair-services", response=List[RepairServiceSchema])
+@router.get("/repair-services", response=list[RepairServiceSchema])
 def list_repair_services(
     request,
     device_type_id: int = None,
@@ -405,7 +403,7 @@ def list_repair_services(
     return qs.order_by("brand__name", "model__name", "name")
 
 
-@router.get("/device-models", response=List[DeviceModelSchema])
+@router.get("/device-models", response=list[DeviceModelSchema])
 def list_device_models(request, search: str = None):
     """Список моделей устройств для формы заказа."""
     if not request.auth.has_permission("orders.view_order"):
@@ -457,7 +455,7 @@ def create_device_model(request, data: DeviceModelCreateSchema):
     return 201, model
 
 
-@router.get("/{order_id}/warranty-cases", response=List[WarrantyOrderSummarySchema])
+@router.get("/{order_id}/warranty-cases", response=list[WarrantyOrderSummarySchema])
 def list_warranty_cases(request, order_id: int):
     """Гарантийные обращения, созданные по исходному заказу."""
     if not request.auth.has_permission("orders.view_order"):
@@ -586,7 +584,7 @@ def create_order(request, data: OrderCreateSchema):
             device_model = get_object_or_404(DeviceModel, id=data.device.model_id)
             device = Device.objects.create(
                 model=device_model,
-                **data.device.dict(exclude={"model_id"}, exclude_none=True),
+                **data.device.model_dump(exclude={"model_id"}, exclude_none=True),
             )
 
             # Создаем заказ
@@ -667,7 +665,7 @@ def update_order(request, order_id: int, data: OrderUpdateSchema):
     try:
         order = _get_accessible_order(request, order_id)
         old_status = order.status
-        incoming = data.dict(exclude_unset=True)
+        incoming = data.model_dump(exclude_unset=True)
         status_comment = incoming.pop("status_comment", "") or ""
 
         # Специальная проверка для изменения статуса
@@ -744,7 +742,7 @@ def update_order(request, order_id: int, data: OrderUpdateSchema):
 
 @router.get(
     "/{order_id}/status-history",
-    response=List[OrderStatusHistorySchema],
+    response=list[OrderStatusHistorySchema],
 )
 def list_status_history(request, order_id: int):
     """История статусов заказа."""
@@ -755,7 +753,7 @@ def list_status_history(request, order_id: int):
     return order.status_history.select_related("changed_by").all()
 
 
-@router.get("/{order_id}/audit-log", response=List[OrderAuditLogSchema])
+@router.get("/{order_id}/audit-log", response=list[OrderAuditLogSchema])
 def list_audit_log(request, order_id: int):
     """Журнал важных действий по заказу."""
     if not request.auth.has_permission("orders.view_order"):
@@ -765,7 +763,7 @@ def list_audit_log(request, order_id: int):
     return order.audit_logs.select_related("actor").all()
 
 
-@router.get("/{order_id}/repair-stages", response=List[RepairStageSchema])
+@router.get("/{order_id}/repair-stages", response=list[RepairStageSchema])
 def list_repair_stages(request, order_id: int):
     """Этапы ремонта с фотофиксацией."""
     if not request.auth.has_permission("orders.view_order"):
@@ -834,7 +832,7 @@ def update_repair_stage(
         return 404, {"error": "Этап ремонта не найден"}
 
     update_fields = []
-    for field, value in data.dict(exclude_unset=True).items():
+    for field, value in data.model_dump(exclude_unset=True).items():
         if isinstance(value, str):
             value = value.strip()
         if field == "title" and not value:
@@ -855,7 +853,7 @@ def update_repair_stage(
     return stage
 
 
-@router.get("/{order_id}/approvals", response=List[OrderApprovalSchema])
+@router.get("/{order_id}/approvals", response=list[OrderApprovalSchema])
 def list_order_approvals(request, order_id: int):
     """Согласования цены и работ по заказу."""
     if not request.auth.has_permission("orders.view_order"):

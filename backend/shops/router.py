@@ -1,5 +1,3 @@
-from typing import List
-
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 from ninja import Router
@@ -55,7 +53,7 @@ def _current_subscription_context(request):
     return organization, subscription
 
 
-@router.get("/subscription/plans", response=List[SubscriptionPlanSchema])
+@router.get("/subscription/plans", response=list[SubscriptionPlanSchema])
 def list_subscription_plans(request):
     if not request.auth.has_permission("settings.view_shop"):
         raise PermissionError("Нет прав")
@@ -116,7 +114,7 @@ def create_subscription_payment(request, data: SubscriptionPaymentCreateSchema):
     }
 
 
-@router.get("/", response=List[ShopSchema])
+@router.get("/", response=list[ShopSchema])
 def list_shops(request, active_only: bool = True):
     if not request.auth.has_permission("settings.view_shop"):
         raise PermissionError("Нет прав для просмотра магазинов")
@@ -126,7 +124,7 @@ def list_shops(request, active_only: bool = True):
     return qs.order_by("name")
 
 
-@router.get("/organizations", response=List[OrganizationSchema])
+@router.get("/organizations", response=list[OrganizationSchema])
 def list_organizations(request):
     if not request.auth.has_permission("settings.view_shop"):
         raise PermissionError("Нет прав")
@@ -137,7 +135,7 @@ def list_organizations(request):
 def create_organization(request, data: OrganizationSchema):
     if not request.auth.has_permission("settings.change_shop"):
         raise PermissionError("Нет прав")
-    org = Organization.objects.create(**data.dict())
+    org = Organization.objects.create(**data.model_dump())
     return org
 
 
@@ -168,7 +166,7 @@ def update_shop_settings(request, shop_id: int, data: ShopSettingsSchema):
     if not settings:
         settings = ShopSettings.objects.create(shop=shop)
     # обновляем поля
-    for field, value in data.dict().items():
+    for field, value in data.model_dump().items():
         setattr(settings, field, value)
     settings.save()
     return settings

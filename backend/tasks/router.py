@@ -1,6 +1,5 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import List
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -79,7 +78,7 @@ def _validate_task_assignment(
             raise PermissionError("Нет прав назначить задачу этому сотруднику")
 
 
-@router.get("/", response=List[TaskSchema])
+@router.get("/", response=list[TaskSchema])
 @paginate
 def list_tasks(
     request,
@@ -177,7 +176,7 @@ def create_task(request, data: TaskCreateSchema):
 
     try:
         with transaction.atomic():
-            payload = data.dict()
+            payload = data.model_dump()
             if not payload.get("payment_amount"):
                 payload["payment_amount"] = Decimal("0")
             payload["attachments"] = payload.get("attachments") or []
@@ -326,7 +325,7 @@ def get_tasks_statistics(
     }
 
 
-@router.get("/templates", response=List[dict])
+@router.get("/templates", response=list[dict])
 def list_task_templates(request):
     """Список шаблонов задач"""
     if not request.auth.has_permission("tasks.view_template"):
@@ -353,7 +352,7 @@ def list_task_templates(request):
 def update_task(request, task_id: int, data: TaskUpdateSchema):
     """Обновление задачи"""
     task = get_object_or_404(Task, id=task_id)
-    incoming = data.dict(exclude_unset=True)
+    incoming = data.model_dump(exclude_unset=True)
     if incoming.get("attachments") is None:
         incoming.pop("attachments", None)
     if incoming.get("recurrence_pattern") is None:
@@ -411,7 +410,7 @@ def update_task(request, task_id: int, data: TaskUpdateSchema):
 
 
 @router.post("/{task_id}/comments", response=dict)
-def add_task_comment(request, task_id: int, text: str, attachments: List[dict] = None):
+def add_task_comment(request, task_id: int, text: str, attachments: list[dict] = None):
     """Добавление комментария к задаче"""
     task = get_object_or_404(Task, id=task_id)
 

@@ -2,12 +2,15 @@ from datetime import datetime
 
 import jwt
 from django.conf import settings
+from django.core.cache import cache
+from django.db import connection
 from django.http import JsonResponse
 from ninja import NinjaAPI
 from ninja.security import HttpBearer
 
 # Подключаем роутеры
 from API.admin_router import router as admin_router
+from API.auth.router import is_token_blacklisted
 from API.auth.router import router as auth_router
 from client_sync.router import router as client_sync_router
 from customers.router import router as customers_router
@@ -28,6 +31,9 @@ class AuthBearer(HttpBearer):
     def authenticate(self, request, token):
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+            jti = payload.get("jti")
+            if jti and is_token_blacklisted(jti):
+                return None
             user_id = payload.get("user_id")
             user = User.objects.get(id=user_id)
             self._attach_current_shop(request, user)
@@ -74,7 +80,7 @@ def api_root(request):
         "version": "1.0.0",
         "status": "ok",
         "endpoints": [
-            "/api/docs",  # Swagger документация
+            "/api/docs",
             "/api/auth/",
             "/api/customers/",
             "/api/orders/",
@@ -84,12 +90,39 @@ def api_root(request):
 
 @api.get("/health", auth=None)
 def health_check(request):
-    return {
-        "status": "ok",
-        "message": "Backend is running",
-        "timestamp": datetime.now().isoformat(),
-        "debug": settings.DEBUG,
-    }
+    """Liveness + readiness probe: checks DB and Redis connectivity."""
+    checks: dict[str, str] = {}
+    ok = True
+
+    # Database check
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        checks["database"] = "ok"
+    except Exception as exc:  # noqa: BLE001
+        checks["database"] = f"error: {exc}"
+        ok = False
+
+    # Redis / cache check
+    try:
+        cache.set("__health__", 1, timeout=5)
+        assert cache.get("__health__") == 1
+        checks["cache"] = "ok"
+    except Exception as exc:  # noqa: BLE001
+        checks["cache"] = f"error: {exc}"
+        ok = False
+
+    status_code = 200 if ok else 503
+    return api.create_response(
+        request,
+        {
+            "status": "ok" if ok else "degraded",
+            "timestamp": datetime.now().isoformat(),
+            "debug": settings.DEBUG,
+            "checks": checks,
+        },
+        status=status_code,
+    )
 
 
 # Обработчики ошибок
@@ -111,7 +144,6 @@ api.add_router("/customers", customers_router)
 api.add_router("/documents", documents_router)
 api.add_router("/orders", orders_router)
 api.add_router("/loyalty", loyalty_router)
-
 api.add_router("/inventory", inventory_router)
 api.add_router("/reports", reports_router)
 api.add_router("/tasks", tasks_router)

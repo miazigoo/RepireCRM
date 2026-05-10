@@ -1,6 +1,5 @@
 from decimal import Decimal
 from html import escape
-from typing import Optional
 
 from django.conf import settings
 from django.http import HttpResponse
@@ -25,15 +24,15 @@ router = Router(tags=["Финансы"])
 class OrderPaymentCreateSchema(Schema):
     amount: Decimal
     payment_method_id: int
-    cash_register_id: Optional[int] = None
+    cash_register_id: int | None = None
     fee_amount: Decimal = Decimal("0")
     description: str = ""
 
 
 class OnlinePaymentCreateSchema(Schema):
-    amount: Optional[Decimal] = None
+    amount: Decimal | None = None
     payment_method_type: str = OnlinePayment.PaymentMethodType.BANK_CARD
-    return_url: Optional[str] = None
+    return_url: str | None = None
 
 
 class OnlinePaymentSchema(Schema):

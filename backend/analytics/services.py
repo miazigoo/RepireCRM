@@ -1,6 +1,5 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 
 from django.db import models
 from django.db.models import Count, F, Sum
@@ -14,7 +13,7 @@ from .models import AnalyticsPeriod, PopularServiceSnapshot, RevenueSnapshot
 
 class AnalyticsService:
     @staticmethod
-    def get_monthly_revenue(shop_id: Optional[int], year: int, month: int) -> dict:
+    def get_monthly_revenue(shop_id: int | None, year: int, month: int) -> dict:
         qs = Order.objects.filter(
             status="completed",
             completed_at__year=year,
@@ -48,7 +47,7 @@ class AnalyticsService:
 
     @staticmethod
     def get_popular_services(
-        shop_id: Optional[int] = None,
+        shop_id: int | None = None,
         date_from=None,
         date_to=None,
         limit: int = 10,
@@ -88,7 +87,7 @@ class AnalyticsService:
         ]
 
     @staticmethod
-    def save_monthly_revenue_snapshot(shop_id: Optional[int], year: int, month: int):
+    def save_monthly_revenue_snapshot(shop_id: int | None, year: int, month: int):
         """Сохранить снепшот выручки за месяц"""
         from calendar import monthrange
 
@@ -126,7 +125,7 @@ class AnalyticsService:
 
     @staticmethod
     def save_popular_services_snapshot(
-        shop_id: Optional[int], date_from, date_to, limit: int = 10
+        shop_id: int | None, date_from, date_to, limit: int = 10
     ):
         """Сохранить снепшот топ услуг за произвольный период (тип custom)"""
         items = AnalyticsService.get_popular_services(

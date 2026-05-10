@@ -1,5 +1,3 @@
-from typing import Optional
-
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from ninja import Router
@@ -49,7 +47,7 @@ def download_sale_pdf(request, sale_id: int, doc_type: str = "retail_invoice"):
 def email_sale_pdf(
     request,
     sale_id: int,
-    to_email: Optional[str] = None,
+    to_email: str | None = None,
     doc_type: str = "retail_invoice",
 ):
     if not request.auth.has_permission("inventory.add_sale"):

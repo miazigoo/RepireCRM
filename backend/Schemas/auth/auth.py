@@ -1,4 +1,5 @@
 from ninja import Schema
+from pydantic import model_validator
 
 from Schemas.common import UserSchema
 
@@ -20,8 +21,10 @@ class ChangePasswordSchema(Schema):
     new_password: str
     confirm_password: str
 
-    def validate(self):
+    @model_validator(mode="after")
+    def passwords_match(self) -> "ChangePasswordSchema":
         if self.new_password != self.confirm_password:
             raise ValueError("Пароли не совпадают")
         if len(self.new_password) < 8:
             raise ValueError("Пароль должен содержать минимум 8 символов")
+        return self

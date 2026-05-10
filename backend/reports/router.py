@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Optional
 
 from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum
 from django.http import HttpResponse
@@ -26,8 +25,8 @@ def _ensure_aware(value: datetime) -> datetime:
 
 def _resolve_period_range(
     period: str = "30_days",
-    date_from: Optional[datetime] = None,
-    date_to: Optional[datetime] = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
 ) -> tuple[datetime, datetime, int]:
     end_date = _ensure_aware(date_to) if date_to else timezone.now()
 
@@ -53,7 +52,7 @@ def _resolve_period_range(
 
 def _get_scoped_orders_queryset(
     request,
-    shop_id: Optional[int] = None,
+    shop_id: int | None = None,
     all_shops: bool = False,
 ):
     queryset = Order.objects.all()
@@ -88,7 +87,7 @@ def get_sla_report(
     request,
     date_from: datetime,
     date_to: datetime,
-    shop_id: Optional[int] = None,
+    shop_id: int | None = None,
     all_shops: bool = False,
 ):
     """SLA по срокам выполнения заказов"""
@@ -110,9 +109,9 @@ def get_sla_report(
 def get_dashboard_metrics(
     request,
     period: str = "30_days",
-    date_from: Optional[datetime] = None,
-    date_to: Optional[datetime] = None,
-    shop_id: Optional[int] = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    shop_id: int | None = None,
     all_shops: bool = False,
 ):
     """Метрики для дашборда"""
@@ -233,7 +232,7 @@ def get_financial_report(
     request,
     date_from: datetime,
     date_to: datetime,
-    shop_id: Optional[int] = None,
+    shop_id: int | None = None,
     all_shops: bool = False,
 ):
     """Финансовый отчет"""
@@ -255,9 +254,9 @@ def get_financial_report(
 def get_employees_report(
     request,
     period: str = "month",
-    date_from: Optional[datetime] = None,
-    date_to: Optional[datetime] = None,
-    shop_id: Optional[int] = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    shop_id: int | None = None,
     all_shops: bool = False,
 ):
     """Статистика по сотрудникам: заказы, услуги, продажи, задачи и оплата."""
@@ -334,9 +333,9 @@ def export_dashboard_report(
     request,
     period: str = "30_days",
     format: str = "pdf",
-    date_from: Optional[datetime] = None,
-    date_to: Optional[datetime] = None,
-    shop_id: Optional[int] = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    shop_id: int | None = None,
     all_shops: bool = False,
 ):
     """Экспорт текущего дашборда без предварительно созданного GeneratedReport."""

@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List, Optional
 
 from ninja import Schema
 
@@ -16,7 +15,7 @@ class DeviceBrandSchema(Schema):
 class DeviceTypeSchema(Schema):
     id: int
     name: str
-    icon: Optional[str] = None
+    icon: str | None = None
 
 
 class DeviceModelSchema(Schema):
@@ -24,45 +23,45 @@ class DeviceModelSchema(Schema):
     brand: DeviceBrandSchema
     device_type: DeviceTypeSchema
     name: str
-    model_number: Optional[str] = None
-    release_year: Optional[int] = None
+    model_number: str | None = None
+    release_year: int | None = None
 
 
 class DeviceSchema(Schema):
     id: int
     model: DeviceModelSchema
-    serial_number: Optional[str] = None
-    imei: Optional[str] = None
-    color: Optional[str] = None
-    storage_capacity: Optional[str] = None
-    specifications: Optional[dict] = None
+    serial_number: str | None = None
+    imei: str | None = None
+    color: str | None = None
+    storage_capacity: str | None = None
+    specifications: dict | None = None
 
 
 class DeviceCreateSchema(Schema):
     model_id: int
-    serial_number: Optional[str] = None
-    imei: Optional[str] = None
-    color: Optional[str] = None
-    storage_capacity: Optional[str] = None
-    specifications: Optional[dict] = None
+    serial_number: str | None = None
+    imei: str | None = None
+    color: str | None = None
+    storage_capacity: str | None = None
+    specifications: dict | None = None
 
 
 class DeviceModelCreateSchema(Schema):
     brand_name: str
     name: str
-    device_type_name: Optional[str] = "Смартфон"
-    model_number: Optional[str] = None
-    release_year: Optional[int] = None
+    device_type_name: str | None = "Смартфон"
+    model_number: str | None = None
+    release_year: int | None = None
 
 
 class AdditionalServiceSchema(Schema):
     id: int
     name: str
     category: str
-    description: Optional[str] = None
+    description: str | None = None
     price: float
     is_active: bool = True
-    shop_ids: List[int] = []
+    shop_ids: list[int] = []
 
     @staticmethod
     def resolve_price(obj):
@@ -76,19 +75,19 @@ class AdditionalServiceSchema(Schema):
 class AdditionalServiceCreateSchema(Schema):
     name: str
     category: str = "other"
-    description: Optional[str] = None
+    description: str | None = None
     price: float
     is_active: bool = True
-    shop_ids: List[int] = []
+    shop_ids: list[int] = []
 
 
 class AdditionalServiceUpdateSchema(Schema):
-    name: Optional[str] = None
-    category: Optional[str] = None
-    description: Optional[str] = None
-    price: Optional[float] = None
-    is_active: Optional[bool] = None
-    shop_ids: Optional[List[int]] = None
+    name: str | None = None
+    category: str | None = None
+    description: str | None = None
+    price: float | None = None
+    is_active: bool | None = None
+    shop_ids: list[int] | None = None
 
 
 class OrderServiceSchema(Schema):
@@ -110,34 +109,32 @@ class OrderCreateSchema(Schema):
     customer_id: int
     device: DeviceCreateSchema
     problem_description: str
-    accessories: Optional[str] = None
-    device_condition: Optional[str] = None
+    accessories: str | None = None
+    device_condition: str | None = None
     cost_estimate: float
-    priority: Optional[str] = "normal"
-    estimated_completion: Optional[datetime] = None
-    additional_services: Optional[
-        List[dict]
-    ] = None  # [{"service_id": 1, "quantity": 1}]
+    priority: str | None = "normal"
+    estimated_completion: datetime | None = None
+    additional_services: list[dict] | None = None  # [{"service_id": 1, "quantity": 1}]
 
 
 class OrderUpdateSchema(Schema):
-    status: Optional[str] = None
-    diagnosis: Optional[str] = None
-    work_description: Optional[str] = None
-    final_cost: Optional[float] = None
-    prepayment: Optional[float] = None
-    assigned_to_id: Optional[int] = None
-    estimated_completion: Optional[datetime] = None
-    notes: Optional[str] = None
-    status_comment: Optional[str] = None
+    status: str | None = None
+    diagnosis: str | None = None
+    work_description: str | None = None
+    final_cost: float | None = None
+    prepayment: float | None = None
+    assigned_to_id: int | None = None
+    estimated_completion: datetime | None = None
+    notes: str | None = None
+    status_comment: str | None = None
 
 
 class OrderStatusHistorySchema(Schema):
     id: int
-    old_status: Optional[str] = None
+    old_status: str | None = None
     new_status: str
-    comment: Optional[str] = None
-    changed_by_name: Optional[str] = None
+    comment: str | None = None
+    changed_by_name: str | None = None
     changed_at: datetime
 
     @staticmethod
@@ -152,7 +149,7 @@ class OrderAuditLogSchema(Schema):
     action: str
     message: str
     changes: dict
-    actor_name: Optional[str] = None
+    actor_name: str | None = None
     created_at: datetime
 
     @staticmethod
@@ -165,11 +162,11 @@ class OrderAuditLogSchema(Schema):
 class RepairStageSchema(Schema):
     id: int
     title: str
-    description: Optional[str] = None
-    photo_url: Optional[str] = None
+    description: str | None = None
+    photo_url: str | None = None
     customer_visible: bool
     position: int
-    created_by_name: Optional[str] = None
+    created_by_name: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -181,21 +178,21 @@ class RepairStageSchema(Schema):
 
 
 class RepairStageUpdateSchema(Schema):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    customer_visible: Optional[bool] = None
+    title: str | None = None
+    description: str | None = None
+    customer_visible: bool | None = None
 
 
 class OrderApprovalSchema(Schema):
     id: int
     title: str
-    description: Optional[str] = None
+    description: str | None = None
     amount: float
     status: str
     status_display: str
-    customer_comment: Optional[str] = None
-    requested_by_name: Optional[str] = None
-    decided_at: Optional[datetime] = None
+    customer_comment: str | None = None
+    requested_by_name: str | None = None
+    decided_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -212,15 +209,15 @@ class OrderApprovalSchema(Schema):
 
 class OrderApprovalCreateSchema(Schema):
     title: str
-    description: Optional[str] = None
+    description: str | None = None
     amount: float
 
 
 class WarrantyCaseCreateSchema(Schema):
     reason: str
-    problem_description: Optional[str] = None
-    priority: Optional[str] = "high"
-    estimated_completion: Optional[datetime] = None
+    problem_description: str | None = None
+    priority: str | None = "high"
+    estimated_completion: datetime | None = None
 
 
 class WarrantyOrderSummarySchema(Schema):
@@ -230,8 +227,8 @@ class WarrantyOrderSummarySchema(Schema):
     priority: str
     problem_description: str
     created_at: datetime
-    completed_at: Optional[datetime] = None
-    warranty_reason: Optional[str] = None
+    completed_at: datetime | None = None
+    warranty_reason: str | None = None
 
 
 class OrderSchema(Schema):
@@ -242,12 +239,12 @@ class OrderSchema(Schema):
     status: str
     priority: str
     problem_description: str
-    diagnosis: Optional[str] = None
-    work_description: Optional[str] = None
-    accessories: Optional[str] = None
-    device_condition: Optional[str] = None
+    diagnosis: str | None = None
+    work_description: str | None = None
+    accessories: str | None = None
+    device_condition: str | None = None
     cost_estimate: float
-    final_cost: Optional[float] = None
+    final_cost: float | None = None
     prepayment: float
     subtotal_before_discount: float
     discount_total: float
@@ -255,19 +252,19 @@ class OrderSchema(Schema):
     remaining_payment: float
     created_at: datetime
     updated_at: datetime
-    estimated_completion: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    additional_services: List[OrderServiceSchema]
-    discounts: List[OrderDiscountSchema] = []
-    notes: Optional[str] = None
+    estimated_completion: datetime | None = None
+    completed_at: datetime | None = None
+    additional_services: list[OrderServiceSchema]
+    discounts: list[OrderDiscountSchema] = []
+    notes: str | None = None
     warranty_days: int
-    warranty_until: Optional[datetime] = None
+    warranty_until: datetime | None = None
     warranty_active: bool = False
     is_warranty_case: bool = False
-    warranty_parent_order_id: Optional[int] = None
-    warranty_parent_order_number: Optional[str] = None
-    warranty_reason: Optional[str] = None
-    warranty_resolution: Optional[str] = None
+    warranty_parent_order_id: int | None = None
+    warranty_parent_order_number: str | None = None
+    warranty_reason: str | None = None
+    warranty_resolution: str | None = None
     warranty_cases_count: int = 0
 
     @staticmethod
@@ -326,17 +323,17 @@ class OrderSchema(Schema):
 
 
 class OrderListSchema(Schema):
-    orders: List[OrderSchema]
+    orders: list[OrderSchema]
     pagination: PaginationSchema
 
 
 class OrderFilterSchema(Schema):
-    search: Optional[str] = None
-    status: Optional[str] = None
-    priority: Optional[str] = None
-    customer_id: Optional[int] = None
-    assigned_to_id: Optional[int] = None
-    created_from: Optional[datetime] = None
-    created_to: Optional[datetime] = None
-    estimated_completion_from: Optional[datetime] = None
-    estimated_completion_to: Optional[datetime] = None
+    search: str | None = None
+    status: str | None = None
+    priority: str | None = None
+    customer_id: int | None = None
+    assigned_to_id: int | None = None
+    created_from: datetime | None = None
+    created_to: datetime | None = None
+    estimated_completion_from: datetime | None = None
+    estimated_completion_to: datetime | None = None

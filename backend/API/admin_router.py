@@ -315,7 +315,7 @@ def get_user(request, user_id: int):
 def update_user(request, user_id: int, data: UserUpdateSchema):
     _ensure_admin_permission(request, "users.change_user")
     user = get_object_or_404(_get_manageable_users(request), id=user_id)
-    incoming = data.dict(exclude_unset=True)
+    incoming = data.model_dump(exclude_unset=True)
     shop_ids = incoming.pop("shop_ids", None)
     role_id = incoming.pop("role_id", None)
     compensation_fields = {
@@ -372,7 +372,7 @@ def create_shop(request, data: ShopCreateSchema):
     _ensure_admin_permission(request, "settings.add_shop")
     if Shop.objects.filter(code=data.code).exists():
         return 400, {"error": "Филиал с таким кодом уже существует"}
-    shop = Shop.objects.create(**data.dict())
+    shop = Shop.objects.create(**data.model_dump())
     return 201, shop
 
 
@@ -386,7 +386,7 @@ def get_admin_shop(request, shop_id: int):
 def update_shop(request, shop_id: int, data: ShopUpdateSchema):
     _ensure_admin_permission(request, "settings.change_shop")
     shop = get_object_or_404(_get_assignable_shops(request), id=shop_id)
-    for field, value in data.dict(exclude_unset=True).items():
+    for field, value in data.model_dump(exclude_unset=True).items():
         if value is not None:
             setattr(shop, field, value)
     shop.save()
@@ -432,7 +432,7 @@ def get_role(request, role_id: int):
 def update_role(request, role_id: int, data: RoleUpdateSchema):
     _ensure_admin_permission(request, "users.manage_permissions")
     role = get_object_or_404(Role, id=role_id)
-    incoming = data.dict(exclude_unset=True)
+    incoming = data.model_dump(exclude_unset=True)
     permission_ids = incoming.pop("permission_ids", None)
     for field, value in incoming.items():
         if value is not None:

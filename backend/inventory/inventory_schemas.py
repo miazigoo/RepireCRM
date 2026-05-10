@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ninja import Schema
 
@@ -7,9 +7,9 @@ from ninja import Schema
 class SupplierSchema(Schema):
     id: int
     name: str
-    contact_person: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
+    contact_person: str | None = None
+    email: str | None = None
+    phone: str | None = None
     rating: float
     is_active: bool
 
@@ -24,15 +24,15 @@ class InventoryItemSchema(Schema):
     sku: str
     item_type: str
     category_id: int
-    category_name: Optional[str] = None
-    primary_supplier_id: Optional[int] = None
-    primary_supplier_name: Optional[str] = None
+    category_name: str | None = None
+    primary_supplier_id: int | None = None
+    primary_supplier_name: str | None = None
     purchase_price: float
     selling_price: float
     total_stock: int
     min_quantity: int
     stock_status: str
-    last_movement_date: Optional[datetime] = None
+    last_movement_date: datetime | None = None
 
     @staticmethod
     def _stock_balances(obj):
@@ -139,11 +139,11 @@ class StockMovementSchema(Schema):
     quantity_before: int
     quantity_change: int
     quantity_after: int
-    reference_number: Optional[str] = None
-    notes: Optional[str] = None
-    cost_per_unit: Optional[float] = None
-    purchase_order_id: Optional[int] = None
-    repair_order_id: Optional[int] = None
+    reference_number: str | None = None
+    notes: str | None = None
+    cost_per_unit: float | None = None
+    purchase_order_id: int | None = None
+    repair_order_id: int | None = None
     created_by_id: int
     created_at: datetime
 
@@ -185,8 +185,8 @@ class PurchaseOrderSchema(Schema):
     status: str
 
     order_date: datetime
-    expected_delivery_date: Optional[datetime] = None
-    actual_delivery_date: Optional[datetime] = None
+    expected_delivery_date: datetime | None = None
+    actual_delivery_date: datetime | None = None
 
     subtotal: float
     tax_amount: float
@@ -196,7 +196,7 @@ class PurchaseOrderSchema(Schema):
     shop_name: str
 
     supplier: SupplierSchema
-    items: List[PurchaseOrderItemSchema]
+    items: list[PurchaseOrderItemSchema]
 
     @staticmethod
     def resolve_subtotal(obj):
@@ -220,7 +220,7 @@ class RetailSaleItemSchema(Schema):
     item_id: int
     name: str
     sku: str
-    barcode: Optional[str] = None
+    barcode: str | None = None
     quantity: int
     unit_price: float
     total_price: float
@@ -256,14 +256,14 @@ class RetailSaleSchema(Schema):
     sale_number: str
     shop_id: int
     cashier_id: int
-    customer_id: Optional[int] = None
+    customer_id: int | None = None
     status: str
     subtotal: float
     discount_amount: float
     total_amount: float
     created_at: datetime
-    completed_at: Optional[datetime] = None
-    items: List[RetailSaleItemSchema]
+    completed_at: datetime | None = None
+    items: list[RetailSaleItemSchema]
 
     @staticmethod
     def resolve_subtotal(obj):
@@ -280,47 +280,47 @@ class RetailSaleSchema(Schema):
 
 # Ad-hoc приемка/корректировка: вход
 class AdHocReceiveItemInput(Schema):
-    item_id: Optional[int] = None
-    barcode: Optional[str] = None
+    item_id: int | None = None
+    barcode: str | None = None
     quantity: int
-    cost_per_unit: Optional[float] = None
-    notes: Optional[str] = None
+    cost_per_unit: float | None = None
+    notes: str | None = None
 
 
 class AdHocAdjustmentItemInput(Schema):
-    item_id: Optional[int] = None
-    barcode: Optional[str] = None
+    item_id: int | None = None
+    barcode: str | None = None
     quantity_change: int
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class AdHocReceiveRequest(Schema):
-    items: List[AdHocReceiveItemInput]
-    notes: Optional[str] = None
+    items: list[AdHocReceiveItemInput]
+    notes: str | None = None
 
 
 class AdHocAdjustmentRequest(Schema):
-    items: List[AdHocAdjustmentItemInput]
-    notes: Optional[str] = None
+    items: list[AdHocAdjustmentItemInput]
+    notes: str | None = None
 
 
 # Ad-hoc: результат по позиции и общий ответ
 class AdHocOperationItemResultSchema(Schema):
     ok: bool
-    item_id: Optional[int] = None
-    name: Optional[str] = None
-    quantity_added: Optional[int] = None
-    quantity_change: Optional[int] = None
-    new_quantity: Optional[int] = None
-    error: Optional[str] = None
-    entry: Optional[Dict[str, Any]] = None
+    item_id: int | None = None
+    name: str | None = None
+    quantity_added: int | None = None
+    quantity_change: int | None = None
+    new_quantity: int | None = None
+    error: str | None = None
+    entry: dict[str, Any] | None = None
 
 
 class AdHocOperationResponseSchema(Schema):
     success: bool
     processed: int
     ok: int
-    results: List[AdHocOperationItemResultSchema]
+    results: list[AdHocOperationItemResultSchema]
 
 
 # Агрегации/дашборд по складу
@@ -346,8 +346,8 @@ class StockTotalsSchema(Schema):
 
 class StockDashboardSchema(Schema):
     totals: StockTotalsSchema
-    by_shop: List[StockByShopItemSchema]
-    by_category: List[StockByCategoryItemSchema]
+    by_shop: list[StockByShopItemSchema]
+    by_category: list[StockByCategoryItemSchema]
 
 
 # Остатки по SKU/ШК
@@ -361,12 +361,12 @@ class ItemStockBalanceSchema(Schema):
 
 class ItemStockByCodeSchema(Schema):
     found: bool
-    error: Optional[str] = None
-    item_id: Optional[int] = None
-    name: Optional[str] = None
-    sku: Optional[str] = None
-    barcode: Optional[str] = None
-    balances: Optional[List[ItemStockBalanceSchema]] = None
+    error: str | None = None
+    item_id: int | None = None
+    name: str | None = None
+    sku: str | None = None
+    barcode: str | None = None
+    balances: list[ItemStockBalanceSchema] | None = None
 
 
 # Быстрое создание товара («модалка»)
@@ -374,37 +374,37 @@ class QuickCreateItemInputSchema(Schema):
     name: str
     sku: str
     item_type: str
-    category_id: Optional[int] = None
-    category_name: Optional[str] = None
+    category_id: int | None = None
+    category_name: str | None = None
     purchase_price: float
     selling_price: float
     # список штрихкодов
-    barcodes: Optional[List[str]] = None
-    unit: Optional[str] = "шт"
-    primary_supplier_id: Optional[int] = None
-    description: Optional[str] = None
+    barcodes: list[str] | None = None
+    unit: str | None = "шт"
+    primary_supplier_id: int | None = None
+    description: str | None = None
 
 
 class UpdateInventoryItemInputSchema(Schema):
-    name: Optional[str] = None
-    sku: Optional[str] = None
-    item_type: Optional[str] = None
-    category_id: Optional[int] = None
-    category_name: Optional[str] = None
-    primary_supplier_id: Optional[int] = None
-    purchase_price: Optional[float] = None
-    selling_price: Optional[float] = None
-    stock_quantity: Optional[int] = None
-    min_quantity: Optional[int] = None
-    unit: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    sku: str | None = None
+    item_type: str | None = None
+    category_id: int | None = None
+    category_name: str | None = None
+    primary_supplier_id: int | None = None
+    purchase_price: float | None = None
+    selling_price: float | None = None
+    stock_quantity: int | None = None
+    min_quantity: int | None = None
+    unit: str | None = None
+    description: str | None = None
 
 
 class QuickCreateItemResponseSchema(Schema):
     id: int
     name: str
     sku: str
-    barcode: Optional[str] = None
+    barcode: str | None = None
     item_type: str
     category_id: int
     purchase_price: float
@@ -415,8 +415,8 @@ class QuickCreateItemResponseSchema(Schema):
 # Оплата розничной продажи
 class FinalizeSalePaymentInputSchema(Schema):
     payment_method_id: int
-    cash_register_id: Optional[int] = None
-    description: Optional[str] = None
+    cash_register_id: int | None = None
+    description: str | None = None
 
 
 class FinalizeSaleResponseSchema(Schema):
@@ -424,16 +424,16 @@ class FinalizeSaleResponseSchema(Schema):
     sale_id: int
     sale_number: str
     total: float
-    payment_id: Optional[int] = None
-    payment_number: Optional[str] = None
+    payment_id: int | None = None
+    payment_number: str | None = None
 
 
 class ItemBarcodeSchema(Schema):
     id: int
     barcode: str
-    supplier_id: Optional[int] = None
+    supplier_id: int | None = None
 
 
 class AddBarcodeInputSchema(Schema):
     barcode: str
-    supplier_id: Optional[int] = None
+    supplier_id: int | None = None

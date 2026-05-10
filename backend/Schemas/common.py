@@ -1,5 +1,3 @@
-from typing import Optional
-
 from ninja import Schema
 
 
@@ -10,7 +8,7 @@ class MessageSchema(Schema):
 
 class ErrorSchema(Schema):
     error: str
-    details: Optional[dict] = None
+    details: dict | None = None
 
 
 class PaginationSchema(Schema):
@@ -24,9 +22,9 @@ class ShopSchema(Schema):
     id: int
     name: str
     code: str
-    address: Optional[str] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
+    address: str | None = None
+    phone: str | None = None
+    email: str | None = None
     is_active: bool
     timezone: str
     currency: str
@@ -36,7 +34,7 @@ class RoleSchema(Schema):
     id: int
     name: str
     code: str
-    description: Optional[str] = None
+    description: str | None = None
     permission_codes: list[str] = []
 
     @staticmethod
@@ -49,21 +47,21 @@ class UserSchema(Schema):
     username: str
     first_name: str
     last_name: str
-    middle_name: Optional[str] = None
+    middle_name: str | None = None
     email: str
-    phone: Optional[str] = None
+    phone: str | None = None
     is_active: bool
     is_director: bool
-    current_shop: Optional[ShopSchema] = None
+    current_shop: ShopSchema | None = None
     available_shops: list[ShopSchema] = []
-    avatar: Optional[str] = None
-    profile_status: Optional[str] = None
-    bio: Optional[str] = None
+    avatar: str | None = None
+    profile_status: str | None = None
+    bio: str | None = None
     compensation_type: str = "fixed"
     fixed_order_payment: float = 0
     service_commission_percent: float = 0
     product_commission_percent: float = 0
-    role: Optional[RoleSchema] = None
+    role: RoleSchema | None = None
 
     @staticmethod
     def resolve_available_shops(obj):
@@ -91,4 +89,4 @@ class PermissionSchema(Schema):
     name: str
     codename: str
     category: str
-    description: Optional[str] = None
+    description: str | None = None

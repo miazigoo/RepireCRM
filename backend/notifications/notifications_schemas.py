@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Dict, Optional
 
 from ninja import Schema
 
@@ -13,11 +12,11 @@ class NotificationSchema(Schema):
     type: str
     icon: str
     color: str
-    action_url: Optional[str] = None
+    action_url: str | None = None
     is_read: bool
-    read_at: Optional[datetime] = None
+    read_at: datetime | None = None
     created_at: datetime
-    data: Optional[Dict] = None
+    data: dict | None = None
 
     @staticmethod
     def resolve_type(obj):

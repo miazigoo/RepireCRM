@@ -1,5 +1,4 @@
 from decimal import Decimal
-from typing import List, Optional
 
 from django.db import transaction
 from django.db.models import F, Prefetch, Q
@@ -75,7 +74,7 @@ def _get_accessible_sale(request, sale_id: int) -> RetailSale:
     return sale
 
 
-@router.get("/items", response=List[InventoryItemSchema])
+@router.get("/items", response=list[InventoryItemSchema])
 @paginate
 def list_inventory_items(
     request, search: str = None, category_id: int = None, shop_id: int = None
@@ -115,7 +114,7 @@ def list_inventory_items(
     return queryset.order_by("category", "name")
 
 
-@router.get("/stock-balances", response=List[StockBalanceSchema])
+@router.get("/stock-balances", response=list[StockBalanceSchema])
 def get_stock_balances(request, shop_id: int = None, low_stock_only: bool = False):
     """Остатки товаров"""
     if not request.auth.has_permission("inventory.view_stock"):
@@ -160,7 +159,7 @@ def create_stock_movement(request, data: dict):
     }
 
 
-@router.get("/purchase-orders", response=List[PurchaseOrderSchema])
+@router.get("/purchase-orders", response=list[PurchaseOrderSchema])
 @paginate
 def list_purchase_orders(request, status: str = None):
     """Заказы поставщикам"""
@@ -264,7 +263,7 @@ def receive_purchase_order(request, order_id: int, data: dict = Body(...)):
     return result
 
 
-@router.get("/suppliers", response=List[SupplierSchema])
+@router.get("/suppliers", response=list[SupplierSchema])
 def list_suppliers(request, active_only: bool = True):
     """Список поставщиков"""
     if not _has_any_permission(
@@ -280,7 +279,7 @@ def list_suppliers(request, active_only: bool = True):
     return queryset.order_by("name")
 
 
-@router.get("/reorder-suggestions", response=List[dict])
+@router.get("/reorder-suggestions", response=list[dict])
 def get_reorder_suggestions(request):
     """Рекомендации для перезаказа товаров"""
     if not request.auth.has_permission("inventory.view_stock"):
@@ -392,8 +391,8 @@ def finalize_retail_sale(request, sale_id: int):
         return {"error": str(e)}
 
 
-@router.get("/items/lookup", response=List[InventoryItemSchema])
-def lookup_items(request, q: Optional[str] = None, limit: int = 20):
+@router.get("/items/lookup", response=list[InventoryItemSchema])
+def lookup_items(request, q: str | None = None, limit: int = 20):
     """
     Поиск товара для селекта: name/sku/barcode.
     """
@@ -423,9 +422,7 @@ def stock_dashboard(request):
 
 # Остатки по SKU/ШК
 @router.get("/stock/item-by-code", response=ItemStockByCodeSchema)
-def stock_item_by_code(
-    request, code: Optional[str] = None, barcode: Optional[str] = None
-):
+def stock_item_by_code(request, code: str | None = None, barcode: str | None = None):
     if not request.auth.has_permission("inventory.view_stock"):
         raise PermissionError("Нет прав для просмотра остатков")
     service = InventoryService()
@@ -443,7 +440,7 @@ def quick_create_item(request, data: QuickCreateItemInputSchema):
         raise PermissionError("Нет прав для создания товаров")
     try:
         service = InventoryService()
-        item = service.quick_create_item(data.dict(), created_by=request.auth)
+        item = service.quick_create_item(data.model_dump(), created_by=request.auth)
         return 201, {
             "id": item.id,
             "name": item.name,
@@ -469,7 +466,7 @@ def update_inventory_item(request, item_id: int, data: UpdateInventoryItemInputS
         id=item_id,
         is_active=True,
     )
-    payload = data.dict(exclude_unset=True)
+    payload = data.model_dump(exclude_unset=True)
 
     if "name" in payload:
         name = (payload.get("name") or "").strip()
@@ -638,7 +635,7 @@ def receive_items_ad_hoc(request, data: AdHocReceiveRequest):
     return service.receive_items_ad_hoc(
         shop=request.current_shop,
         user=request.auth,
-        items=[i.dict() for i in data.items],
+        items=[i.model_dump() for i in data.items],
         common_notes=data.notes or "",
     )
 
@@ -659,12 +656,12 @@ def adjust_items_ad_hoc(request, data: AdHocAdjustmentRequest):
     return service.adjust_items_ad_hoc(
         shop=request.current_shop,
         user=request.auth,
-        items=[i.dict() for i in data.items],
+        items=[i.model_dump() for i in data.items],
         common_notes=data.notes or "",
     )
 
 
-@router.get("/items/{item_id}/barcodes", response=List[ItemBarcodeSchema])
+@router.get("/items/{item_id}/barcodes", response=list[ItemBarcodeSchema])
 def list_item_barcodes(request, item_id: int):
     if not request.auth.has_permission("inventory.view_item"):
         raise PermissionError("Нет прав")

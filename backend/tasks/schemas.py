@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ninja import Schema
 
@@ -11,63 +11,63 @@ class TaskCreateSchema(Schema):
     assignment_type: str  # "individual" | "shop" | "all_shops" | "role"
 
     # Необязательные
-    category_id: Optional[int] = None
-    priority: Optional[str] = "normal"  # "low" | "normal" | "high" | "urgent"
-    kind: Optional[str] = "regular"  # "regular" | "urgent" | "global" | "planned"
-    status: Optional[
-        str
-    ] = "pending"  # "pending" | "in_progress" | "completed" | "cancelled" | "overdue"
-    substatus: Optional[str] = "new"
+    category_id: int | None = None
+    priority: str | None = "normal"  # "low" | "normal" | "high" | "urgent"
+    kind: str | None = "regular"  # "regular" | "urgent" | "global" | "planned"
+    status: str = (
+        "pending"  # "pending" | "in_progress" | "completed" | "cancelled" | "overdue"
+    )
+    substatus: str | None = "new"
 
-    assigned_to_id: Optional[int] = None
-    assigned_shop_id: Optional[int] = None
-    assigned_role_id: Optional[int] = None
+    assigned_to_id: int | None = None
+    assigned_shop_id: int | None = None
+    assigned_role_id: int | None = None
 
-    related_order_id: Optional[int] = None
-    related_customer_id: Optional[int] = None
+    related_order_id: int | None = None
+    related_customer_id: int | None = None
 
-    due_date: Optional[datetime] = None
-    estimated_hours: Optional[float] = None
-    is_paid: Optional[bool] = False
-    payment_amount: Optional[float] = 0
+    due_date: datetime | None = None
+    estimated_hours: float | None = None
+    is_paid: bool | None = False
+    payment_amount: float | None = 0
 
-    attachments: Optional[List[Dict[str, Any]]] = None
+    attachments: list[dict[str, Any]] | None = None
 
     # Повторяющиеся задачи (если нужно)
-    is_recurring: Optional[bool] = False
-    recurrence_pattern: Optional[Dict[str, Any]] = None
+    is_recurring: bool | None = False
+    recurrence_pattern: dict[str, Any] | None = None
 
 
 class TaskUpdateSchema(Schema):
     # Все поля опциональны
-    title: Optional[str] = None
-    description: Optional[str] = None
+    title: str | None = None
+    description: str | None = None
 
-    category_id: Optional[int] = None
-    priority: Optional[str] = None
-    kind: Optional[str] = None
-    status: Optional[str] = None
-    substatus: Optional[str] = None
+    category_id: int | None = None
+    priority: str | None = None
+    kind: str | None = None
+    status: str | None = None
+    substatus: str | None = None
 
-    assignment_type: Optional[str] = None
-    assigned_to_id: Optional[int] = None
-    assigned_shop_id: Optional[int] = None
-    assigned_role_id: Optional[int] = None
+    assignment_type: str | None = None
+    assigned_to_id: int | None = None
+    assigned_shop_id: int | None = None
+    assigned_role_id: int | None = None
 
-    related_order_id: Optional[int] = None
-    related_customer_id: Optional[int] = None
+    related_order_id: int | None = None
+    related_customer_id: int | None = None
 
-    due_date: Optional[datetime] = None
-    estimated_hours: Optional[float] = None
-    actual_hours: Optional[float] = None
-    is_paid: Optional[bool] = None
-    payment_amount: Optional[float] = None
+    due_date: datetime | None = None
+    estimated_hours: float | None = None
+    actual_hours: float | None = None
+    is_paid: bool | None = None
+    payment_amount: float | None = None
 
-    progress_percent: Optional[int] = None
-    attachments: Optional[List[Dict[str, Any]]] = None
+    progress_percent: int | None = None
+    attachments: list[dict[str, Any]] | None = None
 
-    is_recurring: Optional[bool] = None
-    recurrence_pattern: Optional[Dict[str, Any]] = None
+    is_recurring: bool | None = None
+    recurrence_pattern: dict[str, Any] | None = None
 
 
 class TaskSchema(Schema):
@@ -81,37 +81,37 @@ class TaskSchema(Schema):
     substatus: str
     assignment_type: str
 
-    category_id: Optional[int] = None
-    category_name: Optional[str] = None
+    category_id: int | None = None
+    category_name: str | None = None
 
-    assigned_to_id: Optional[int] = None
-    assigned_to_name: Optional[str] = None
-    assigned_to: Optional[str] = None
+    assigned_to_id: int | None = None
+    assigned_to_name: str | None = None
+    assigned_to: str | None = None
 
-    assigned_shop_id: Optional[int] = None
-    assigned_shop_name: Optional[str] = None
-    assigned_shop: Optional[str] = None
+    assigned_shop_id: int | None = None
+    assigned_shop_name: str | None = None
+    assigned_shop: str | None = None
 
-    assigned_role_id: Optional[int] = None
-    assigned_role_name: Optional[str] = None
+    assigned_role_id: int | None = None
+    assigned_role_name: str | None = None
 
-    related_order_id: Optional[int] = None
-    related_customer_id: Optional[int] = None
+    related_order_id: int | None = None
+    related_customer_id: int | None = None
 
-    due_date: Optional[datetime] = None
-    estimated_hours: Optional[float] = None
-    actual_hours: Optional[float] = None
+    due_date: datetime | None = None
+    estimated_hours: float | None = None
+    actual_hours: float | None = None
     is_paid: bool
     payment_amount: float
 
     progress_percent: int
-    attachments: List[dict]
-    created_by: Optional[str] = None
+    attachments: list[dict]
+    created_by: str | None = None
 
     created_at: datetime
     updated_at: datetime
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
     is_overdue: bool
 
