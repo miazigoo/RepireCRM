@@ -104,6 +104,7 @@ class TasksApiTestCase(TestCase):
         self.assertEqual(payload[0]["category"], "Сервис")
 
     def test_create_task_defaults_nullable_attachments_to_list(self):
+        due_date = timezone.now() + timedelta(days=3)
         response = self.client.post(
             "/api/tasks/",
             data=json.dumps(
@@ -116,6 +117,7 @@ class TasksApiTestCase(TestCase):
                     "kind": "regular",
                     "substatus": "new",
                     "status": "pending",
+                    "due_date": due_date.isoformat(),
                     "is_paid": True,
                     "payment_amount": 550,
                     "attachments": None,
@@ -129,6 +131,8 @@ class TasksApiTestCase(TestCase):
         task = Task.objects.get(id=response.json()["id"])
         self.assertEqual(task.attachments, [])
         self.assertEqual(task.payment_amount, 550)
+        self.assertIsNotNone(task.due_date)
+        self.assertEqual(task.due_date.date(), due_date.date())
 
     def test_director_sees_created_task_assigned_outside_current_shop(self):
         second_shop = Shop.objects.create(

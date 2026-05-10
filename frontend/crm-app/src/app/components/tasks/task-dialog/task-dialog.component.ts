@@ -82,7 +82,7 @@ export class TaskDialogComponent {
       kind: [this.data.task?.kind || 'regular', Validators.required],
       substatus: [this.data.task?.substatus || 'new', Validators.required],
       status: [this.data.task?.status || 'pending', Validators.required],
-      due_date: [this.toLocalDateTime(this.data.task?.due_date)],
+      due_date: [this.toLocalDate(this.data.task?.due_date)],
       is_paid: [this.data.task?.is_paid || false],
       payment_amount: [this.data.task?.payment_amount || 0, [Validators.min(0)]],
       progress_percent: [
@@ -101,7 +101,7 @@ export class TaskDialogComponent {
     const value = this.taskForm.getRawValue();
     const payload: TaskPayload & Partial<Task> = {
       ...value,
-      due_date: value.due_date ? new Date(value.due_date).toISOString() : null,
+      due_date: this.toDueDateIso(value.due_date),
       assigned_to_id: value.assignment_type === 'individual' ? value.assigned_to_id : null,
       assigned_shop_id: value.assignment_type === 'shop' ? value.assigned_shop_id : null,
       payment_amount: Number(value.payment_amount || 0),
@@ -114,12 +114,40 @@ export class TaskDialogComponent {
     return [user.last_name, user.first_name].filter(Boolean).join(' ') || user.username;
   }
 
-  private toLocalDateTime(value?: string): string | null {
+  private toLocalDate(value?: string): string | null {
     if (!value) {
       return null;
     }
     const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return null;
+    }
     const offset = date.getTimezoneOffset() * 60000;
-    return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+    return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+  }
+
+  private toDueDateIso(value?: string | null): string | null {
+    const raw = String(value || '').trim();
+    if (!raw) {
+      return null;
+    }
+
+    const dateOnlyMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const dueDate = dateOnlyMatch
+      ? new Date(
+          Number(dateOnlyMatch[1]),
+          Number(dateOnlyMatch[2]) - 1,
+          Number(dateOnlyMatch[3]),
+          23,
+          59,
+          0,
+          0,
+        )
+      : new Date(raw);
+
+    if (Number.isNaN(dueDate.getTime())) {
+      return null;
+    }
+    return dueDate.toISOString();
   }
 }

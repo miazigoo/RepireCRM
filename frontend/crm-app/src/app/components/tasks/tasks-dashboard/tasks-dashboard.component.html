@@ -8,12 +8,21 @@
     </div>
 
     <div class="header-actions">
-      <button mat-raised-button color="primary" type="button" (click)="createTask()">
+      <button
+        mat-raised-button
+        class="task-primary-action"
+        color="primary"
+        type="button"
+        (click)="createTask()">
         <mat-icon>add_task</mat-icon>
         Новая задача
       </button>
 
-      <button mat-button type="button" [matMenuTriggerFor]="templatesMenu">
+      <button
+        mat-button
+        class="task-secondary-action"
+        type="button"
+        [matMenuTriggerFor]="templatesMenu">
         <mat-icon>description</mat-icon>
         Шаблоны
       </button>
