@@ -4,8 +4,8 @@
 
 | Стек | Docker project | Хост-порт | Домен |
 |------|---------------|-----------|-------|
-| Repair CRM | `repaircrm` | `8080` (frontend) | `crm.yourdomain.ru` |
-| Client Portal | `repaircrm-client` | `8081` (frontend) | `portal.yourdomain.ru` |
+| Repair CRM | `repaircrm` | `8080` (frontend) | `b00bs.ru` |
+| Client Portal | `repaircrm-client` | `8081` (frontend) | `repire-status.ru` |
 
 Backend CRM (`8000/tcp`) и backend клиентского портала (`8040/tcp`) не
 проксируются напрямую — все запросы к API идут через контейнерный nginx
@@ -36,7 +36,7 @@ Compose стартует: `backend`, `frontend`, `db` (PostgreSQL 15), `redis`,
 
 ```bash
 DJANGO_SUPERUSER_USERNAME=admin \
-DJANGO_SUPERUSER_EMAIL=admin@crm.yourdomain.ru \
+DJANGO_SUPERUSER_EMAIL=admin@b00bs.ru \
 DJANGO_SUPERUSER_PASSWORD='<strong_password>' \
 docker compose -p repaircrm exec -T backend \
   python manage.py runscript init_superuser
@@ -64,9 +64,9 @@ nginx -t && systemctl reload nginx
 
 Текущий конфиг обслуживает:
 
-- `crm.yourdomain.ru` → `127.0.0.1:8080` (CRM frontend)
-- `portal.yourdomain.ru`, `www.portal.yourdomain.ru` → `127.0.0.1:8081` (Client Portal)
-- `portal.yourdomain.ru`, `portal.yourdomain.ru` → `127.0.0.1:8081` (legacy aliases)
+- `b00bs.ru` → `127.0.0.1:8080` (CRM frontend)
+- `repire-status.ru`, `www.repire-status.ru` → `127.0.0.1:8081` (Client Portal)
+- `client.b00bs.ru`, `portal.b00bs.ru` → `127.0.0.1:8081` (legacy aliases)
 
 ## 4. SSL / Let's Encrypt
 
@@ -81,8 +81,8 @@ apt install -y certbot python3-certbot-nginx
 ```bash
 certbot --nginx \
   --non-interactive --agree-tos \
-  --email admin@crm.yourdomain.ru \
-  -d crm.yourdomain.ru -d www.crm.yourdomain.ru \
+  --email admin@b00bs.ru \
+  -d b00bs.ru -d www.b00bs.ru \
   --redirect
 ```
 
@@ -91,14 +91,14 @@ certbot --nginx \
 ```bash
 certbot --nginx \
   --non-interactive --agree-tos \
-  --email admin@portal.yourdomain.ru \
-  -d portal.yourdomain.ru -d www.portal.yourdomain.ru \
+  --email admin@b00bs.ru \
+  -d repire-status.ru -d www.repire-status.ru \
   --redirect
 ```
 
 > Перед запуском убедиться, что домен резолвится на IP сервера:
 > ```bash
-> dig +short portal.yourdomain.ru   # должен вернуть YOUR_SERVER_IP
+> dig +short repire-status.ru   # должен вернуть 130.49.151.251
 > ```
 
 Certbot автоматически:
@@ -122,14 +122,14 @@ SECURE_SSL_REDIRECT=True
 SECURE_HSTS_SECONDS=31536000
 SESSION_COOKIE_SECURE=True
 CSRF_COOKIE_SECURE=True
-CSRF_TRUSTED_ORIGINS=https://crm.yourdomain.ru,https://www.crm.yourdomain.ru
-CORS_ALLOWED_ORIGINS=https://crm.yourdomain.ru,https://www.crm.yourdomain.ru
+CSRF_TRUSTED_ORIGINS=https://b00bs.ru,https://www.b00bs.ru
+CORS_ALLOWED_ORIGINS=https://b00bs.ru,https://www.b00bs.ru
 ```
 
 В `.env.production` Client Portal:
 
 ```env
-CLIENT_PORTAL_CORS_ORIGINS=https://portal.yourdomain.ru,https://www.portal.yourdomain.ru
+CLIENT_PORTAL_CORS_ORIGINS=https://repire-status.ru,https://www.repire-status.ru
 ```
 
 Перезапустить backend каждого стека:
@@ -237,8 +237,8 @@ docker compose -p repaircrm ps
 docker compose -p repaircrm-client ps
 
 # Health checks
-curl https://crm.yourdomain.ru/api/health
-curl https://portal.yourdomain.ru/api/health
+curl https://b00bs.ru/api/health
+curl https://repire-status.ru/api/health
 
 # Логи
 docker compose -p repaircrm logs -f --tail=100 backend
@@ -270,13 +270,13 @@ systemctl status nginx
 
 ```bash
 # Домен должен резолвиться на IP сервера
-dig +short portal.yourdomain.ru
+dig +short repire-status.ru
 
 # 80 порт должен быть открыт
-curl -I http://portal.yourdomain.ru/
+curl -I http://repire-status.ru/
 
 # Повторный запуск с подробным логом
-certbot --nginx -d portal.yourdomain.ru -d www.portal.yourdomain.ru -v
+certbot --nginx -d repire-status.ru -d www.repire-status.ru -v
 ```
 
 ### Миграции не применились
