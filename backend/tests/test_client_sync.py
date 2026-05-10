@@ -8,6 +8,11 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
+from client_sync.landing_utils import (
+    normalize_feature_cards,
+    normalize_promo_spotlight,
+    serialize_landing_for_portal,
+)
 from client_sync.models import (
     ClientPortalIntegration,
     ClientSyncAction,
@@ -458,3 +463,77 @@ class ClientSyncTestCase(TestCase):
         self.assertEqual(payload["tenant_key"], "test-company")
         self.assertIn("promotions", payload)
         self.assertIn("banner", payload)
+        self.assertIn("landing", payload)
+
+    def test_landing_payload_is_sanitized_for_portal(self):
+        self.integration.landing_section_title = "<script>alert(1)</script>Контроль"
+        self.integration.landing_feature_cards = [
+            {
+                "title": "<b>Статус</b>",
+                "body": "Готово <img src=x onerror=alert(1)>",
+                "icon": "javascript",
+            }
+        ]
+        self.integration.landing_promo_spotlight = {
+            "enabled": True,
+            "title": "<svg onload=alert(1)>Акция</svg>",
+            "body": "Скидка <script>alert(2)</script>",
+            "cta_href": "javascript:alert(3)",
+            "image_url": "data:image/svg+xml;base64,evil",
+        }
+
+        payload = serialize_landing_for_portal(self.integration)
+
+        self.assertEqual(payload["section_title"], "alert(1)Контроль")
+        self.assertEqual(payload["feature_cards"][0]["title"], "Статус")
+        self.assertEqual(payload["feature_cards"][0]["icon"], "status")
+        self.assertNotIn("<", json.dumps(payload))
+        self.assertTrue(payload["promo_spotlight"]["cta_href"].startswith("/"))
+        self.assertIsNone(payload["promo_spotlight"]["image_url"])
+
+    def test_landing_normalizers_limit_and_strip_invalid_items(self):
+        cards = normalize_feature_cards(
+            [
+                {"title": " A ", "body": " B ", "icon": "shield"},
+                {"title": "", "body": "empty"},
+                {"title": "C", "body": "D", "icon": "unknown"},
+            ]
+        )
+        promo = normalize_promo_spotlight(
+            {
+                "enabled": 1,
+                "title": "<b>Promo</b>",
+                "image_url": "https://cdn.test/a.png",
+            }
+        )
+
+        self.assertEqual(
+            cards,
+            [
+                {"title": "A", "body": "B", "icon": "shield"},
+                {"title": "C", "body": "D", "icon": "status"},
+            ],
+        )
+        self.assertTrue(promo["enabled"])
+        self.assertEqual(promo["title"], "Promo")
+        self.assertEqual(promo["image_url"], "https://cdn.test/a.png")
+
+    def test_portal_public_shops_requires_sync_headers(self):
+        response = self.client.get("/api/client-sync/portal-public-shops")
+        self.assertEqual(response.status_code, 401)
+
+    def test_portal_public_shops_returns_org_locations(self):
+        self.shop.city = "Москва"
+        self.shop.address = "ул. Примерная, 10"
+        self.shop.save()
+        response = self.client.get(
+            "/api/client-sync/portal-public-shops",
+            HTTP_X_SYNC_TOKEN="sync-secret",
+            HTTP_X_TENANT_KEY="test-company",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        data = response.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["name"], "Main Shop")
+        self.assertEqual(data[0]["city"], "Москва")
+        self.assertEqual(data[0]["crm_shop_id"], self.shop.id)

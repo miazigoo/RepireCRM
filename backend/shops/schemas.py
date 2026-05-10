@@ -17,6 +17,7 @@ class ShopSchema(Schema):
     id: int
     name: str
     code: str
+    city: str = ""
     address: str | None = None
     phone: str | None = None
     email: str | None = None

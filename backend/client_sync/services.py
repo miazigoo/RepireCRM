@@ -21,6 +21,7 @@ from promotions.models import Promotion
 from shops.models import Organization, Shop
 from tasks.models import Task, TaskCategory
 
+from .landing_utils import serialize_landing_for_portal
 from .models import ClientPortalIntegration, ClientSyncAction, ClientSyncOrderState
 
 SYNC_USER_USERNAME = "client-sync"
@@ -75,6 +76,26 @@ def get_or_create_integration(
         },
     )
     return integration
+
+
+def resolve_portal_integration_by_sync(
+    sync_token: str, tenant_key: str
+) -> ClientPortalIntegration | None:
+    """Интеграция по X-Sync-Token и X-Tenant-Key (вызов клиентского API)."""
+    token = (sync_token or "").strip()
+    tenant = (tenant_key or "").strip()
+    if not token or not tenant:
+        return None
+    qs = ClientPortalIntegration.objects.filter(
+        api_key=token, enabled=True
+    ).select_related("organization")
+    for integration in qs:
+        effective = (integration.tenant_key or "").strip() or (
+            f"org-{integration.organization_id}"
+        )
+        if effective == tenant:
+            return integration
+    return None
 
 
 def organization_shops(organization: Organization):
@@ -556,11 +577,12 @@ def _build_public_locations_payload(integration: ClientPortalIntegration) -> lis
     shops = (
         Shop.objects.filter(settings__organization=org, is_active=True)
         .order_by("name")
-        .only("id", "name", "code", "address", "phone", "email")
+        .only("id", "name", "code", "city", "address", "phone", "email")
     )
     out: list[dict] = []
     for shop in shops:
         addr = (shop.address or "").strip()
+        city_raw = (getattr(shop, "city", None) or "").strip()
         out.append(
             {
                 "crm_shop_id": shop.id,
@@ -569,7 +591,7 @@ def _build_public_locations_payload(integration: ClientPortalIntegration) -> lis
                 "address": addr,
                 "phone": shop.phone or "",
                 "email": shop.email or "",
-                "city": _infer_city_from_address(addr),
+                "city": city_raw or _infer_city_from_address(addr),
             }
         )
     return out
@@ -589,6 +611,7 @@ def push_marketing_snapshot(
     banner = build_marketing_banner_dict(integration)
     field_visit = _build_field_visit_payload(integration)
     locations = _build_public_locations_payload(integration)
+    landing = serialize_landing_for_portal(integration)
     try:
         response = session.post(
             build_sync_url(integration, "/api/sync/marketing/upsert"),
@@ -600,6 +623,7 @@ def push_marketing_snapshot(
                 "banner": banner,
                 "field_visit": field_visit,
                 "locations": locations,
+                "landing": landing,
             },
             timeout=DEFAULT_TIMEOUT_SECONDS,
         )

@@ -6,16 +6,43 @@ from ninja import Router
 from shops.models import ShopSettings
 from shops.subscription_services import ensure_shop_organization
 
+from .landing_utils import (
+    normalize_feature_cards,
+    normalize_promo_spotlight,
+    serialize_landing_for_portal,
+)
 from .models import ClientPortalIntegration, ClientSyncAction, ClientSyncOrderState
 from .schemas import (
+    ClientLandingUpdateSchema,
     ClientPortalIntegrationSchema,
     ClientPortalIntegrationUpdateSchema,
     ClientSyncRunSchema,
     ClientSyncStatusSchema,
 )
-from .services import get_or_create_integration, sync_client_service
+from .services import (
+    _build_public_locations_payload,
+    get_or_create_integration,
+    push_marketing_snapshot,
+    resolve_portal_integration_by_sync,
+    sync_client_service,
+)
 
 router = Router(tags=["Синхронизация клиентского сервиса"])
+
+
+@router.get("/portal-public-shops", response=list, auth=None)
+def portal_public_shops(request):
+    """Точки для лендинга портала (заголовки как у client sync)."""
+    from ninja.errors import HttpError
+
+    token = (request.META.get("HTTP_X_SYNC_TOKEN") or "").strip()
+    tenant = (request.META.get("HTTP_X_TENANT_KEY") or "").strip()
+    if not token or not tenant:
+        raise HttpError(401, "Нужны заголовки X-Sync-Token и X-Tenant-Key")
+    integration = resolve_portal_integration_by_sync(token, tenant)
+    if integration is None:
+        raise HttpError(401, "Некорректный ключ или tenant")
+    return _build_public_locations_payload(integration)
 
 
 def _current_shop(request):
@@ -83,14 +110,15 @@ def _serialize_integration(
         "portal_banner_image_url": integration.portal_banner_image_url or None,
         "portal_banner_link_url": integration.portal_banner_link_url or None,
         "api_key_configured": bool(integration.api_key),
-        "last_push_at": (
-            integration.last_push_at.isoformat() if integration.last_push_at else None
-        ),
-        "last_pull_at": (
-            integration.last_pull_at.isoformat() if integration.last_pull_at else None
-        ),
+        "last_push_at": integration.last_push_at.isoformat()
+        if integration.last_push_at
+        else None,
+        "last_pull_at": integration.last_pull_at.isoformat()
+        if integration.last_pull_at
+        else None,
         "last_error": integration.last_error or None,
         "field_visit": _get_field_visit_config(integration),
+        "landing": serialize_landing_for_portal(integration),
     }
 
 
@@ -118,6 +146,41 @@ def get_client_sync_status(request):
     }
 
 
+@router.get("/landing", response=dict)
+def get_client_landing(request):
+    if not request.auth.has_permission("settings.view_shop"):
+        raise PermissionError("Нет прав для просмотра настроек лендинга")
+    integration = _integration_for_request(request)
+    return serialize_landing_for_portal(integration)
+
+
+@router.patch("/landing", response=dict)
+def patch_client_landing(request, data: ClientLandingUpdateSchema):
+    if not request.auth.has_permission("settings.change_shop"):
+        raise PermissionError("Нет прав для изменения лендинга")
+    integration = _integration_for_request(request)
+    incoming = data.model_dump(exclude_unset=True)
+    if "landing_section_eyebrow" in incoming:
+        integration.landing_section_eyebrow = incoming["landing_section_eyebrow"] or ""
+    if "landing_section_title" in incoming:
+        integration.landing_section_title = incoming["landing_section_title"] or ""
+    if "landing_section_subtitle" in incoming:
+        integration.landing_section_subtitle = (
+            incoming["landing_section_subtitle"] or ""
+        )
+    if "feature_cards" in incoming:
+        integration.landing_feature_cards = normalize_feature_cards(
+            incoming["feature_cards"]
+        )
+    if "promo_spotlight" in incoming:
+        integration.landing_promo_spotlight = normalize_promo_spotlight(
+            incoming["promo_spotlight"]
+        )
+    integration.save()
+    push_marketing_snapshot(integration)
+    return serialize_landing_for_portal(integration)
+
+
 @router.put("/integration", response=ClientPortalIntegrationSchema)
 def update_client_sync_integration(
     request,
@@ -126,7 +189,7 @@ def update_client_sync_integration(
     if not request.auth.has_permission("settings.change_shop"):
         raise PermissionError("Нет прав для изменения клиентского сервиса")
     integration = _integration_for_request(request)
-    incoming = data.dict(exclude_unset=True)
+    incoming = data.model_dump(exclude_unset=True)
     for field, value in incoming.items():
         if value is None:
             value = ""

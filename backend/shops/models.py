@@ -15,6 +15,12 @@ class Shop(models.Model):
         unique=True,
         validators=[RegexValidator(r"^[A-Z0-9]+$", "Только заглавные буквы и цифры")],
     )
+    city = models.CharField(
+        "Город",
+        max_length=100,
+        blank=True,
+        help_text="Для фильтра на лендинге; если пусто — берём из начала адреса",
+    )
     address = models.TextField("Адрес", blank=True)
     phone = models.CharField("Телефон", max_length=20, blank=True)
     email = models.EmailField("Email", blank=True)

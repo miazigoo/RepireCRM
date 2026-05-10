@@ -76,6 +76,13 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       route: '/admin/settings',
       tone: 'settings',
     },
+    {
+      title: 'Лендинг клиентского портала',
+      description: 'Тексты карточек и акцентный баннер на сайте',
+      icon: 'web',
+      route: '/admin/landing',
+      tone: 'settings',
+    },
   ];
 
   constructor(

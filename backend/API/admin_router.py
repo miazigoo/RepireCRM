@@ -55,6 +55,7 @@ class AdminShopSchema(Schema):
     id: int
     name: str
     code: str
+    city: str = ""
     address: str = ""
     phone: str = ""
     email: str = ""
@@ -161,6 +162,7 @@ class PasswordResetSchema(Schema):
 class ShopCreateSchema(Schema):
     name: str
     code: str
+    city: str | None = None
     address: str | None = None
     phone: str | None = None
     email: str | None = None
@@ -172,6 +174,7 @@ class ShopCreateSchema(Schema):
 class ShopUpdateSchema(Schema):
     name: str | None = None
     code: str | None = None
+    city: str | None = None
     address: str | None = None
     phone: str | None = None
     email: str | None = None

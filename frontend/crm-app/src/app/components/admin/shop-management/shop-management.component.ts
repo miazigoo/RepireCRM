@@ -43,6 +43,7 @@ export class ShopManagementComponent implements OnInit {
   displayedColumns: string[] = [
     'name',
     'code',
+    'city',
     'address',
     'phone',
     'email',
@@ -82,6 +83,7 @@ export class ShopManagementComponent implements OnInit {
     this.shopForm = this.fb.group({
       name: ['', [Validators.required, Validators.maxLength(100)]],
       code: ['', [Validators.required, Validators.maxLength(10), Validators.pattern(/^[A-Z0-9]+$/)]],
+      city: ['', Validators.maxLength(100)],
       address: [''],
       phone: ['', Validators.pattern(/^\+?[0-9\s().-]{7,24}$/)],
       email: ['', Validators.email],

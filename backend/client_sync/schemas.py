@@ -1,3 +1,5 @@
+from typing import Optional
+
 from ninja import Schema
 
 
@@ -7,41 +9,43 @@ class ClientPortalIntegrationSchema(Schema):
     organization_name: str
     enabled: bool
     configured: bool
-    base_url: str | None = None
+    base_url: Optional[str] = None
     tenant_key: str
-    client_domain: str | None = None
+    client_domain: Optional[str] = None
     auth_policy: str
-    support_phone: str | None = None
-    support_email: str | None = None
-    brand_name: str | None = None
-    accent_color: str | None = None
+    support_phone: Optional[str] = None
+    support_email: Optional[str] = None
+    brand_name: Optional[str] = None
+    accent_color: Optional[str] = None
     portal_banner_enabled: bool = False
-    portal_banner_title: str | None = None
-    portal_banner_subtitle: str | None = None
-    portal_banner_image_url: str | None = None
-    portal_banner_link_url: str | None = None
+    portal_banner_title: Optional[str] = None
+    portal_banner_subtitle: Optional[str] = None
+    portal_banner_image_url: Optional[str] = None
+    portal_banner_link_url: Optional[str] = None
     api_key_configured: bool
-    last_push_at: str | None = None
-    last_pull_at: str | None = None
-    last_error: str | None = None
+    last_push_at: Optional[str] = None
+    last_pull_at: Optional[str] = None
+    last_error: Optional[str] = None
+    field_visit: Optional[dict] = None
+    landing: Optional[dict] = None
 
 
 class ClientPortalIntegrationUpdateSchema(Schema):
-    enabled: bool | None = None
-    base_url: str | None = None
-    api_key: str | None = None
-    tenant_key: str | None = None
-    client_domain: str | None = None
-    auth_policy: str | None = None
-    support_phone: str | None = None
-    support_email: str | None = None
-    brand_name: str | None = None
-    accent_color: str | None = None
-    portal_banner_enabled: bool | None = None
-    portal_banner_title: str | None = None
-    portal_banner_subtitle: str | None = None
-    portal_banner_image_url: str | None = None
-    portal_banner_link_url: str | None = None
+    enabled: Optional[bool] = None
+    base_url: Optional[str] = None
+    api_key: Optional[str] = None
+    tenant_key: Optional[str] = None
+    client_domain: Optional[str] = None
+    auth_policy: Optional[str] = None
+    support_phone: Optional[str] = None
+    support_email: Optional[str] = None
+    brand_name: Optional[str] = None
+    accent_color: Optional[str] = None
+    portal_banner_enabled: Optional[bool] = None
+    portal_banner_title: Optional[str] = None
+    portal_banner_subtitle: Optional[str] = None
+    portal_banner_image_url: Optional[str] = None
+    portal_banner_link_url: Optional[str] = None
 
 
 class ClientSyncRunSchema(Schema):
@@ -54,3 +58,11 @@ class ClientSyncStatusSchema(Schema):
     integration: ClientPortalIntegrationSchema
     order_states: dict
     actions: dict
+
+
+class ClientLandingUpdateSchema(Schema):
+    landing_section_eyebrow: Optional[str] = None
+    landing_section_title: Optional[str] = None
+    landing_section_subtitle: Optional[str] = None
+    feature_cards: Optional[list[dict]] = None
+    promo_spotlight: Optional[dict] = None

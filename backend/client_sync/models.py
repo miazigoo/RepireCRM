@@ -59,6 +59,31 @@ class ClientPortalIntegration(models.Model):
         "Ссылка при клике на баннер",
         blank=True,
     )
+    # Публичный лендинг клиентского портала (синхронизация в marketing upsert)
+    landing_section_eyebrow = models.CharField(
+        "Лендинг: подзаголовок секции карточек",
+        max_length=120,
+        blank=True,
+    )
+    landing_section_title = models.CharField(
+        "Лендинг: заголовок секции карточек",
+        max_length=200,
+        blank=True,
+    )
+    landing_section_subtitle = models.TextField(
+        "Лендинг: текст под заголовком секции",
+        blank=True,
+    )
+    landing_feature_cards = models.JSONField(
+        "Лендинг: карточки (до 4 шт.)",
+        default=list,
+        blank=True,
+    )
+    landing_promo_spotlight = models.JSONField(
+        "Лендинг: акцентная карточка / призыв",
+        default=dict,
+        blank=True,
+    )
     last_push_at = models.DateTimeField("Последний push заказов", null=True, blank=True)
     last_pull_at = models.DateTimeField(
         "Последний pull действий", null=True, blank=True

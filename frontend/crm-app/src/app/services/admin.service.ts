@@ -54,6 +54,7 @@ export interface UserUpdateRequest {
 export interface ShopCreateRequest {
   name: string;
   code: string;
+  city?: string;
   address?: string;
   phone?: string;
   email?: string;
@@ -84,6 +85,41 @@ export interface ClientPortalIntegration {
   last_push_at?: string | null;
   last_pull_at?: string | null;
   last_error?: string | null;
+  field_visit?: Record<string, unknown> | null;
+  landing?: ClientLandingConfig | null;
+}
+
+export interface ClientLandingCard {
+  title: string;
+  body: string;
+  icon: string;
+}
+
+export interface ClientLandingPromoSpotlight {
+  enabled: boolean;
+  title: string;
+  subtitle: string;
+  body: string;
+  badge: string;
+  cta_label: string;
+  cta_href: string;
+  image_url?: string | null;
+}
+
+export interface ClientLandingConfig {
+  section_eyebrow: string;
+  section_title: string;
+  section_subtitle: string;
+  feature_cards: ClientLandingCard[];
+  promo_spotlight: ClientLandingPromoSpotlight;
+}
+
+export interface ClientLandingPatchRequest {
+  landing_section_eyebrow?: string;
+  landing_section_title?: string;
+  landing_section_subtitle?: string;
+  feature_cards?: ClientLandingCard[];
+  promo_spotlight?: Partial<ClientLandingPromoSpotlight>;
 }
 
 export type ClientPortalIntegrationUpdate = Partial<
@@ -284,5 +320,13 @@ export class AdminService {
 
   getClientSyncActions(limit = 20): Observable<ClientSyncAction[]> {
     return this.apiService.get<ClientSyncAction[]>('/client-sync/actions', { limit });
+  }
+
+  getClientLanding(): Observable<ClientLandingConfig> {
+    return this.apiService.get<ClientLandingConfig>('/client-sync/landing');
+  }
+
+  patchClientLanding(data: ClientLandingPatchRequest): Observable<ClientLandingConfig> {
+    return this.apiService.patch<ClientLandingConfig>('/client-sync/landing', data);
   }
 }

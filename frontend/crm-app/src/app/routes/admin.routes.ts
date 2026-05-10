@@ -32,5 +32,9 @@ export const ADMIN_ROUTES: Routes = [
   {
     path: 'field-visit',
     loadComponent: () => import('../components/admin/field-visit-settings/field-visit-settings.component').then(m => m.FieldVisitSettingsComponent)
+  },
+  {
+    path: 'landing',
+    loadComponent: () => import('../components/admin/landing-settings/landing-settings.component').then(m => m.LandingSettingsComponent)
   }
 ];

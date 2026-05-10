@@ -26,6 +26,7 @@ export interface Shop {
   id: number;
   name: string;
   code: string;
+  city?: string;
   address?: string;
   phone?: string;
   email?: string;
@@ -60,6 +61,7 @@ export interface SubscriptionStatus {
 export interface ShopCreateRequest {
   name: string;
   code: string;
+  city?: string;
   address?: string;
   phone?: string;
   email?: string;
