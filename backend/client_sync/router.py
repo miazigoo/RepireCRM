@@ -8,6 +8,7 @@ from shops.subscription_services import ensure_shop_organization
 
 from .landing_utils import (
     normalize_feature_cards,
+    normalize_landing_text,
     normalize_promo_spotlight,
     serialize_landing_for_portal,
 )
@@ -161,12 +162,16 @@ def patch_client_landing(request, data: ClientLandingUpdateSchema):
     integration = _integration_for_request(request)
     incoming = data.model_dump(exclude_unset=True)
     if "landing_section_eyebrow" in incoming:
-        integration.landing_section_eyebrow = incoming["landing_section_eyebrow"] or ""
+        integration.landing_section_eyebrow = normalize_landing_text(
+            incoming["landing_section_eyebrow"], 120
+        )
     if "landing_section_title" in incoming:
-        integration.landing_section_title = incoming["landing_section_title"] or ""
+        integration.landing_section_title = normalize_landing_text(
+            incoming["landing_section_title"], 200
+        )
     if "landing_section_subtitle" in incoming:
-        integration.landing_section_subtitle = (
-            incoming["landing_section_subtitle"] or ""
+        integration.landing_section_subtitle = normalize_landing_text(
+            incoming["landing_section_subtitle"], 4000
         )
     if "feature_cards" in incoming:
         integration.landing_feature_cards = normalize_feature_cards(
