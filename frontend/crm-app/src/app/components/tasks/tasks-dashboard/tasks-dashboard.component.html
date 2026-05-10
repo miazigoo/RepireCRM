@@ -42,7 +42,10 @@
         <mat-card-content>
           <div class="summary-content">
             <div class="summary-icon">
-              <mat-icon>assignment</mat-icon>
+              <ng-container
+                [ngTemplateOutlet]="summaryIconTpl"
+                [ngTemplateOutletContext]="{ icon: 'total' }">
+              </ng-container>
             </div>
             <div class="summary-info">
               <h3>{{ tasksSummary.total_tasks }}</h3>
@@ -56,12 +59,10 @@
         <mat-card-content>
           <div class="summary-content">
             <div class="summary-icon">
-              <mat-icon [matBadge]="tasksSummary.overdue_tasks"
-                       matBadgeColor="warn"
-                       [matBadgeHidden]="tasksSummary.overdue_tasks === 0"
-                       aria-hidden="false">
-                schedule
-              </mat-icon>
+              <ng-container
+                [ngTemplateOutlet]="summaryIconTpl"
+                [ngTemplateOutletContext]="{ icon: 'overdue' }">
+              </ng-container>
             </div>
             <div class="summary-info">
               <h3>{{ tasksSummary.overdue_tasks }}</h3>
@@ -75,7 +76,10 @@
         <mat-card-content>
           <div class="summary-content">
             <div class="summary-icon">
-              <mat-icon>today</mat-icon>
+              <ng-container
+                [ngTemplateOutlet]="summaryIconTpl"
+                [ngTemplateOutletContext]="{ icon: 'today' }">
+              </ng-container>
             </div>
             <div class="summary-info">
               <h3>{{ tasksSummary.due_today }}</h3>
@@ -89,7 +93,10 @@
         <mat-card-content>
           <div class="summary-content">
             <div class="summary-icon">
-              <mat-icon>payments</mat-icon>
+              <ng-container
+                [ngTemplateOutlet]="summaryIconTpl"
+                [ngTemplateOutletContext]="{ icon: 'paid' }">
+              </ng-container>
             </div>
             <div class="summary-info">
               <h3>{{ formatMoney(tasksSummary.paid_tasks_amount || 0) }}</h3>
@@ -343,3 +350,34 @@
     </mat-card-content>
   </mat-card>
 </div>
+
+<ng-template #summaryIconTpl let-icon="icon">
+  <svg *ngIf="icon === 'total'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M7 5.5h10a2 2 0 0 1 2 2V19H5V7.5a2 2 0 0 1 2-2Z"></path>
+    <path d="M8.5 10h7"></path>
+    <path d="M8.5 14h5"></path>
+    <path d="M9 5.5V4h6v1.5"></path>
+  </svg>
+
+  <svg *ngIf="icon === 'overdue'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <circle cx="12" cy="12" r="8"></circle>
+    <path d="M12 7.5V12l3 2"></path>
+    <path d="M7 4.5 5 6.5"></path>
+    <path d="m17 4.5 2 2"></path>
+  </svg>
+
+  <svg *ngIf="icon === 'today'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <rect x="5" y="5.5" width="14" height="14" rx="2"></rect>
+    <path d="M8 4v3"></path>
+    <path d="M16 4v3"></path>
+    <path d="M5 10h14"></path>
+    <path d="m9 14 2 2 4-4"></path>
+  </svg>
+
+  <svg *ngIf="icon === 'paid'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <rect x="4.5" y="6" width="15" height="12" rx="2"></rect>
+    <path d="M4.5 10h15"></path>
+    <path d="M8 15h4"></path>
+    <path d="M15.5 14.5h.1"></path>
+  </svg>
+</ng-template>

@@ -68,8 +68,8 @@ type TaskListResponse = Task[] | { items: Task[]; count?: number };
 export class TasksService {
   constructor(private apiService: ApiService) {}
 
-  getMyTasksSummary(): Observable<TasksSummary> {
-    return this.apiService.get<TasksSummary>('/tasks/my-tasks-summary').pipe(
+  getMyTasksSummary(filters?: Record<string, unknown>): Observable<TasksSummary> {
+    return this.apiService.get<TasksSummary>('/tasks/my-tasks-summary', filters).pipe(
       catchError(() => of({
         total_tasks: 0,
         status_breakdown: {},

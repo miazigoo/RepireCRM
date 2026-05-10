@@ -73,6 +73,16 @@
   color: var(--color-primary);
 }
 
+.summary-icon svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .overdue-card .summary-icon {
   background: color-mix(in srgb, var(--color-danger) 13%, transparent);
   color: var(--color-danger);

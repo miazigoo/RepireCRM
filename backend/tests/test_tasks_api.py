@@ -129,3 +129,71 @@ class TasksApiTestCase(TestCase):
         task = Task.objects.get(id=response.json()["id"])
         self.assertEqual(task.attachments, [])
         self.assertEqual(task.payment_amount, 550)
+
+    def test_director_sees_created_task_assigned_outside_current_shop(self):
+        second_shop = Shop.objects.create(
+            name="Second Shop",
+            code="TEST02",
+            timezone="Europe/Moscow",
+            currency="RUB",
+        )
+        assignee = User.objects.create_user(
+            username="second-shop-worker",
+            password="pass12345",
+            first_name="Second",
+            last_name="Worker",
+            role=self.role,
+            current_shop=second_shop,
+        )
+        assignee.shops.add(second_shop)
+        task = Task.objects.create(
+            title="Проверить задачу директора",
+            description="Должна быть видна автору",
+            assignment_type=Task.AssignmentType.INDIVIDUAL,
+            assigned_to=assignee,
+            created_by=self.user,
+        )
+
+        response = self.client.get(
+            "/api/tasks/?all_shops=true",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        payload = response.json()
+        items = payload["items"] if isinstance(payload, dict) else payload
+        self.assertIn(task.id, {item["id"] for item in items})
+
+    def test_task_summary_uses_director_visible_scope_not_only_my_tasks(self):
+        second_shop = Shop.objects.create(
+            name="Second Shop",
+            code="TEST02",
+            timezone="Europe/Moscow",
+            currency="RUB",
+        )
+        assignee = User.objects.create_user(
+            username="summary-worker",
+            password="pass12345",
+            first_name="Summary",
+            last_name="Worker",
+            role=self.role,
+            current_shop=second_shop,
+        )
+        assignee.shops.add(second_shop)
+        Task.objects.create(
+            title="Контрольная задача директора",
+            description="Не назначена директору лично",
+            assignment_type=Task.AssignmentType.INDIVIDUAL,
+            assigned_to=assignee,
+            created_by=self.user,
+        )
+
+        response = self.client.get(
+            "/api/tasks/my-tasks-summary?all_shops=true",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        payload = response.json()
+        self.assertEqual(payload["total_tasks"], 1)
+        self.assertEqual(payload["status_breakdown"][Task.Status.PENDING], 1)

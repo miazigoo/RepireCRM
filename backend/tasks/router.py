@@ -25,14 +25,43 @@ def _current_task_shops(request):
     return request.auth.get_available_shops()
 
 
-def _task_shop_scope_query(request):
-    shops = _current_task_shops(request)
+def _can_view_all_tasks(user):
+    return user.is_director or user.has_permission("tasks.view_all_tasks")
+
+
+def _task_shops_for_scope(request, all_shops: bool = False):
+    if all_shops:
+        if not _can_view_all_tasks(request.auth):
+            raise PermissionError("Нет прав смотреть задачи всех филиалов")
+        return request.auth.get_available_shops()
+    return _current_task_shops(request)
+
+
+def _assigned_to_me_query(request, all_shops: bool = False):
+    user_shops = _task_shops_for_scope(request, all_shops=all_shops)
     return (
+        Q(assigned_to=request.auth)
+        | Q(assignment_type=Task.AssignmentType.SHOP, assigned_shop__in=user_shops)
+        | Q(assignment_type=Task.AssignmentType.ALL_SHOPS)
+        | Q(assignment_type=Task.AssignmentType.ROLE, assigned_role=request.auth.role)
+    )
+
+
+def _task_shop_scope_query(
+    request,
+    all_shops: bool = False,
+    include_created: bool = False,
+):
+    shops = _task_shops_for_scope(request, all_shops=all_shops)
+    scope = (
         Q(assignment_type=Task.AssignmentType.SHOP, assigned_shop__in=shops)
         | Q(assignment_type=Task.AssignmentType.ALL_SHOPS)
         | Q(assigned_to__shops__in=shops)
         | Q(assignment_type=Task.AssignmentType.ROLE, assigned_role=request.auth.role)
     )
+    if include_created:
+        scope |= Q(created_by=request.auth)
+    return scope
 
 
 def _can_manage_paid_tasks(user):
@@ -97,48 +126,23 @@ def list_tasks(
         "category", "assigned_to", "assigned_shop", "assigned_role", "created_by"
     ).prefetch_related("comments")
 
-    if all_shops and not (
-        request.auth.is_director or request.auth.has_permission("tasks.view_all_tasks")
-    ):
+    if all_shops and not _can_view_all_tasks(request.auth):
         raise PermissionError("Нет прав смотреть задачи всех филиалов")
 
     if assigned_to_me:
-        # Задачи, назначенные текущему пользователю
-        user_tasks = Q(assigned_to=request.auth)
+        queryset = queryset.filter(_assigned_to_me_query(request, all_shops=all_shops))
 
-        # Задачи магазинов пользователя
-        user_shops = _current_task_shops(request)
-        shop_tasks = Q(assignment_type="shop", assigned_shop__in=user_shops)
-
-        # Задачи для всех
-        all_tasks = Q(assignment_type="all_shops")
-
-        # Задачи по роли
-        role_tasks = Q(assignment_type="role", assigned_role=request.auth.role)
-
-        queryset = queryset.filter(user_tasks | shop_tasks | all_tasks | role_tasks)
-
-    elif all_shops and (
-        request.auth.is_director or request.auth.has_permission("tasks.view_all_tasks")
-    ):
-        pass
-
-    elif not (
-        request.auth.is_director or request.auth.has_permission("tasks.view_all_tasks")
-    ):
-        # Ограничиваем видимость для обычных пользователей
-        available_shops = _current_task_shops(request)
+    elif all_shops and _can_view_all_tasks(request.auth):
         queryset = queryset.filter(
-            Q(created_by=request.auth)
-            | Q(assigned_to=request.auth)  # Созданные пользователем
-            | Q(  # Назначенные пользователю
-                assignment_type="shop", assigned_shop__in=available_shops
+            _task_shop_scope_query(
+                request,
+                all_shops=True,
+                include_created=True,
             )
-            | Q(assignment_type="all_shops")  # Задачи магазинов
-            | Q(  # Общие задачи
-                assignment_type="role", assigned_role=request.auth.role
-            )  # Задачи роли
         )
+
+    elif not _can_view_all_tasks(request.auth):
+        queryset = queryset.filter(_task_shop_scope_query(request))
     else:
         queryset = queryset.filter(_task_shop_scope_query(request)).distinct()
 
@@ -156,7 +160,7 @@ def list_tasks(
     if created_by_me:
         queryset = queryset.filter(created_by=request.auth)
 
-    return queryset.order_by("-created_at")
+    return queryset.distinct().order_by("-created_at")
 
 
 @router.post("/", response={201: TaskSchema, 400: dict})
@@ -194,46 +198,81 @@ def create_task(request, data: TaskCreateSchema):
 
 
 @router.get("/my-tasks-summary", response=dict)
-def get_my_tasks_summary(request):
-    """Сводка по задачам пользователя"""
+def get_my_tasks_summary(
+    request,
+    status: str = None,
+    priority: str = None,
+    search: str = None,
+    assigned_to_me: bool = False,
+    created_by_me: bool = False,
+    all_shops: bool = False,
+):
+    """Сводка по задачам в той же области видимости, что и список задач."""
     if not request.auth.has_permission("tasks.view_task"):
         raise PermissionError("Нет прав для просмотра задач")
 
-    # Задачи, назначенные пользователю
-    user_tasks = Q(assigned_to=request.auth)
-    user_shops = _current_task_shops(request)
-    shop_tasks = Q(assignment_type="shop", assigned_shop__in=user_shops)
-    all_tasks = Q(assignment_type="all_shops")
-    role_tasks = Q(assignment_type="role", assigned_role=request.auth.role)
+    if all_shops and not _can_view_all_tasks(request.auth):
+        raise PermissionError("Нет прав смотреть задачи всех филиалов")
 
-    my_tasks = Task.objects.filter(user_tasks | shop_tasks | all_tasks | role_tasks)
+    tasks = Task.objects.all()
+
+    if assigned_to_me:
+        tasks = tasks.filter(_assigned_to_me_query(request, all_shops=all_shops))
+    elif all_shops and _can_view_all_tasks(request.auth):
+        tasks = tasks.filter(
+            _task_shop_scope_query(
+                request,
+                all_shops=True,
+                include_created=True,
+            )
+        )
+    elif not _can_view_all_tasks(request.auth):
+        tasks = tasks.filter(_task_shop_scope_query(request))
+    else:
+        tasks = tasks.filter(_task_shop_scope_query(request))
+
+    if status:
+        tasks = tasks.filter(status=status)
+
+    if priority:
+        tasks = tasks.filter(priority=priority)
+
+    if search:
+        tasks = tasks.filter(
+            Q(title__icontains=search) | Q(description__icontains=search)
+        )
+
+    if created_by_me:
+        tasks = tasks.filter(created_by=request.auth)
+
+    tasks = tasks.distinct()
 
     # Статистика по статусам
-    status_stats = my_tasks.values("status").annotate(count=Count("id"))
+    status_stats = tasks.values("status").annotate(count=Count("id"))
 
     # Просроченные задачи
-    overdue_tasks = my_tasks.filter(
+    overdue_tasks = tasks.filter(
         due_date__lt=timezone.now(),
         status__in=[Task.Status.PENDING, Task.Status.IN_PROGRESS],
     ).count()
 
     # Задачи на сегодня
     today = timezone.now().date()
-    today_tasks = my_tasks.filter(
+    today_tasks = tasks.filter(
         due_date__date=today, status__in=[Task.Status.PENDING, Task.Status.IN_PROGRESS]
     ).count()
 
     return {
-        "total_tasks": my_tasks.count(),
+        "total_tasks": tasks.count(),
         "status_breakdown": {item["status"]: item["count"] for item in status_stats},
         "overdue_tasks": overdue_tasks,
         "due_today": today_tasks,
-        "completed_this_month": my_tasks.filter(
+        "completed_this_month": tasks.filter(
             status=Task.Status.COMPLETED,
             completed_at__date__gte=today.replace(day=1),
         ).count(),
         "paid_tasks_amount": float(
-            my_tasks.filter(
+            tasks.filter(
                 status=Task.Status.COMPLETED,
                 is_paid=True,
                 completed_at__date__gte=today.replace(day=1),
@@ -241,7 +280,7 @@ def get_my_tasks_summary(request):
             or 0
         ),
         "priority_breakdown": dict(
-            my_tasks.values("priority")
+            tasks.values("priority")
             .annotate(count=Count("id"))
             .values_list("priority", "count")
         ),

@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -20,6 +20,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import { TasksService, Task, TaskPayload, TaskTemplate } from '../../../services/tasks.service';
 import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl';
 import { AdminService } from '../../../services/admin.service';
@@ -67,7 +68,7 @@ interface TasksSummary {
   styleUrl: './tasks-dashboard.component.scss',
   providers: [{ provide: MatPaginatorIntl, useClass: RussianPaginatorIntl }]
 })
-export class TasksDashboardComponent implements OnInit {
+export class TasksDashboardComponent implements OnInit, OnDestroy {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
@@ -89,6 +90,8 @@ export class TasksDashboardComponent implements OnInit {
   templates: TaskTemplate[] = [];
 
   selectedTab = 0; // 0 - Все задачи, 1 - Мои задачи, 2 - Созданные мной
+  private canViewAllTasks = false;
+  private userSubscription?: Subscription;
 
   constructor(
     private fb: FormBuilder,
@@ -107,6 +110,15 @@ export class TasksDashboardComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.canViewAllTasks = this.userCanViewAllTasks(this.authService.currentUser);
+    this.userSubscription = this.authService.currentUser$.subscribe(user => {
+      const nextCanViewAll = this.userCanViewAllTasks(user);
+      if (nextCanViewAll !== this.canViewAllTasks) {
+        this.canViewAllTasks = nextCanViewAll;
+        this.loadTasksSummary();
+        this.loadTasks();
+      }
+    });
     this.loadTasksSummary();
     this.loadTasks();
     this.loadAssignees();
@@ -119,14 +131,19 @@ export class TasksDashboardComponent implements OnInit {
     this.dataSource.sort = this.sort;
   }
 
+  ngOnDestroy(): void {
+    this.userSubscription?.unsubscribe();
+  }
+
   private setupFilters(): void {
     this.filtersForm.valueChanges.subscribe(() => {
+      this.loadTasksSummary();
       this.loadTasks();
     });
   }
 
   private loadTasksSummary(): void {
-    this.tasksService.getMyTasksSummary().subscribe({
+    this.tasksService.getMyTasksSummary(this.buildTaskFilters()).subscribe({
       next: (summary) => {
         this.tasksSummary = summary;
       },
@@ -139,17 +156,7 @@ export class TasksDashboardComponent implements OnInit {
   private loadTasks(): void {
     this.loading = true;
 
-    const filters = { ...this.filtersForm.value };
-
-    // Устанавливаем фильтр в зависимости от выбранной вкладки
-    switch (this.selectedTab) {
-      case 1: // Мои задачи
-        filters.assigned_to_me = true;
-        break;
-      case 2: // Созданные мной
-        filters.created_by_me = true;
-        break;
-    }
+    const filters = this.buildTaskFilters();
 
     this.tasksService.getTasks(filters).subscribe({
       next: (tasks) => {
@@ -165,7 +172,33 @@ export class TasksDashboardComponent implements OnInit {
 
   onTabChanged(index: number): void {
     this.selectedTab = index;
+    this.loadTasksSummary();
     this.loadTasks();
+  }
+
+  private buildTaskFilters(): Record<string, unknown> {
+    const filters: Record<string, unknown> = { ...this.filtersForm.value };
+    delete filters['assigned_to_me'];
+    delete filters['created_by_me'];
+
+    if (this.canViewAllTasks && this.selectedTab !== 1) {
+      filters['all_shops'] = true;
+    }
+
+    if (this.selectedTab === 1) {
+      filters['assigned_to_me'] = true;
+    } else if (this.selectedTab === 2) {
+      filters['created_by_me'] = true;
+    }
+
+    return filters;
+  }
+
+  private userCanViewAllTasks(user: User | null): boolean {
+    return Boolean(
+      user?.is_director ||
+      user?.role?.permission_codes?.includes('tasks.view_all_tasks')
+    );
   }
 
   getStatusClass(status: string): string {
