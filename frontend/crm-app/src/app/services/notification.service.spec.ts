@@ -60,7 +60,7 @@ describe('NotificationService', () => {
     service.unreadCount$.subscribe(count => unreadCount = count);
     service.notifications$.subscribe(items => currentNotifications = items);
 
-    expect(apiService.get).toHaveBeenCalledWith('/notifications/', { limit: 20 });
+    expect(apiService.get).toHaveBeenCalledWith('/notifications/', { limit: 20, unread_only: false });
     expect(currentNotifications.length).toBe(2);
     expect(unreadCount).toBe(1);
   });
@@ -75,7 +75,9 @@ describe('NotificationService', () => {
 
     expect(apiService.post).toHaveBeenCalledOnceWith('/notifications/1/mark-read', {});
     expect(unreadCount).toBe(0);
-    expect(currentNotifications.map(item => item.id)).toEqual([2]);
+    expect(currentNotifications.map(item => item.id)).toEqual([1, 2]);
+    expect(currentNotifications[0].is_read).toBeTrue();
+    expect(currentNotifications[0].read_at).toBeTruthy();
   });
 
   it('marks all notifications as read through backend and local state', () => {
@@ -88,6 +90,7 @@ describe('NotificationService', () => {
 
     expect(apiService.post).toHaveBeenCalledOnceWith('/notifications/mark-all-read', {});
     expect(unreadCount).toBe(0);
-    expect(currentNotifications).toEqual([]);
+    expect(currentNotifications.length).toBe(2);
+    expect(currentNotifications.every(notification => notification.is_read)).toBeTrue();
   });
 });

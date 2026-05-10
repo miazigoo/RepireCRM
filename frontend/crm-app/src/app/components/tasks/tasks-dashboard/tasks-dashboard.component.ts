@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -20,7 +20,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
+import { combineLatest, Subscription } from 'rxjs';
 import { TasksService, Task, TaskPayload, TaskTemplate } from '../../../services/tasks.service';
 import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl';
 import { AdminService } from '../../../services/admin.service';
@@ -92,12 +92,16 @@ export class TasksDashboardComponent implements OnInit, OnDestroy {
   selectedTab = 0; // 0 - Все задачи, 1 - Мои задачи, 2 - Созданные мной
   private canViewAllTasks = false;
   private userSubscription?: Subscription;
+  private routeSubscription?: Subscription;
+  private pendingRouteTaskId: number | null = null;
+  private openedRouteTaskId: number | null = null;
 
   constructor(
     private fb: FormBuilder,
     private tasksService: TasksService,
     private adminService: AdminService,
     private authService: AuthService,
+    private route: ActivatedRoute,
     private dialog: MatDialog,
     private snackBar: MatSnackBar
   ) {
@@ -124,6 +128,7 @@ export class TasksDashboardComponent implements OnInit, OnDestroy {
     this.loadAssignees();
     this.loadTemplates();
     this.setupFilters();
+    this.watchRouteTask();
   }
 
   ngAfterViewInit(): void {
@@ -133,6 +138,7 @@ export class TasksDashboardComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.userSubscription?.unsubscribe();
+    this.routeSubscription?.unsubscribe();
   }
 
   private setupFilters(): void {
@@ -162,6 +168,7 @@ export class TasksDashboardComponent implements OnInit, OnDestroy {
       next: (tasks) => {
         this.dataSource.data = tasks;
         this.loading = false;
+        this.openRouteTaskIfNeeded();
       },
       error: (error) => {
         this.showError(error, 'Не удалось загрузить задачи');
@@ -467,5 +474,35 @@ export class TasksDashboardComponent implements OnInit, OnDestroy {
 
   private cleanTemplateText(value: string): string {
     return value.replace(/\{[^}]+\}/g, '').replace(/\s+/g, ' ').trim();
+  }
+
+  private watchRouteTask(): void {
+    this.routeSubscription = combineLatest([
+      this.route.paramMap,
+      this.route.queryParamMap,
+    ]).subscribe(([params, query]) => {
+      const rawTaskId = params.get('taskId') || query.get('task_id') || query.get('taskId');
+      const taskId = rawTaskId ? Number(rawTaskId) : NaN;
+
+      this.pendingRouteTaskId = Number.isInteger(taskId) && taskId > 0 ? taskId : null;
+      if (this.pendingRouteTaskId !== this.openedRouteTaskId) {
+        this.openedRouteTaskId = null;
+      }
+      this.openRouteTaskIfNeeded();
+    });
+  }
+
+  private openRouteTaskIfNeeded(): void {
+    if (!this.pendingRouteTaskId || this.openedRouteTaskId === this.pendingRouteTaskId || this.loading) {
+      return;
+    }
+
+    const task = this.dataSource.data.find(item => item.id === this.pendingRouteTaskId);
+    if (!task) {
+      return;
+    }
+
+    this.openedRouteTaskId = task.id;
+    this.viewTask(task);
   }
 }

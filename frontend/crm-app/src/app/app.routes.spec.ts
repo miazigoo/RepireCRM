@@ -14,6 +14,8 @@ describe('app routes', () => {
     expect(childPath('inventory')).toBeTruthy();
     expect(childPath('notifications')).toBeTruthy();
     expect(childPath('reports')).toBeTruthy();
+    expect(childPath('tasks')).toBeTruthy();
+    expect(childPath('tasks/:taskId')).toBeTruthy();
     expect(childPath('admin')).toBeTruthy();
     expect(childPath('profile')).toBeTruthy();
   });

@@ -46,7 +46,7 @@ export class NotificationService {
       return;
     }
 
-    this.apiService.get<Notification[]>('/notifications/', { limit: 20 }).pipe(
+    this.apiService.get<Notification[]>('/notifications/', { limit: 20, unread_only: false }).pipe(
       catchError(() => {
         this.connectionStatusSubject.next(false);
         return of([]);
@@ -186,10 +186,11 @@ export class NotificationService {
       notification_id: notificationId
     });
 
-    // Update local state
     const currentNotifications = this.notificationsSubject.value;
-    const updatedNotifications = currentNotifications.filter(
-      notification => notification.id !== notificationId
+    const updatedNotifications = currentNotifications.map(
+      notification => notification.id === notificationId
+        ? { ...notification, is_read: true, read_at: notification.read_at || new Date().toISOString() }
+        : notification
     );
     this.syncNotifications(updatedNotifications);
 
@@ -201,8 +202,12 @@ export class NotificationService {
   public markAllAsRead(): void {
     this.sendMessage({ action: 'mark_all_as_read' });
 
-    // Update local state
-    this.syncNotifications([]);
+    const updatedNotifications = this.notificationsSubject.value.map(notification => ({
+      ...notification,
+      is_read: true,
+      read_at: notification.read_at || new Date().toISOString()
+    }));
+    this.syncNotifications(updatedNotifications);
 
     this.apiService.post('/notifications/mark-all-read', {}).subscribe({
       error: () => this.refresh()
