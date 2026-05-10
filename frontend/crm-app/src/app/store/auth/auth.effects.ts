@@ -1,19 +1,84 @@
 import { Injectable, inject } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { of } from 'rxjs';
+import { TimeoutError, of, timeout } from 'rxjs';
 import { map, mergeMap, catchError, tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import * as AuthActions from './auth.actions';
 
-function extractErrorMessage(error: any, fallback: string) {
-  // Типичные поля ошибок у Django/DRF: error.detail, error.error, message
-  return (
-    error?.error?.detail ||
-    error?.error?.error ||
-    error?.message ||
-    fallback
-  );
+const AUTH_REQUEST_TIMEOUT_MS = 10000;
+
+function readBackendMessage(payload: unknown): string | null {
+  if (!payload) {
+    return null;
+  }
+
+  if (typeof payload === 'string') {
+    const message = payload.trim();
+    return message && !message.startsWith('<') ? message : null;
+  }
+
+  if (typeof payload !== 'object') {
+    return null;
+  }
+
+  const data = payload as Record<string, unknown>;
+  const candidates = [
+    data['detail'],
+    data['error'],
+    data['message'],
+    data['non_field_errors']
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+
+    if (Array.isArray(candidate) && candidate.length) {
+      return candidate.filter(item => typeof item === 'string').join(' ').trim() || null;
+    }
+  }
+
+  return null;
+}
+
+function extractErrorMessage(error: unknown, fallback: string): string {
+  if (
+    error instanceof TimeoutError ||
+    (error as { name?: string })?.name === 'TimeoutError'
+  ) {
+    return 'Сервер не ответил за 10 секунд. Проверьте, что backend запущен и доступен.';
+  }
+
+  if (error instanceof HttpErrorResponse) {
+    const backendMessage = readBackendMessage(error.error);
+
+    if (error.status === 0) {
+      return 'Сервер недоступен. Проверьте, что backend запущен и API доступен.';
+    }
+
+    if (error.status === 401) {
+      return backendMessage || 'Неверный логин или пароль.';
+    }
+
+    if (error.status === 403) {
+      return backendMessage || 'У пользователя нет доступа к CRM.';
+    }
+
+    if (error.status === 404 && error.url?.includes('/api/auth/login')) {
+      return 'API входа не найден. Проверьте адрес backend и proxy-настройки.';
+    }
+
+    if (error.status >= 500) {
+      return backendMessage || 'Сервер временно недоступен. Попробуйте еще раз позже.';
+    }
+
+    return backendMessage || fallback;
+  }
+
+  return readBackendMessage(error) || fallback;
 }
 
 @Injectable()
@@ -27,6 +92,7 @@ export class AuthEffects {
       ofType(AuthActions.login),
       mergeMap(({ credentials }) =>
         this.authService.login(credentials).pipe(
+          timeout({ first: AUTH_REQUEST_TIMEOUT_MS }),
           map(response =>
             AuthActions.loginSuccess({
               user: response.user,
@@ -59,6 +125,7 @@ export class AuthEffects {
       ofType(AuthActions.getCurrentUser),
       mergeMap(() =>
         this.authService.getCurrentUser().pipe(
+          timeout({ first: AUTH_REQUEST_TIMEOUT_MS }),
           map(user => AuthActions.getCurrentUserSuccess({ user })),
           // При 401/ошибке — выходим из сессии
           catchError(() => of(AuthActions.logout()))
@@ -84,6 +151,7 @@ export class AuthEffects {
       ofType(AuthActions.switchShop),
       mergeMap(({ shopId }) =>
         this.authService.switchShop(shopId).pipe(
+          timeout({ first: AUTH_REQUEST_TIMEOUT_MS }),
           map(user =>
             AuthActions.switchShopSuccess({
               user,

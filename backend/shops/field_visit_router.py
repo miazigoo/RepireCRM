@@ -3,11 +3,10 @@ from decimal import Decimal
 from django.shortcuts import get_object_or_404
 from ninja import Router, Schema
 
-from core.api_app import AuthBearer
 from shops.models import Shop, ShopSettings
 from users.models import User
 
-router = Router(tags=["Выезд мастера"], auth=AuthBearer())
+router = Router(tags=["Выезд мастера"])
 
 
 class FieldVisitZoneSchema(Schema):
