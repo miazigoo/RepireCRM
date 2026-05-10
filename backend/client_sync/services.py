@@ -533,6 +533,48 @@ def _build_field_visit_payload(integration: ClientPortalIntegration) -> dict | N
     }
 
 
+def _infer_city_from_address(address: str) -> str:
+    if not address or not str(address).strip():
+        return ""
+    parts = [p.strip() for p in str(address).split(",") if p.strip()]
+    if not parts:
+        return ""
+    first = parts[0]
+    lower = first.lower()
+    for prefix in ("г.", "г ", "город "):
+        if lower.startswith(prefix):
+            first = first[len(prefix) :].strip()
+            break
+    return first[:100]
+
+
+def _build_public_locations_payload(integration: ClientPortalIntegration) -> list[dict]:
+    """Список активных точек организации для публичного лендинга клиентского портала."""
+    from shops.models import Shop
+
+    org = integration.organization
+    shops = (
+        Shop.objects.filter(settings__organization=org, is_active=True)
+        .order_by("name")
+        .only("id", "name", "code", "address", "phone", "email")
+    )
+    out: list[dict] = []
+    for shop in shops:
+        addr = (shop.address or "").strip()
+        out.append(
+            {
+                "crm_shop_id": shop.id,
+                "name": shop.name,
+                "code": shop.code or "",
+                "address": addr,
+                "phone": shop.phone or "",
+                "email": shop.email or "",
+                "city": _infer_city_from_address(addr),
+            }
+        )
+    return out
+
+
 def push_marketing_snapshot(
     integration: ClientPortalIntegration,
     session: requests.Session | None = None,
@@ -546,6 +588,7 @@ def push_marketing_snapshot(
     ]
     banner = build_marketing_banner_dict(integration)
     field_visit = _build_field_visit_payload(integration)
+    locations = _build_public_locations_payload(integration)
     try:
         response = session.post(
             build_sync_url(integration, "/api/sync/marketing/upsert"),
@@ -556,6 +599,7 @@ def push_marketing_snapshot(
                 "promotions": promotions,
                 "banner": banner,
                 "field_visit": field_visit,
+                "locations": locations,
             },
             timeout=DEFAULT_TIMEOUT_SECONDS,
         )
