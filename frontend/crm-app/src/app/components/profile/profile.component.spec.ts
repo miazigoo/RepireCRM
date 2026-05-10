@@ -83,6 +83,7 @@ describe('ProfileComponent', () => {
 
     fixture = TestBed.createComponent(ProfileComponent);
     component = fixture.componentInstance;
+    (component as any).snackBar = snackBar;
     fixture.detectChanges();
   });
 
@@ -128,6 +129,32 @@ describe('ProfileComponent', () => {
         bio: 'Ремонтирую телефоны',
       }),
     );
+  });
+
+  it('uploads a valid avatar through auth API', () => {
+    const input = document.createElement('input');
+    const file = new File(['avatar'], 'avatar.png', { type: 'image/png' });
+    Object.defineProperty(input, 'files', { value: [file] });
+    input.value = 'avatar.png';
+
+    component.uploadAvatar({ target: input } as any);
+
+    expect(authService.updateAvatar).toHaveBeenCalledWith(file);
+    expect(component.savingAvatar).toBeFalse();
+    expect(input.value).toBe('');
+  });
+
+  it('rejects unsupported avatar files before API call', () => {
+    const input = document.createElement('input');
+    const file = new File(['document'], 'avatar.svg', { type: 'image/svg+xml' });
+    Object.defineProperty(input, 'files', { value: [file] });
+    input.value = 'avatar.svg';
+
+    component.uploadAvatar({ target: input } as any);
+
+    expect(authService.updateAvatar).not.toHaveBeenCalled();
+    expect(snackBar.open).toHaveBeenCalledWith('Загрузите JPG, PNG или WebP', 'Закрыть', { duration: 4000 });
+    expect(input.value).toBe('');
   });
 
   it('keeps mismatched password form invalid', () => {

@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from uuid import uuid4
 
 import jwt
@@ -7,7 +8,9 @@ from django.contrib.auth import authenticate, get_user_model
 from django.core.cache import cache
 from django_ratelimit.decorators import ratelimit
 from ninja import File, Router, Schema
+from ninja.errors import HttpError
 from ninja.files import UploadedFile
+from PIL import Image, UnidentifiedImageError
 
 from Schemas.auth.auth import ChangePasswordSchema, LoginSchema, TokenSchema
 from Schemas.common import ErrorSchema, MessageSchema, ShopSchema, UserSchema
@@ -20,6 +23,12 @@ router = Router(tags=["Аутентификация"])
 _TOKEN_TTL_DAYS = 7
 _TOKEN_TTL_SECONDS = _TOKEN_TTL_DAYS * 24 * 60 * 60
 _BLACKLIST_KEY_PREFIX = "jwt_blacklist:"
+_AVATAR_MAX_SIZE_BYTES = 5 * 1024 * 1024
+_AVATAR_CONTENT_TYPES = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+}
 
 
 def _blacklist_token(jti: str, ttl_seconds: int) -> None:
@@ -37,6 +46,32 @@ def _load_user_with_relations(user_id: int):
         .prefetch_related("role__permissions", "shops")
         .get(id=user_id)
     )
+
+
+def _validate_avatar_upload(avatar: UploadedFile) -> str:
+    if avatar.size > _AVATAR_MAX_SIZE_BYTES:
+        raise HttpError(400, "Аватар должен быть не больше 5 МБ")
+
+    content_type = getattr(avatar, "content_type", "")
+    fallback_extension = _AVATAR_CONTENT_TYPES.get(content_type)
+    if not fallback_extension:
+        raise HttpError(400, "Загрузите JPG, PNG или WebP")
+
+    try:
+        image = Image.open(avatar)
+        image.verify()
+    except (SyntaxError, UnidentifiedImageError, OSError):
+        raise HttpError(400, "Файл не похож на изображение") from None
+    finally:
+        avatar.seek(0)
+
+    extension = Path(avatar.name).suffix.lower()
+    if extension not in {".jpg", ".jpeg", ".png", ".webp"}:
+        extension = fallback_extension
+    if extension == ".jpeg":
+        extension = ".jpg"
+
+    return extension
 
 
 class ProfileUpdateSchema(Schema):
@@ -139,11 +174,16 @@ def update_profile(request, data: ProfileUpdateSchema):
     return _load_user_with_relations(user.id)
 
 
-@router.post("/profile/avatar", response=UserSchema)
+@router.post("/profile/avatar", response={200: UserSchema, 400: ErrorSchema})
 def update_profile_avatar(request, avatar: UploadedFile = File(...)):
     """Загрузка аватара текущего сотрудника."""
     user = request.auth
-    user.avatar.save(avatar.name, avatar, save=True)
+    extension = _validate_avatar_upload(avatar)
+    old_avatar_name = user.avatar.name if user.avatar else ""
+    avatar_name = f"avatar-{user.id}-{uuid4().hex}{extension}"
+    user.avatar.save(avatar_name, avatar, save=True)
+    if old_avatar_name and old_avatar_name != user.avatar.name:
+        user.avatar.storage.delete(old_avatar_name)
     return _load_user_with_relations(user.id)
 
 

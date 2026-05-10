@@ -47,6 +47,7 @@
 }
 
 .avatar-frame {
+  position: relative;
   display: grid;
   width: 86px;
   height: 86px;
@@ -61,11 +62,69 @@
   font-size: 30px;
   font-weight: 950;
 
+  &.uploading {
+    color: color-mix(in srgb, var(--color-primary) 72%, var(--color-text-primary));
+  }
+
   img {
     width: 100%;
     height: 100%;
     border-radius: inherit;
     object-fit: cover;
+  }
+}
+
+.avatar-control {
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 42%, var(--profile-border));
+  border-radius: 8px;
+  background: var(--profile-panel);
+  box-shadow: var(--shadow-light);
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+
+  input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  &:hover,
+  &:focus-within {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 12%, var(--profile-panel));
+    transform: translateY(-1px);
+  }
+
+  &.disabled {
+    cursor: progress;
+    opacity: 0.82;
+    pointer-events: none;
+  }
+}
+
+.avatar-control-icon,
+.avatar-upload {
+  svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.9;
   }
 }
 
@@ -346,11 +405,18 @@ mat-divider {
   font-size: 13px;
   font-weight: 850;
 
+  &.disabled {
+    cursor: progress;
+    opacity: 0.72;
+    pointer-events: none;
+  }
+
   input {
     display: none;
   }
 
-  mat-icon {
+  svg,
+  mat-spinner {
     margin: 0;
     color: var(--color-primary);
   }

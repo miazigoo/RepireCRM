@@ -49,12 +49,14 @@ export class ProfileComponent implements OnInit {
   hideOldPassword = true;
   hideNewPassword = true;
   hideConfirmPassword = true;
+  savingAvatar = false;
 
   passwordForm: FormGroup;
   profileForm: FormGroup;
   profileStats: ProfileStat[] = [];
   performanceStats: any = null;
   savingProfile = false;
+  private readonly avatarMaxSizeBytes = 5 * 1024 * 1024;
 
   constructor(
     private fb: FormBuilder,
@@ -164,12 +166,31 @@ export class ProfileComponent implements OnInit {
       return;
     }
 
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      input.value = '';
+      this.snackBar.open('Загрузите JPG, PNG или WebP', 'Закрыть', { duration: 4000 });
+      return;
+    }
+
+    if (file.size > this.avatarMaxSizeBytes) {
+      input.value = '';
+      this.snackBar.open('Аватар должен быть не больше 5 МБ', 'Закрыть', { duration: 4000 });
+      return;
+    }
+
+    this.savingAvatar = true;
     this.authService.updateAvatar(file).subscribe({
       next: user => {
         this.currentUser = user;
+        this.savingAvatar = false;
+        input.value = '';
         this.snackBar.open('Аватар обновлен', 'Закрыть', { duration: 3000 });
       },
-      error: error => this.snackBar.open(this.extractErrorMessage(error), 'Закрыть', { duration: 5000 }),
+      error: error => {
+        this.savingAvatar = false;
+        input.value = '';
+        this.snackBar.open(this.extractErrorMessage(error), 'Закрыть', { duration: 5000 });
+      },
     });
   }
 

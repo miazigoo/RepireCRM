@@ -1,13 +1,16 @@
 import json
 from datetime import timedelta
 from decimal import Decimal
+from io import BytesIO
 
 import jwt
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
+from PIL import Image
 
 from customers.models import Customer, CustomerShopHistory
 from device.models import Device, DeviceBrand, DeviceModel, DeviceType
@@ -18,6 +21,12 @@ from tasks.models import Task
 from users.models import Permission, Role
 
 User = get_user_model()
+
+
+def png_1x1() -> bytes:
+    buffer = BytesIO()
+    Image.new("RGB", (1, 1), color="white").save(buffer, format="PNG")
+    return buffer.getvalue()
 
 
 class WorkerShopFlowTestCase(TestCase):
@@ -240,6 +249,43 @@ class WorkerShopFlowTestCase(TestCase):
             all_shops_response.status_code, 200, all_shops_response.content
         )
         self.assertEqual(all_shops_response.json()["orders"]["completed"], 2)
+
+    @override_settings(MEDIA_ROOT="/tmp/repair_crm_test_media")
+    def test_profile_avatar_accepts_valid_image(self):
+        avatar = SimpleUploadedFile(
+            "avatar.png",
+            png_1x1(),
+            content_type="image/png",
+        )
+
+        response = self.client.post(
+            "/api/auth/profile/avatar",
+            data={"avatar": avatar},
+            **self.auth_headers(shop=self.shop),
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.worker.refresh_from_db()
+        self.assertTrue(self.worker.avatar.name.startswith("avatars/avatar-"))
+        self.assertTrue(response.json()["avatar"].startswith("/media/avatars/avatar-"))
+
+    @override_settings(MEDIA_ROOT="/tmp/repair_crm_test_media")
+    def test_profile_avatar_rejects_unsupported_file(self):
+        avatar = SimpleUploadedFile(
+            "avatar.svg",
+            b"<svg></svg>",
+            content_type="image/svg+xml",
+        )
+
+        response = self.client.post(
+            "/api/auth/profile/avatar",
+            data={"avatar": avatar},
+            **self.auth_headers(shop=self.shop),
+        )
+
+        self.assertEqual(response.status_code, 400, response.content)
+        self.worker.refresh_from_db()
+        self.assertFalse(self.worker.avatar)
 
     def test_order_creation_rejects_service_from_another_shop(self):
         service = AdditionalService.objects.create(
