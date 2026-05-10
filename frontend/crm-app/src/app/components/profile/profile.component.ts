@@ -18,7 +18,7 @@ import { selectCurrentShop, selectCurrentUser } from '../../store/auth/auth.sele
 interface ProfileStat {
   label: string;
   value: string;
-  icon: string;
+  icon: 'login' | 'role' | 'branch' | 'status';
 }
 
 @Component({
@@ -251,22 +251,22 @@ export class ProfileComponent implements OnInit {
       {
         label: 'Логин',
         value: this.currentUser?.username || 'Не загружен',
-        icon: 'badge',
+        icon: 'login',
       },
       {
         label: 'Роль',
         value: this.roleName,
-        icon: 'admin_panel_settings',
+        icon: 'role',
       },
       {
         label: 'Филиал',
         value: this.currentShop?.name || this.currentUser?.current_shop?.name || 'Не выбран',
-        icon: 'storefront',
+        icon: 'branch',
       },
       {
         label: 'Статус',
         value: this.currentUser?.profile_status || (this.currentUser?.is_active ? 'Активен' : 'Отключен'),
-        icon: this.currentUser?.is_active ? 'verified_user' : 'block',
+        icon: 'status',
       },
     ];
   }

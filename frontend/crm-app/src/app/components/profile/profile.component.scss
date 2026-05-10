@@ -165,6 +165,17 @@ h1 {
   border-radius: 8px;
   background: color-mix(in srgb, var(--color-primary) 12%, var(--profile-panel));
   color: var(--color-primary);
+
+  svg {
+    display: block;
+    width: 30px;
+    height: 30px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+  }
 }
 
 .stat-copy {
@@ -292,6 +303,17 @@ mat-divider {
     border-color: color-mix(in srgb, var(--color-success) 34%, transparent);
     background: color-mix(in srgb, var(--color-success) 12%, var(--profile-panel));
     color: var(--color-success);
+  }
+
+  svg {
+    display: block;
+    width: 28px;
+    height: 28px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
   }
 }
 
