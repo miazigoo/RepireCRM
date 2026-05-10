@@ -59,7 +59,12 @@
 .hero-svg,
 .pulse-svg,
 .button-svg,
-.empty-svg {
+.empty-svg,
+.stat-svg,
+.notification-svg,
+.note-svg,
+.priority-icon svg,
+.open-icon {
   display: block;
   fill: none;
   stroke: currentColor;
@@ -167,9 +172,12 @@ h1 {
   --stat-color: var(--color-primary);
 
   position: relative;
-  min-height: 104px;
+  min-height: 112px;
   padding: 18px;
   overflow: hidden;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--stat-color) 9%, transparent), transparent 58%),
+    var(--notifications-panel);
 
   &::after {
     position: absolute;
@@ -181,10 +189,29 @@ h1 {
     content: "";
   }
 
-  span {
+  .stat-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .stat-top span {
     color: var(--notifications-muted);
     font-size: 13px;
     font-weight: 850;
+  }
+
+  .stat-svg {
+    width: 30px;
+    height: 30px;
+    padding: 6px;
+    border: 1px solid color-mix(in srgb, var(--stat-color) 28%, transparent);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--stat-color) 12%, var(--panel-background));
+    color: var(--stat-color);
+    stroke-width: 2.2;
+    box-sizing: border-box;
   }
 
   strong {
@@ -213,6 +240,7 @@ h1 {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 330px;
   gap: 18px;
+  align-items: start;
 }
 
 .stream-panel,
@@ -267,6 +295,13 @@ h1 {
   color: var(--color-danger);
   font-size: 13px;
   font-weight: 850;
+
+  .note-svg {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    stroke-width: 2.3;
+  }
 }
 
 .notifications-list {
@@ -276,14 +311,16 @@ h1 {
 
 .notification-item {
   display: grid;
-  grid-template-columns: 46px minmax(0, 1fr) auto;
+  grid-template-columns: 50px minmax(0, 1fr) 24px;
   gap: 14px;
   align-items: center;
   width: 100%;
-  padding: 13px;
+  padding: 14px;
   border: 1px solid var(--notifications-border);
   border-radius: 8px;
-  background: var(--notifications-panel-strong);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, currentColor 4%, transparent), transparent 52%),
+    var(--notifications-panel-strong);
   color: var(--color-text-primary);
   text-align: left;
   cursor: pointer;
@@ -305,14 +342,16 @@ h1 {
 }
 
 .notification-icon {
-  width: 46px;
-  height: 46px;
+  width: 50px;
+  height: 50px;
+  border: 1px solid color-mix(in srgb, currentColor 34%, transparent);
   background: color-mix(in srgb, currentColor 14%, var(--panel-background));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #ffffff 7%, transparent);
 
-  mat-icon {
-    width: 23px;
-    height: 23px;
-    font-size: 23px;
+  .notification-svg {
+    width: 28px;
+    height: 28px;
+    stroke-width: 2.15;
   }
 }
 
@@ -339,17 +378,35 @@ h1 {
   }
 }
 
-.priority-icon,
-.open-icon {
+.priority-icon {
   flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
   width: 19px;
   height: 19px;
   color: var(--color-warning);
-  font-size: 19px;
+
+  svg {
+    width: 19px;
+    height: 19px;
+    stroke-width: 2.25;
+  }
 }
 
 .open-icon {
+  justify-self: end;
+  width: 24px;
+  height: 24px;
   color: var(--color-text-secondary);
+  stroke-width: 2.35;
+  transition:
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.notification-item:hover .open-icon {
+  color: var(--color-primary);
+  transform: translateX(2px);
 }
 
 .notification-message {
@@ -412,9 +469,21 @@ h1 {
   background: color-mix(in srgb, var(--priority-color) 9%, var(--notifications-panel));
 
   span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     color: var(--notifications-muted);
     font-size: 13px;
     font-weight: 850;
+
+    i {
+      display: block;
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--priority-color);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--priority-color) 12%, transparent);
+    }
   }
 
   strong {
@@ -492,6 +561,16 @@ h1 {
 
   .notification-item {
     grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .notification-icon {
+    width: 42px;
+    height: 42px;
+
+    .notification-svg {
+      width: 24px;
+      height: 24px;
+    }
   }
 
   .open-icon {

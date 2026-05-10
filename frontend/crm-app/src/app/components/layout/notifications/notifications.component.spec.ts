@@ -57,6 +57,12 @@ describe('NotificationsComponent', () => {
     expect(element.textContent).toContain('Высокие');
   });
 
+  it('renders notification item icons as inline svg', () => {
+    const element: HTMLElement = fixture.nativeElement;
+
+    expect(element.querySelector('.notification-icon .notification-svg path')).toBeTruthy();
+  });
+
   it('marks a clicked notification as read and follows its action URL', () => {
     const router = TestBed.inject(Router);
     spyOn(router, 'navigateByUrl');
