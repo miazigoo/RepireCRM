@@ -49,7 +49,16 @@ export class OrdersService {
           page_size: pageSize,
           total_pages: 1
         }
-        : response)
+        : {
+          items: response.items || [],
+          count: Number(response.count ?? response.items?.length ?? 0),
+          page: Number(response.page ?? page),
+          page_size: Number(response.page_size ?? pageSize),
+          total_pages: Number(
+            response.total_pages ??
+              Math.max(1, Math.ceil(Number(response.count ?? 0) / pageSize))
+          )
+        })
     );
   }
 

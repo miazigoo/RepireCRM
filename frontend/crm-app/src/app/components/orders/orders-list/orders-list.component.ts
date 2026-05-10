@@ -1,8 +1,14 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  OnDestroy,
+  OnInit,
+  ViewChild
+} from '@angular/core';
 import { DatePipe, NgClass, NgFor, NgIf } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatPaginatorModule, MatPaginator, MatPaginatorIntl } from '@angular/material/paginator';
 import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MAT_FORM_FIELD_DEFAULT_OPTIONS, MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -12,10 +18,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { Subject, Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged, map, takeUntil } from 'rxjs/operators';
 import { OrdersService } from '../../../services/orders.service';
-import { Order, OrderStatus, OrderPriority } from '../../../core/models/models';
-import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl';
+import { Order, OrderStatus, OrderPriority, OrderFilters } from '../../../core/models/models';
 
 @Component({
   selector: 'app-orders-list',
@@ -28,7 +34,6 @@ import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl'
     RouterModule,
     ReactiveFormsModule,
     MatTableModule,
-    MatPaginatorModule,
     MatSortModule,
     MatFormFieldModule,
     MatInputModule,
@@ -41,7 +46,6 @@ import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl'
   templateUrl: './orders-list.component.html',
   styleUrl: './orders-list.component.scss',
   providers: [
-    { provide: MatPaginatorIntl, useClass: RussianPaginatorIntl },
     {
       provide: MAT_FORM_FIELD_DEFAULT_OPTIONS,
       useValue: {
@@ -51,9 +55,9 @@ import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl'
     }
   ]
 })
-export class OrdersListComponent implements OnInit {
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
+export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(MatSort) sort!: MatSort;
+  @ViewChild('loadMoreTrigger') loadMoreTrigger?: ElementRef<HTMLElement>;
 
   displayedColumns: string[] = [
     'order_number',
@@ -67,8 +71,17 @@ export class OrdersListComponent implements OnInit {
   dataSource = new MatTableDataSource<Order>();
   filtersForm: FormGroup;
   loading = false;
+  loadingMore = false;
   lastUpdatedAt: Date | null = null;
   expandedOrderId: number | null = null;
+  totalOrdersCount = 0;
+
+  private readonly pageSize = 20;
+  private readonly destroy$ = new Subject<void>();
+  private currentPage = 0;
+  private totalPages = 0;
+  private loadSubscription?: Subscription;
+  private lazyObserver?: IntersectionObserver;
 
   readonly statusOptions: Array<{ value: OrderStatus | ''; label: string }> = [
     { value: '', label: 'Все статусы' },
@@ -108,7 +121,7 @@ export class OrdersListComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.loadOrders();
+    this.loadOrders(true);
     this.setupFilters();
   }
 
@@ -129,8 +142,15 @@ export class OrdersListComponent implements OnInit {
           return (order as any)[property];
       }
     };
-    this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
+    this.setupLazyObserver();
+  }
+
+  ngOnDestroy(): void {
+    this.lazyObserver?.disconnect();
+    this.loadSubscription?.unsubscribe();
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   get orders(): Order[] {
@@ -138,7 +158,18 @@ export class OrdersListComponent implements OnInit {
   }
 
   get totalOrders(): number {
+    return this.totalOrdersCount || this.orders.length;
+  }
+
+  get loadedOrders(): number {
     return this.orders.length;
+  }
+
+  get hasMoreOrders(): boolean {
+    if (this.totalOrdersCount === 0) {
+      return false;
+    }
+    return this.loadedOrders < this.totalOrdersCount && this.currentPage < this.totalPages;
   }
 
   get activeOrders(): number {
@@ -168,32 +199,100 @@ export class OrdersListComponent implements OnInit {
     return Object.values(value).some(item => item !== '' && item !== null && item !== undefined);
   }
 
-  private loadOrders(): void {
-    this.loading = true;
-    const filters = this.filtersForm.value;
+  loadNextPage(): void {
+    this.loadOrders(false);
+  }
 
-    this.ordersService.getOrders(1, 100, filters).subscribe({
-      next: (orders) => {
-        this.dataSource.data = orders;
-        this.lastUpdatedAt = new Date();
-        this.loading = false;
+  private loadOrders(reset: boolean): void {
+    if (!reset && (this.loading || this.loadingMore || !this.hasMoreOrders)) {
+      return;
+    }
+
+    if (reset) {
+      this.loadSubscription?.unsubscribe();
+      this.resetOrdersState();
+      this.loading = true;
+    } else {
+      this.loadingMore = true;
+    }
+
+    const nextPage = reset ? 1 : this.currentPage + 1;
+    const filters = this.getCleanFilters();
+
+    this.loadSubscription = this.ordersService
+      .getOrdersPage(nextPage, this.pageSize, filters)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          const existing = reset ? [] : this.dataSource.data;
+          this.dataSource.data = this.mergeUniqueOrders(existing, response.items);
+          this.currentPage = response.page;
+          this.totalPages = response.total_pages;
+          this.totalOrdersCount = response.count;
+          this.lastUpdatedAt = new Date();
+        },
+        error: (error) => {
+          console.error('Error loading orders:', error);
+          this.snackBar.open('Ошибка загрузки заказов', 'Закрыть', { duration: 3000 });
+          this.loading = false;
+          this.loadingMore = false;
+        },
+        complete: () => {
+          this.loading = false;
+          this.loadingMore = false;
+        }
+      });
+  }
+
+  private resetOrdersState(): void {
+    this.dataSource.data = [];
+    this.currentPage = 0;
+    this.totalPages = 0;
+    this.totalOrdersCount = 0;
+    this.expandedOrderId = null;
+  }
+
+  private getCleanFilters(): OrderFilters {
+    const raw = this.filtersForm.getRawValue() as Record<string, string>;
+    return Object.fromEntries(
+      Object.entries(raw)
+        .map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value])
+        .filter(([, value]) => value !== '' && value !== null && value !== undefined)
+    ) as OrderFilters;
+  }
+
+  private mergeUniqueOrders(existing: Order[], incoming: Order[]): Order[] {
+    const seen = new Set(existing.map(order => order.id));
+    const next = incoming.filter(order => !seen.has(order.id));
+    return [...existing, ...next];
+  }
+
+  private setupLazyObserver(): void {
+    if (!this.loadMoreTrigger || !('IntersectionObserver' in window)) {
+      return;
+    }
+
+    this.lazyObserver = new IntersectionObserver(
+      entries => {
+        if (entries.some(entry => entry.isIntersecting)) {
+          this.loadNextPage();
+        }
       },
-      error: (error) => {
-        console.error('Error loading orders:', error);
-        this.snackBar.open('Ошибка загрузки заказов', 'Закрыть', { duration: 3000 });
-        this.loading = false;
-      }
-    });
+      { rootMargin: '360px 0px' }
+    );
+    this.lazyObserver.observe(this.loadMoreTrigger.nativeElement);
   }
 
   private setupFilters(): void {
     this.filtersForm.valueChanges
       .pipe(
         debounceTime(300),
-        distinctUntilChanged()
+        map(value => JSON.stringify(value)),
+        distinctUntilChanged(),
+        takeUntil(this.destroy$)
       )
       .subscribe(() => {
-        this.loadOrders();
+        this.loadOrders(true);
       });
   }
 

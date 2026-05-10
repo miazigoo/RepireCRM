@@ -6,6 +6,7 @@ from ninja import File, Form, Query, Router
 from ninja.files import UploadedFile
 from ninja.pagination import PageNumberPagination, paginate
 
+from core.security import clean_payload, clean_plain_text
 from customers.models import Customer
 from device.models import Device, DeviceBrand, DeviceModel, DeviceType
 from device.popular_models import (
@@ -48,6 +49,20 @@ from .orders_schemas import (
 from .schemas_repair_services import RepairServiceSchema
 
 router = Router(tags=["Заказы"])
+
+ORDER_TEXT_FIELDS = {
+    "problem_description",
+    "accessories",
+    "device_condition",
+    "diagnosis",
+    "work_description",
+    "notes",
+    "status_comment",
+}
+
+DEVICE_TEXT_FIELDS = {"serial_number", "imei", "color", "storage_capacity"}
+SERVICE_TEXT_FIELDS = {"name", "category", "description"}
+DEVICE_MODEL_TEXT_FIELDS = {"brand_name", "name", "device_type_name", "model_number"}
 
 
 class OrderPagination(PageNumberPagination):
@@ -242,10 +257,11 @@ def create_additional_service(request, data: AdditionalServiceCreateSchema):
     if not request.auth.has_permission("orders.change_order"):
         raise PermissionError("Нет прав для управления услугами")
 
+    incoming = clean_payload(data.model_dump(), SERVICE_TEXT_FIELDS)
     service = AdditionalService.objects.create(
-        name=data.name.strip(),
-        category=data.category,
-        description=data.description or "",
+        name=incoming["name"],
+        category=incoming["category"],
+        description=incoming["description"] or "",
         price=data.price,
         is_active=data.is_active,
     )
@@ -265,7 +281,7 @@ def update_additional_service(
         raise PermissionError("Нет прав для управления услугами")
 
     service = get_object_or_404(AdditionalService, id=service_id)
-    incoming = data.model_dump(exclude_unset=True)
+    incoming = clean_payload(data.model_dump(exclude_unset=True), SERVICE_TEXT_FIELDS)
     shop_ids = incoming.pop("shop_ids", None)
     for field, value in incoming.items():
         if value is not None:
@@ -432,9 +448,10 @@ def create_device_model(request, data: DeviceModelCreateSchema):
     if not request.auth.has_permission("orders.add_order"):
         raise PermissionError("Нет прав для создания моделей устройств")
 
-    brand_name = data.brand_name.strip()
-    model_name = data.name.strip()
-    device_type_name = (data.device_type_name or "Смартфон").strip() or "Смартфон"
+    incoming = clean_payload(data.model_dump(), DEVICE_MODEL_TEXT_FIELDS)
+    brand_name = incoming["brand_name"]
+    model_name = incoming["name"]
+    device_type_name = incoming["device_type_name"] or "Смартфон"
     if not brand_name or not model_name:
         return 400, {"error": "Укажите бренд и модель устройства"}
 
@@ -448,7 +465,7 @@ def create_device_model(request, data: DeviceModelCreateSchema):
         device_type=device_type,
         name=model_name,
         defaults={
-            "model_number": data.model_number or "",
+            "model_number": incoming["model_number"] or "",
             "release_year": data.release_year,
         },
     )
@@ -486,7 +503,7 @@ def create_warranty_case(request, order_id: int, data: WarrantyCaseCreateSchema)
     if not source_order.warranty_active:
         return 400, {"error": "Гарантия по этому заказу уже не действует"}
 
-    reason = data.reason.strip()
+    reason = clean_plain_text(data.reason)
     if not reason:
         return 400, {"error": "Укажите причину гарантийного обращения"}
 
@@ -495,7 +512,7 @@ def create_warranty_case(request, order_id: int, data: WarrantyCaseCreateSchema)
         return 400, {"error": "Некорректный приоритет гарантийного заказа"}
 
     problem_description = (
-        data.problem_description.strip()
+        clean_plain_text(data.problem_description)
         if data.problem_description
         else f"Гарантийное обращение: {reason}"
     )
@@ -582,19 +599,24 @@ def create_order(request, data: OrderCreateSchema):
 
             # Создаем или получаем устройство
             device_model = get_object_or_404(DeviceModel, id=data.device.model_id)
+            device_payload = clean_payload(
+                data.device.model_dump(exclude={"model_id"}, exclude_none=True),
+                DEVICE_TEXT_FIELDS,
+            )
             device = Device.objects.create(
                 model=device_model,
-                **data.device.model_dump(exclude={"model_id"}, exclude_none=True),
+                **device_payload,
             )
 
+            order_payload = clean_payload(data.model_dump(), ORDER_TEXT_FIELDS)
             # Создаем заказ
             order = Order.objects.create(
                 shop=request.current_shop,
                 customer=customer,
                 device=device,
-                problem_description=data.problem_description,
-                accessories=data.accessories or "",
-                device_condition=data.device_condition or "",
+                problem_description=order_payload["problem_description"],
+                accessories=order_payload["accessories"] or "",
+                device_condition=order_payload["device_condition"] or "",
                 cost_estimate=data.cost_estimate,
                 priority=data.priority,
                 estimated_completion=data.estimated_completion,
@@ -665,7 +687,7 @@ def update_order(request, order_id: int, data: OrderUpdateSchema):
     try:
         order = _get_accessible_order(request, order_id)
         old_status = order.status
-        incoming = data.model_dump(exclude_unset=True)
+        incoming = clean_payload(data.model_dump(exclude_unset=True), ORDER_TEXT_FIELDS)
         status_comment = incoming.pop("status_comment", "") or ""
 
         # Специальная проверка для изменения статуса
@@ -790,14 +812,14 @@ def create_repair_stage(
         raise PermissionError("Нет прав для изменения заказов")
 
     order = _get_accessible_order(request, order_id)
-    clean_title = title.strip()
+    clean_title = clean_plain_text(title)
     if not clean_title:
         return 400, {"error": "Название этапа обязательно"}
 
     stage = RepairStage.objects.create(
         order=order,
         title=clean_title,
-        description=description.strip(),
+        description=clean_plain_text(description),
         customer_visible=customer_visible,
         photo=photo,
         created_by=request.auth,
@@ -834,7 +856,7 @@ def update_repair_stage(
     update_fields = []
     for field, value in data.model_dump(exclude_unset=True).items():
         if isinstance(value, str):
-            value = value.strip()
+            value = clean_plain_text(value)
         if field == "title" and not value:
             return 400, {"error": "Название этапа обязательно"}
         setattr(stage, field, value)
@@ -877,7 +899,7 @@ def request_order_approval(
         raise PermissionError("Нет прав для изменения заказов")
 
     order = _get_accessible_order(request, order_id)
-    title = data.title.strip()
+    title = clean_plain_text(data.title)
     if not title:
         return 400, {"error": "Название согласования обязательно"}
     if data.amount < 0:
@@ -886,7 +908,7 @@ def request_order_approval(
     approval = OrderApproval.objects.create(
         order=order,
         title=title,
-        description=(data.description or "").strip(),
+        description=clean_plain_text(data.description),
         amount=data.amount,
         requested_by=request.auth,
     )

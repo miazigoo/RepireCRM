@@ -684,6 +684,55 @@
   backdrop-filter: blur(2px);
 }
 
+.lazy-load-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--orders-border);
+  border-radius: 8px;
+  background: var(--orders-panel-strong);
+
+  div {
+    min-width: 0;
+  }
+
+  strong,
+  span {
+    display: block;
+  }
+
+  strong {
+    color: var(--color-text-primary);
+    font-weight: 950;
+  }
+
+  span {
+    margin-top: 3px;
+    color: var(--orders-muted);
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  button {
+    min-width: 150px;
+    color: var(--color-text-primary) !important;
+    font-weight: 900;
+  }
+
+  mat-spinner {
+    margin-right: 8px;
+  }
+
+  .all-loaded {
+    margin-top: 0;
+    color: var(--color-success);
+    text-align: right;
+  }
+}
+
 .sidebar-panel {
   h2,
   p {
@@ -769,12 +818,6 @@
     .mat-mdc-row:hover {
       background: color-mix(in srgb, var(--color-primary) 7%, transparent) !important;
     }
-
-    .mat-mdc-paginator {
-      margin-top: 12px;
-      border: 1px solid var(--orders-border);
-      border-radius: 8px;
-    }
   }
 
   .orders-select-panel {
@@ -858,13 +901,25 @@
     background: transparent;
   }
 
-  .orders-table,
-  :host ::ng-deep .orders-page .mat-mdc-paginator {
+  .orders-table {
     display: none;
   }
 
   .mobile-list {
     display: grid;
     gap: 12px;
+  }
+
+  .lazy-load-footer {
+    align-items: stretch;
+    flex-direction: column;
+
+    button {
+      width: 100%;
+    }
+
+    .all-loaded {
+      text-align: left;
+    }
   }
 }

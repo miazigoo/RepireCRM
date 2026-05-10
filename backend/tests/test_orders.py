@@ -305,6 +305,46 @@ class OrderTestCase(TestCase):
         self.assertEqual(response.status_code, 201, response.content)
         self.assertIn("order_number", response.json())
 
+    def test_order_text_fields_are_sanitized_before_save(self):
+        response = self.client.post(
+            "/api/orders/",
+            data=json.dumps(
+                {
+                    "customer_id": self.customer.id,
+                    "device": {
+                        "model_id": self.device.model_id,
+                        "serial_number": "<img src=x onerror=alert(1)>SN123",
+                        "imei": "",
+                        "color": "<b>Black</b>",
+                        "storage_capacity": "javascript:alert(1) 128GB",
+                    },
+                    "problem_description": (
+                        "<script>alert(1)</script>"
+                        "<img src=x onerror=alert(1)>Не заряжается"
+                    ),
+                    "accessories": "javascript:alert(1) кабель",
+                    "device_condition": "<svg onload=alert(1)>царапины</svg>",
+                    "cost_estimate": 1500,
+                    "priority": "normal",
+                    "additional_services": [],
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 201, response.content)
+        order = Order.objects.get(id=response.json()["id"])
+        order.device.refresh_from_db()
+        self.assertNotIn("<", order.problem_description)
+        self.assertNotIn("script", order.problem_description.lower())
+        self.assertIn("Не заряжается", order.problem_description)
+        self.assertEqual(order.device.serial_number, "SN123")
+        self.assertEqual(order.device.color, "Black")
+        self.assertNotIn("javascript:", order.device.storage_capacity.lower())
+        self.assertNotIn("javascript:", order.accessories.lower())
+        self.assertNotIn("<svg", order.device_condition.lower())
+
     def test_staff_can_create_missing_device_model_from_order_form(self):
         response = self.client.post(
             "/api/orders/device-models",

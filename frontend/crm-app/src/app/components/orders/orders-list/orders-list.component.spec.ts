@@ -54,8 +54,14 @@ describe('OrdersListComponent', () => {
   } as Order;
 
   beforeEach(async () => {
-    ordersService = jasmine.createSpyObj<OrdersService>('OrdersService', ['getOrders']);
-    ordersService.getOrders.and.returnValue(of([order]));
+    ordersService = jasmine.createSpyObj<OrdersService>('OrdersService', ['getOrdersPage']);
+    ordersService.getOrdersPage.and.returnValue(of({
+      items: [order],
+      count: 1,
+      page: 1,
+      page_size: 20,
+      total_pages: 1,
+    }));
 
     await TestBed.configureTestingModule({
       imports: [OrdersListComponent],
@@ -119,6 +125,27 @@ describe('OrdersListComponent', () => {
     expect(component.activeOrders).toBe(1);
     expect(component.urgentOrders).toBe(1);
     expect(component.pipelineValue).toBe(900);
+  });
+
+  it('loads the first server page instead of fetching a full client-side list', () => {
+    expect(ordersService.getOrdersPage).toHaveBeenCalledOnceWith(1, 20, {});
+    expect(component.loadedOrders).toBe(1);
+  });
+
+  it('renders suspicious order text as text, not executable HTML', () => {
+    component.dataSource.data = [{
+      ...order,
+      problem_description: '<img src=x onerror=alert(1)>Не включается',
+    }];
+    fixture.detectChanges();
+
+    const row = fixture.nativeElement.querySelector('.order-data-row') as HTMLElement;
+    row.click();
+    fixture.detectChanges();
+
+    const detail = fixture.nativeElement.querySelector('.order-device-detail') as HTMLElement;
+    expect(detail.textContent).toContain('<img src=x onerror=alert(1)>Не включается');
+    expect(detail.querySelector('img')).toBeNull();
   });
 
   function normalizeText(element: HTMLElement): string {

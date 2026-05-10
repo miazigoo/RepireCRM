@@ -125,7 +125,7 @@
             <h2>Рабочий список</h2>
           </div>
           <div class="panel-meta">
-            <span>{{ totalOrders }} заказов</span>
+            <span>Показано {{ loadedOrders }} из {{ totalOrders }}</span>
             <span *ngIf="lastUpdatedAt">Обновлено {{ lastUpdatedAt | date:'HH:mm' }}</span>
           </div>
         </header>
@@ -317,7 +317,7 @@
             </article>
           </div>
 
-          <div class="empty-state" *ngIf="!loading && totalOrders === 0">
+          <div class="empty-state" *ngIf="!loading && loadedOrders === 0">
             <mat-icon>assignment</mat-icon>
             <h3>Заказы не найдены</h3>
             <p>Измените фильтры или создайте новый заказ из приемки.</p>
@@ -329,11 +329,27 @@
           </div>
         </div>
 
-        <mat-paginator
-          [pageSizeOptions]="[10, 20, 50, 100]"
-          [pageSize]="20"
-          showFirstLastButtons>
-        </mat-paginator>
+        <div class="lazy-load-footer" #loadMoreTrigger>
+          <div>
+            <strong>Показано {{ loadedOrders }} из {{ totalOrders }}</strong>
+            <span>Заказы подгружаются по мере прокрутки списка.</span>
+          </div>
+
+          <button
+            mat-stroked-button
+            type="button"
+            *ngIf="hasMoreOrders"
+            (click)="loadNextPage()"
+            [disabled]="loading || loadingMore">
+            <mat-spinner *ngIf="loadingMore" diameter="18"></mat-spinner>
+            <mat-icon *ngIf="!loadingMore">expand_more</mat-icon>
+            {{ loadingMore ? 'Загружаем' : 'Показать еще' }}
+          </button>
+
+          <span class="all-loaded" *ngIf="!hasMoreOrders && loadedOrders > 0">
+            Все найденные заказы загружены
+          </span>
+        </div>
       </section>
     </main>
 

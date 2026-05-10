@@ -3,6 +3,7 @@ from django.shortcuts import get_object_or_404
 from ninja import Query, Router
 from ninja.pagination import PageNumberPagination, paginate
 
+from core.security import clean_payload
 from Schemas.common import ErrorSchema, MessageSchema
 
 from .customers_schemas import (
@@ -17,6 +18,16 @@ from .utils import normalize_phone
 router = Router(tags=["Клиенты"])
 
 BLANK_STRING_FIELDS = {
+    "middle_name",
+    "email",
+    "source",
+    "source_details",
+    "notes",
+    "preferred_channel",
+}
+CUSTOMER_TEXT_FIELDS = {
+    "first_name",
+    "last_name",
     "middle_name",
     "email",
     "source",
@@ -91,13 +102,17 @@ def create_customer(request, data: CustomerCreateSchema):
             return 400, {"error": "Клиент с таким номером телефона уже существует"}
 
         # Дубликат по email (если указан)
+        incoming = clean_payload(
+            data.model_dump(exclude_none=True), CUSTOMER_TEXT_FIELDS
+        )
+
         if (
-            data.email
-            and Customer.objects.filter(email__iexact=data.email.strip()).exists()
+            incoming.get("email")
+            and Customer.objects.filter(email__iexact=incoming["email"]).exists()
         ):
             return 400, {"error": "Клиент с таким email уже существует"}
 
-        payload = data.model_dump(exclude_none=True)
+        payload = incoming
         payload["phone"] = phone_e164
 
         customer = Customer.objects.create(**payload, created_by=request.auth)
@@ -132,7 +147,9 @@ def update_customer(request, customer_id: int, data: CustomerUpdateSchema):
     try:
         customer = get_object_or_404(Customer, id=customer_id)
 
-        incoming = data.model_dump(exclude_unset=True)
+        incoming = clean_payload(
+            data.model_dump(exclude_unset=True), CUSTOMER_TEXT_FIELDS
+        )
         for field in BLANK_STRING_FIELDS:
             if incoming.get(field) is None:
                 incoming[field] = ""
