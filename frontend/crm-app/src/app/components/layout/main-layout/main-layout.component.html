@@ -67,7 +67,9 @@
                  [routerLink]="item.route"
                  [attr.aria-current]="isNavigationItemActive(item) ? 'page' : null">
                 <span class="nav-icon-frame" matListItemIcon>
-                  <mat-icon>{{ item.icon }}</mat-icon>
+                  <ng-container [ngTemplateOutlet]="navIconTpl"
+                                [ngTemplateOutletContext]="{ icon: item.icon }">
+                  </ng-container>
                 </span>
                 <span matListItemTitle class="nav-label">{{ item.label }}</span>
                 <span matListItemMeta
@@ -83,7 +85,9 @@
                       type="button"
                       (click)="onNavigationAction(item)">
                 <span class="nav-icon-frame" matListItemIcon>
-                  <mat-icon>{{ item.icon }}</mat-icon>
+                  <ng-container [ngTemplateOutlet]="navIconTpl"
+                                [ngTemplateOutletContext]="{ icon: item.icon }">
+                  </ng-container>
                 </span>
                 <span matListItemTitle class="nav-label">{{ item.label }}</span>
                 <span matListItemMeta
@@ -170,3 +174,98 @@
     </div>
   </mat-sidenav-content>
 </mat-sidenav-container>
+
+<ng-template #navIconTpl let-icon="icon">
+  <svg *ngIf="icon === 'dashboard'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <rect x="4" y="4" width="6.5" height="6.5" rx="1.5"></rect>
+    <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"></rect>
+    <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"></rect>
+    <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"></rect>
+  </svg>
+
+  <svg *ngIf="icon === 'assignment'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M8.5 5.5h7L17 7v12H7V7l1.5-1.5Z"></path>
+    <path d="M9.5 5.5V4h5v1.5"></path>
+    <path d="M9.5 11h5"></path>
+    <path d="M9.5 15h4"></path>
+  </svg>
+
+  <svg *ngIf="icon === 'task_alt'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <circle cx="12" cy="12" r="8"></circle>
+    <path d="m8.5 12.3 2.4 2.4 4.8-5.2"></path>
+  </svg>
+
+  <svg *ngIf="icon === 'people'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <circle cx="9" cy="9" r="3"></circle>
+    <path d="M4.5 18c.9-2.4 2.4-3.6 4.5-3.6s3.6 1.2 4.5 3.6"></path>
+    <path d="M15.2 7.2a2.4 2.4 0 1 1 0 4.6"></path>
+    <path d="M15.5 14.4c1.9.4 3.2 1.6 4 3.6"></path>
+  </svg>
+
+  <svg *ngIf="icon === 'inventory_2'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M4.5 8 12 4l7.5 4v8L12 20l-7.5-4V8Z"></path>
+    <path d="M4.8 8.2 12 12l7.2-3.8"></path>
+    <path d="M12 12v8"></path>
+    <path d="m8.2 6.2 7.4 4"></path>
+  </svg>
+
+  <svg *ngIf="icon === 'home_repair_service'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M7 10V7.5A2.5 2.5 0 0 1 9.5 5h5A2.5 2.5 0 0 1 17 7.5V10"></path>
+    <rect x="4.5" y="10" width="15" height="9" rx="2"></rect>
+    <path d="M8 10v9"></path>
+    <path d="M16 10v9"></path>
+    <path d="M10 14h4"></path>
+  </svg>
+
+  <svg *ngIf="icon === 'sell'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M5 6.5V13l6 6 7.5-7.5-6-6H6.5A1.5 1.5 0 0 0 5 6.5Z"></path>
+    <circle cx="9" cy="9" r="1.2"></circle>
+    <path d="m11 14 3-3"></path>
+  </svg>
+
+  <svg *ngIf="icon === 'notifications'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M7 10a5 5 0 0 1 10 0c0 3 1.2 4.3 2 5H5c.8-.7 2-2 2-5Z"></path>
+    <path d="M10 18a2.3 2.3 0 0 0 4 0"></path>
+    <path d="M12 4V3"></path>
+  </svg>
+
+  <svg *ngIf="icon === 'query_stats'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M5 18V6"></path>
+    <path d="M5 18h14"></path>
+    <path d="m8 14 3-3 2.5 2.5L18 9"></path>
+    <circle cx="18" cy="9" r="1"></circle>
+  </svg>
+
+  <svg *ngIf="icon === 'help_center'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <circle cx="12" cy="12" r="8"></circle>
+    <path d="M9.8 9.4a2.4 2.4 0 0 1 4.6 1c0 1.9-2.1 2.2-2.1 3.8"></path>
+    <path d="M12.3 17h.1"></path>
+  </svg>
+
+  <svg *ngIf="icon === 'admin_panel_settings'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M12 3.5 18.5 6v5.2c0 4-2.5 7.2-6.5 9.3-4-2.1-6.5-5.3-6.5-9.3V6L12 3.5Z"></path>
+    <path d="M12 10.2a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6Z"></path>
+    <path d="M12 8.8v1.4"></path>
+    <path d="M12 13.8v1.4"></path>
+    <path d="m9.6 10.1 1.2.7"></path>
+    <path d="m13.2 13.2 1.2.7"></path>
+    <path d="m14.4 10.1-1.2.7"></path>
+    <path d="m10.8 13.2-1.2.7"></path>
+  </svg>
+
+  <svg *ngIf="icon === 'tune'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M5 7h8"></path>
+    <path d="M17 7h2"></path>
+    <circle cx="15" cy="7" r="2"></circle>
+    <path d="M5 17h2"></path>
+    <path d="M11 17h8"></path>
+    <circle cx="9" cy="17" r="2"></circle>
+  </svg>
+
+  <svg *ngIf="icon === 'palette'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M12 4a8 8 0 0 0 0 16h1.2a1.6 1.6 0 0 0 1-2.8 1.5 1.5 0 0 1 1-2.7H17a3 3 0 0 0 3-3A7.5 7.5 0 0 0 12 4Z"></path>
+    <circle cx="8.5" cy="10" r=".8"></circle>
+    <circle cx="11.5" cy="8" r=".8"></circle>
+    <circle cx="14.8" cy="9.4" r=".8"></circle>
+  </svg>
+</ng-template>

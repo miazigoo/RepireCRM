@@ -261,8 +261,7 @@ $mobile-breakpoint: 768px;
       box-shadow: var(--sidenav-active-shadow);
 
       .nav-label,
-      .nav-icon-frame,
-      .nav-icon-frame mat-icon {
+      .nav-icon-frame {
         color: var(--side-active-text);
       }
     }
@@ -285,6 +284,17 @@ $mobile-breakpoint: 768px;
   mat-icon {
     @include icon-size(18px);
     color: inherit;
+  }
+
+  svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.9;
   }
 }
 
