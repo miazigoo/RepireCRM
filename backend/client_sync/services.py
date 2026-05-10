@@ -343,10 +343,15 @@ def orders_for_push(integration: ClientPortalIntegration, limit: int = 100):
             ClientSyncOrderState.Status.ERROR,
         ],
     ).values_list("order_id", flat=True)
+    tracked_ids = ClientSyncOrderState.objects.filter(
+        integration=integration,
+    ).values_list("order_id", flat=True)
     queryset = Order.objects.filter(shop__in=shops)
     if integration.last_push_at:
         queryset = queryset.filter(
-            Q(id__in=pending_ids) | Q(updated_at__gte=integration.last_push_at)
+            Q(id__in=pending_ids)
+            | Q(updated_at__gte=integration.last_push_at)
+            | ~Q(id__in=tracked_ids)
         )
     return (
         queryset.select_related(

@@ -193,6 +193,40 @@ class ClientSyncTestCase(TestCase):
         self.assertEqual(state.status, ClientSyncOrderState.Status.SYNCED)
         self.assertEqual(state.remote_order_id, "remote-123")
 
+    def test_initial_backfill_keeps_pushing_untracked_orders_after_first_batch(self):
+        second_order = Order.objects.create(
+            shop=self.shop,
+            customer=self.customer,
+            device=self.device,
+            problem_description="Разбит дисплей",
+            cost_estimate=7000,
+            created_by=self.user,
+        )
+        ClientSyncOrderState.objects.filter(integration=self.integration).delete()
+        self.integration.last_push_at = timezone.now()
+        self.integration.save(update_fields=["last_push_at"])
+
+        first_session = FakeSession()
+        first_result = push_order_snapshots(
+            self.integration,
+            limit=1,
+            session=first_session,
+        )
+        second_session = FakeSession()
+        second_result = push_order_snapshots(
+            self.integration,
+            limit=1,
+            session=second_session,
+        )
+
+        self.assertEqual(first_result.pushed, 1)
+        self.assertEqual(second_result.pushed, 1)
+        pushed_ids = {
+            first_session.posts[0]["json"]["orders"][0]["crm_order_id"],
+            second_session.posts[0]["json"]["orders"][0]["crm_order_id"],
+        }
+        self.assertEqual(pushed_ids, {self.order.id, second_order.id})
+
     def test_pull_pending_approval_action_applies_and_marks_remote(self):
         approval = OrderApproval.objects.create(
             order=self.order,
