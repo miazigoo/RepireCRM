@@ -340,12 +340,12 @@ def update_user(request, user_id: int, data: UserUpdateSchema):
     return get_user(request, user.id)
 
 
-@router.delete("/users/{user_id}", response=dict)
+@router.delete("/users/{user_id}", response={200: dict, 403: dict})
 def delete_user(request, user_id: int):
     _ensure_admin_permission(request, "users.delete_user")
     user = get_object_or_404(_get_manageable_users(request), id=user_id)
     if user.id == request.auth.id:
-        return {"error": "Нельзя удалить текущего пользователя"}
+        return 403, {"error": "Нельзя удалить текущего пользователя"}
     user.delete()
     return {"success": True}
 

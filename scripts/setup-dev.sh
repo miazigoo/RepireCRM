@@ -40,5 +40,5 @@ docker compose -f docker-compose.dev.yml up --build -d
 
 echo "✅ Среда разработки настроена!"
 echo "🌐 Frontend: http://localhost:4200"
-echo "🔧 Backend API: http://localhost:8000"
-echo "📊 Django Admin: http://localhost:8000/admin"
+echo "🔧 Backend API: http://localhost:8030"
+echo "📊 Django Admin: http://localhost:8030/admin"

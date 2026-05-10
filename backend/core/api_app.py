@@ -118,7 +118,6 @@ def health_check(request):
         {
             "status": "ok" if ok else "degraded",
             "timestamp": datetime.now().isoformat(),
-            "debug": settings.DEBUG,
             "checks": checks,
         },
         status=status_code,

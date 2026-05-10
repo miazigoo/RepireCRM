@@ -42,12 +42,12 @@ def get_notifications(
     return notifications.order_by("-created_at")[offset : offset + limit]
 
 
-@router.post("/{notification_id}/mark-read")
+@router.post("/{notification_id}/mark-read", response={200: dict, 404: dict})
 def mark_notification_read(request, notification_id: int):
     """Отметить уведомление как прочитанное"""
     notification = _accessible_notifications(request).filter(id=notification_id).first()
     if not notification:
-        return {"error": "Уведомление не найдено"}
+        return 404, {"error": "Уведомление не найдено"}
 
     notification.is_read = True
     notification.read_at = timezone.now()

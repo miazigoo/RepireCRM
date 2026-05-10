@@ -15,7 +15,7 @@ TEST_PASSWORD ?= QwsAzx@2000
 MOCK_MONTHS ?= 12
 MOCK_ORDERS ?= 720
 MOCK_CUSTOMERS ?= 240
-NODE_PATH_BIN ?= /home/b00bs/.nvm/versions/node/v22.19.0/bin
+NODE_PATH_BIN ?= $(shell node -e "process.stdout.write(require('path').dirname(process.execPath))" 2>/dev/null || dirname $(shell command -v node 2>/dev/null || echo /usr/bin/node))
 ANGULAR_BUILD_DIR ?= /tmp/repaircrm-angular-build
 
 .PHONY: help up rebuild down restart ps logs logs-backend logs-frontend migrate makemigrations shell dbshell npm install \

@@ -18,6 +18,9 @@ def generate_sale_pdf(request, sale_id: int, doc_type: str = "retail_invoice"):
     from inventory.models import RetailSale
 
     sale = get_object_or_404(RetailSale, id=sale_id)
+    current_shop = getattr(request, "current_shop", None)
+    if current_shop and sale.shop_id != current_shop.id:
+        raise PermissionError("Нет доступа к документу другого филиала")
     doc = create_retail_pdf_and_store(sale, doc_type)
     return {"success": True, "document_id": doc.id, "url": doc.file.url}
 
@@ -29,6 +32,9 @@ def download_sale_pdf(request, sale_id: int, doc_type: str = "retail_invoice"):
     from inventory.models import RetailSale
 
     sale = get_object_or_404(RetailSale, id=sale_id)
+    current_shop = getattr(request, "current_shop", None)
+    if current_shop and sale.shop_id != current_shop.id:
+        raise PermissionError("Нет доступа к документу другого филиала")
     doc = (
         RetailDocument.objects.filter(sale=sale, document_type=doc_type)
         .order_by("-generated_at")
@@ -55,6 +61,9 @@ def email_sale_pdf(
     from inventory.models import RetailSale
 
     sale = get_object_or_404(RetailSale, id=sale_id)
+    current_shop = getattr(request, "current_shop", None)
+    if current_shop and sale.shop_id != current_shop.id:
+        raise PermissionError("Нет доступа к документу другого филиала")
     # email адрес: из запроса, или из клиента продажи при наличии
     email = to_email or (
         sale.customer.email if sale.customer and sale.customer.email else None

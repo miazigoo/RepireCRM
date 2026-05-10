@@ -118,6 +118,11 @@ def redeem_points(request, data: RedeemPointsSchema):
 def calculate_points_for_order(request, order_id: int):
     """Рассчитать количество баллов за заказ"""
     order = get_object_or_404(Order, id=order_id)
+    current_shop = getattr(request, "current_shop", None)
+    if current_shop and order.shop_id != current_shop.id:
+        from ninja.errors import HttpError
+
+        raise HttpError(403, "Заказ не принадлежит текущему магазину")
     points = LoyaltyService.calculate_points_for_order(order)
 
     customer_loyalty = LoyaltyService.get_or_create_customer_loyalty(order.customer)
@@ -136,7 +141,13 @@ def calculate_points_for_order(request, order_id: int):
 @router.get("/customer/{customer_id}/rewards", response=list[CustomerRewardSchema])
 def get_customer_rewards(request, customer_id: int):
     """Получить награды клиента"""
-    customer = get_object_or_404(Customer, id=customer_id)
+    current_shop = getattr(request, "current_shop", None)
+    if current_shop:
+        customer = get_object_or_404(
+            Customer.objects.filter(shop_history__shop=current_shop), id=customer_id
+        )
+    else:
+        customer = get_object_or_404(Customer, id=customer_id)
     customer_loyalty = CustomerLoyalty.objects.filter(customer=customer).first()
 
     if not customer_loyalty:
@@ -156,7 +167,14 @@ def list_available_rewards(request):
 def award_points_for_order(request, order_id: int):
     """Начислить баллы за заказ"""
     try:
+        if not request.auth.has_permission("loyalty.award_points"):
+            from ninja.errors import HttpError
+
+            raise HttpError(403, "Нет прав для начисления баллов")
         order = get_object_or_404(Order, id=order_id)
+        current_shop = getattr(request, "current_shop", None)
+        if current_shop and order.shop_id != current_shop.id:
+            return 400, {"error": "Заказ не принадлежит текущему магазину"}
         transaction_obj = LoyaltyService.award_points_for_order(order)
 
         if transaction_obj:

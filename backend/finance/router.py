@@ -1,5 +1,6 @@
 from decimal import Decimal
 from html import escape
+from ipaddress import ip_address, ip_network
 
 from django.conf import settings
 from django.http import HttpResponse
@@ -17,6 +18,7 @@ from .online_payments import (
     sync_provider_payment,
     update_payment_from_provider_payload,
 )
+from .schemas import CreateSalePaymentRequest
 
 router = Router(tags=["Финансы"])
 
@@ -285,8 +287,41 @@ def confirm_test_online_payment(request, payment_id: int, token: str):
     return redirect(payment.return_url or settings.FRONTEND_URL)
 
 
+_YOOKASSA_IP_RANGES = [
+    ip_network("185.71.76.0/27"),
+    ip_network("185.71.77.0/27"),
+    ip_network("77.75.153.0/25"),
+    ip_network("77.75.156.11/32"),
+    ip_network("77.75.156.35/32"),
+    ip_network("77.75.154.128/25"),
+    ip_network("2a02:5180::/32"),
+]
+
+
+def _is_yookassa_ip(request) -> bool:
+    """Return True if the request originates from a YooKassa notification IP."""
+    if settings.YOOKASSA_MOCK:
+        return True
+    forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
+    raw_ip = (
+        forwarded.split(",")[0].strip() if forwarded else None
+    ) or request.META.get("REMOTE_ADDR", "")
+    try:
+        addr = ip_address(raw_ip)
+    except ValueError:
+        return False
+    return any(addr in net for net in _YOOKASSA_IP_RANGES)
+
+
 @router.post("/yookassa/webhook", auth=None)
 def yookassa_webhook(request, data: dict):
+    if not _is_yookassa_ip(request):
+        return HttpResponse(status=403)
+
+    # Refuse to process real webhook payloads in mock mode (misconfiguration guard)
+    if settings.YOOKASSA_MOCK and settings.ENVIRONMENT == "production":
+        return HttpResponse(status=503)
+
     event_object = data.get("object") or {}
     provider_payment_id = event_object.get("id")
     if not provider_payment_id:
@@ -306,7 +341,7 @@ def yookassa_webhook(request, data: dict):
 
 
 @router.post("/sales/{sale_id}/pay", response=dict)
-def pay_retail_sale(request, sale_id: int, data: dict):
+def pay_retail_sale(request, sale_id: int, data: CreateSalePaymentRequest):
     if not request.auth.has_permission("finance.add_payment"):
         raise PermissionError("Нет прав для создания платежей")
     sale = get_object_or_404(RetailSale, id=sale_id)
@@ -315,11 +350,11 @@ def pay_retail_sale(request, sale_id: int, data: dict):
         raise PermissionError("Нет доступа к продаже в другом филиале")
     if not request.auth.can_access_shop(sale.shop):
         raise PermissionError("Нет доступа к продаже в этом филиале")
-    pm = get_object_or_404(PaymentMethod, id=data["payment_method_id"])
+    pm = get_object_or_404(PaymentMethod, id=data.payment_method_id)
     cr = None
-    if pm.is_cash and data.get("cash_register_id"):
-        cr = get_object_or_404(CashRegister, id=data["cash_register_id"])
-    amount = Decimal(str(data.get("amount", sale.total_amount)))
+    if pm.is_cash and data.cash_register_id:
+        cr = get_object_or_404(CashRegister, id=data.cash_register_id)
+    amount = Decimal(str(data.amount if data.amount else sale.total_amount))
     p = Payment.objects.create(
         payment_type=Payment.PaymentType.INCOME,
         status=Payment.PaymentStatus.COMPLETED,
@@ -330,7 +365,7 @@ def pay_retail_sale(request, sale_id: int, data: dict):
         order=None,
         purchase_order=None,
         expense=None,
-        description=data.get("description", f"Оплата продажи {sale.sale_number}"),
+        description=data.description or f"Оплата продажи {sale.sale_number}",
         reference_number=sale.sale_number,
         payment_date=timezone.now(),
         created_by=request.auth,
