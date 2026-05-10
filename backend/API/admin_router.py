@@ -6,6 +6,7 @@ from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from ninja import Router, Schema
+from ninja.errors import HttpError
 
 from orders.models import Order
 from shops.models import Shop
@@ -57,11 +58,21 @@ class AdminShopSchema(Schema):
     code: str
     city: str = ""
     address: str = ""
+    latitude: float | None = None
+    longitude: float | None = None
     phone: str = ""
     email: str = ""
     is_active: bool
     timezone: str
     currency: str
+
+    @staticmethod
+    def resolve_latitude(obj):
+        return float(obj.latitude) if obj.latitude is not None else None
+
+    @staticmethod
+    def resolve_longitude(obj):
+        return float(obj.longitude) if obj.longitude is not None else None
 
 
 class AdminUserSchema(Schema):
@@ -164,6 +175,8 @@ class ShopCreateSchema(Schema):
     code: str
     city: str | None = None
     address: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
     phone: str | None = None
     email: str | None = None
     timezone: str = "Europe/Moscow"
@@ -176,6 +189,8 @@ class ShopUpdateSchema(Schema):
     code: str | None = None
     city: str | None = None
     address: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
     phone: str | None = None
     email: str | None = None
     timezone: str | None = None
@@ -245,6 +260,28 @@ def _get_manageable_users(request):
     return queryset.filter(
         models.Q(id=request.auth.id) | models.Q(shops__in=available_shops)
     ).distinct()
+
+
+def _validate_shop_coordinates(
+    payload: dict, current_shop: Shop | None = None
+) -> dict | None:
+    lat = payload.get(
+        "latitude",
+        current_shop.latitude if current_shop is not None else None,
+    )
+    lng = payload.get(
+        "longitude",
+        current_shop.longitude if current_shop is not None else None,
+    )
+    if lat is None and lng is None:
+        return None
+    if lat is None or lng is None:
+        return {"error": "Для точки на карте укажите и широту, и долготу"}
+    if not -90 <= float(lat) <= 90:
+        return {"error": "Широта должна быть в диапазоне от -90 до 90"}
+    if not -180 <= float(lng) <= 180:
+        return {"error": "Долгота должна быть в диапазоне от -180 до 180"}
+    return None
 
 
 def _sync_user_shops(request, user, shop_ids):
@@ -379,7 +416,14 @@ def create_shop(request, data: ShopCreateSchema):
     _ensure_admin_permission(request, "settings.add_shop")
     if Shop.objects.filter(code=data.code).exists():
         return 400, {"error": "Филиал с таким кодом уже существует"}
-    shop = Shop.objects.create(**data.model_dump())
+    payload = data.model_dump()
+    for field in ("city", "address", "phone", "email"):
+        if payload.get(field) is None:
+            payload[field] = ""
+    coord_error = _validate_shop_coordinates(payload)
+    if coord_error:
+        return 400, coord_error
+    shop = Shop.objects.create(**payload)
     return 201, shop
 
 
@@ -393,8 +437,14 @@ def get_admin_shop(request, shop_id: int):
 def update_shop(request, shop_id: int, data: ShopUpdateSchema):
     _ensure_admin_permission(request, "settings.change_shop")
     shop = get_object_or_404(_get_assignable_shops(request), id=shop_id)
-    for field, value in data.model_dump(exclude_unset=True).items():
-        if value is not None:
+    incoming = data.model_dump(exclude_unset=True)
+    coord_error = _validate_shop_coordinates(incoming, shop)
+    if coord_error:
+        raise HttpError(400, coord_error["error"])
+    for field, value in incoming.items():
+        if field in {"latitude", "longitude"}:
+            setattr(shop, field, value)
+        elif value is not None:
             setattr(shop, field, value)
     shop.save()
     return shop

@@ -109,6 +109,30 @@ class AdminApiTestCase(TestCase):
                 self.assertEqual(response.status_code, 200, response.content)
                 self.assertIsInstance(response.json(), list)
 
+    def test_admin_shop_coordinates_roundtrip(self):
+        response = self.client.post(
+            "/api/admin/shops",
+            data=json.dumps(
+                {
+                    "name": "Map Shop",
+                    "code": "MAP01",
+                    "city": "Москва",
+                    "address": "г. Москва, ул. Тверская, д. 1",
+                    "latitude": 55.757969,
+                    "longitude": 37.615587,
+                    "timezone": "Europe/Moscow",
+                    "currency": "RUB",
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 201, response.content)
+        payload = response.json()
+        self.assertEqual(payload["latitude"], 55.757969)
+        self.assertEqual(payload["longitude"], 37.615587)
+
     def test_permissions_endpoint_returns_human_readable_catalog(self):
         call_command("init_permissions", verbosity=0)
 

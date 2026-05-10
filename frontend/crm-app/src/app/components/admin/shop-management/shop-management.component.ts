@@ -26,15 +26,29 @@ import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl'
   selector: 'app-shop-management',
   standalone: true,
   imports: [
-    NgIf, NgFor, RouterModule, ReactiveFormsModule,
-    MatTableModule, MatPaginatorModule, MatSortModule, MatInputModule,
-    MatSelectModule, MatButtonModule, MatIconModule, MatCardModule,
-    MatProgressSpinnerModule, MatMenuModule, MatChipsModule,
-    MatDialogModule, MatSnackBarModule, MatSlideToggleModule, MatDividerModule
+    NgIf,
+    NgFor,
+    RouterModule,
+    ReactiveFormsModule,
+    MatTableModule,
+    MatPaginatorModule,
+    MatSortModule,
+    MatInputModule,
+    MatSelectModule,
+    MatButtonModule,
+    MatIconModule,
+    MatCardModule,
+    MatProgressSpinnerModule,
+    MatMenuModule,
+    MatChipsModule,
+    MatDialogModule,
+    MatSnackBarModule,
+    MatSlideToggleModule,
+    MatDividerModule,
   ],
   templateUrl: './shop-management.component.html',
   styleUrl: './shop-management.component.scss',
-  providers: [{ provide: MatPaginatorIntl, useClass: RussianPaginatorIntl }]
+  providers: [{ provide: MatPaginatorIntl, useClass: RussianPaginatorIntl }],
 })
 export class ShopManagementComponent implements OnInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -45,10 +59,11 @@ export class ShopManagementComponent implements OnInit {
     'code',
     'city',
     'address',
+    'coordinates',
     'phone',
     'email',
     'is_active',
-    'actions'
+    'actions',
   ];
 
   dataSource = new MatTableDataSource<Shop>();
@@ -65,30 +80,35 @@ export class ShopManagementComponent implements OnInit {
     { value: 'Asia/Novosibirsk', label: 'Новосибирск (UTC+7)' },
     { value: 'Asia/Krasnoyarsk', label: 'Красноярск (UTC+7)' },
     { value: 'Asia/Irkutsk', label: 'Иркутск (UTC+8)' },
-    { value: 'Asia/Vladivostok', label: 'Владивосток (UTC+10)' }
+    { value: 'Asia/Vladivostok', label: 'Владивосток (UTC+10)' },
   ];
 
   currencyOptions = [
     { value: 'RUB', label: 'Российский рубль (₽)' },
     { value: 'USD', label: 'Доллар США ($)' },
-    { value: 'EUR', label: 'Евро (€)' }
+    { value: 'EUR', label: 'Евро (€)' },
   ];
 
   constructor(
     private adminService: AdminService,
     private fb: FormBuilder,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
   ) {
     this.shopForm = this.fb.group({
       name: ['', [Validators.required, Validators.maxLength(100)]],
-      code: ['', [Validators.required, Validators.maxLength(10), Validators.pattern(/^[A-Z0-9]+$/)]],
+      code: [
+        '',
+        [Validators.required, Validators.maxLength(10), Validators.pattern(/^[A-Z0-9]+$/)],
+      ],
       city: ['', Validators.maxLength(100)],
       address: [''],
+      latitude: [null, [Validators.min(-90), Validators.max(90)]],
+      longitude: [null, [Validators.min(-180), Validators.max(180)]],
       phone: ['', Validators.pattern(/^\+?[0-9\s().-]{7,24}$/)],
       email: ['', Validators.email],
       timezone: ['Europe/Moscow', Validators.required],
-      currency: ['RUB', Validators.required]
+      currency: ['RUB', Validators.required],
     });
   }
 
@@ -112,7 +132,7 @@ export class ShopManagementComponent implements OnInit {
         console.error('Error loading shops:', error);
         this.snackBar.open('Ошибка загрузки магазинов', 'Закрыть', { duration: 3000 });
         this.loading = false;
-      }
+      },
     });
   }
 
@@ -121,7 +141,7 @@ export class ShopManagementComponent implements OnInit {
     this.editingShop = null;
     this.shopForm.reset({
       timezone: 'Europe/Moscow',
-      currency: 'RUB'
+      currency: 'RUB',
     });
   }
 
@@ -140,7 +160,12 @@ export class ShopManagementComponent implements OnInit {
   onSubmit(): void {
     if (this.shopForm.valid) {
       this.loading = true;
-      const formData: ShopCreateRequest = this.shopForm.value;
+      const raw = this.shopForm.value;
+      const formData: ShopCreateRequest = {
+        ...raw,
+        latitude: raw.latitude === '' || raw.latitude == null ? null : Number(raw.latitude),
+        longitude: raw.longitude === '' || raw.longitude == null ? null : Number(raw.longitude),
+      };
 
       const request = this.editingShop
         ? this.adminService.updateShop(this.editingShop.id, formData)
@@ -157,7 +182,7 @@ export class ShopManagementComponent implements OnInit {
           const errorMessage = error.error?.error || 'Ошибка сохранения магазина';
           this.snackBar.open(errorMessage, 'Закрыть', { duration: 5000 });
           this.loading = false;
-        }
+        },
       });
     } else {
       this.markFormGroupTouched();
@@ -168,7 +193,7 @@ export class ShopManagementComponent implements OnInit {
     const newStatus = !shop.is_active;
     // Создать правильный объект для обновления
     const updateData: Partial<Shop> = {
-      is_active: newStatus
+      is_active: newStatus,
     };
 
     this.adminService.updateShop(shop.id, updateData).subscribe({
@@ -179,7 +204,7 @@ export class ShopManagementComponent implements OnInit {
       },
       error: (error) => {
         this.snackBar.open('Ошибка изменения статуса магазина', 'Закрыть', { duration: 3000 });
-      }
+      },
     });
   }
 
@@ -193,13 +218,13 @@ export class ShopManagementComponent implements OnInit {
         error: (error) => {
           const errorMessage = error.error?.error || 'Ошибка удаления магазина';
           this.snackBar.open(errorMessage, 'Закрыть', { duration: 5000 });
-        }
+        },
       });
     }
   }
 
   private markFormGroupTouched(): void {
-    Object.keys(this.shopForm.controls).forEach(key => {
+    Object.keys(this.shopForm.controls).forEach((key) => {
       const control = this.shopForm.get(key);
       control?.markAsTouched();
     });
@@ -220,6 +245,14 @@ export class ShopManagementComponent implements OnInit {
         }
         return 'Введите корректный номер телефона';
       }
+      if (control.errors['min'] || control.errors['max']) {
+        if (fieldName === 'latitude') {
+          return 'Широта должна быть от -90 до 90';
+        }
+        if (fieldName === 'longitude') {
+          return 'Долгота должна быть от -180 до 180';
+        }
+      }
       if (control.errors['maxlength']) {
         return `Максимум ${control.errors['maxlength'].requiredLength} символов`;
       }
@@ -228,12 +261,19 @@ export class ShopManagementComponent implements OnInit {
   }
 
   getTimezoneLabel(timezone: string): string {
-    const option = this.timezoneOptions.find(opt => opt.value === timezone);
+    const option = this.timezoneOptions.find((opt) => opt.value === timezone);
     return option ? option.label : timezone;
   }
 
   getCurrencyLabel(currency: string): string {
-    const option = this.currencyOptions.find(opt => opt.value === currency);
+    const option = this.currencyOptions.find((opt) => opt.value === currency);
     return option ? option.label : currency;
+  }
+
+  getCoordinateText(shop: Shop): string {
+    if (shop.latitude == null || shop.longitude == null) {
+      return '';
+    }
+    return `${Number(shop.latitude).toFixed(6)}, ${Number(shop.longitude).toFixed(6)}`;
   }
 }

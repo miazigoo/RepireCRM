@@ -28,6 +28,8 @@ export interface Shop {
   code: string;
   city?: string;
   address?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   phone?: string;
   email?: string;
   is_active: boolean;
@@ -63,6 +65,8 @@ export interface ShopCreateRequest {
   code: string;
   city?: string;
   address?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   phone?: string;
   email?: string;
   is_active?: boolean;

@@ -1,3 +1,4 @@
+import os
 import random
 from calendar import monthrange
 from datetime import datetime, time, timedelta
@@ -53,43 +54,56 @@ from users.models import Role
 
 User = get_user_model()
 
+DEMO_ORGANIZATION = "ООО Repair CRM Demo"
 
 DEMO_SHOPS = (
     {
         "code": "MSK01",
         "name": "Repair CRM Москва Центр",
+        "city": "Москва",
         "address": "г. Москва, ул. Тверская, д. 1",
+        "latitude": "55.757969",
+        "longitude": "37.615587",
         "phone": "+7 (495) 123-45-67",
         "email": "msk@repair-crm.test",
         "prefix": "MSK",
-        "organization": "ООО Ремонт Москва",
+        "timezone": "Europe/Moscow",
     },
     {
         "code": "SPB01",
         "name": "Repair CRM СПб Невский",
+        "city": "Санкт-Петербург",
         "address": "г. Санкт-Петербург, Невский пр., д. 100",
+        "latitude": "59.932132",
+        "longitude": "30.349391",
         "phone": "+7 (812) 987-65-43",
         "email": "spb@repair-crm.test",
         "prefix": "SPB",
-        "organization": "ООО Ремонт Север",
+        "timezone": "Europe/Moscow",
     },
     {
         "code": "KZN01",
         "name": "Repair CRM Казань",
+        "city": "Казань",
         "address": "г. Казань, ул. Баумана, д. 33",
+        "latitude": "55.790278",
+        "longitude": "49.114029",
         "phone": "+7 (843) 222-10-20",
         "email": "kzn@repair-crm.test",
         "prefix": "KZN",
-        "organization": "ООО Ремонт Волга",
+        "timezone": "Europe/Moscow",
     },
     {
         "code": "EKB01",
         "name": "Repair CRM Екатеринбург",
+        "city": "Екатеринбург",
         "address": "г. Екатеринбург, пр. Ленина, д. 24",
+        "latitude": "56.838926",
+        "longitude": "60.605703",
         "phone": "+7 (343) 300-20-10",
         "email": "ekb@repair-crm.test",
         "prefix": "EKB",
-        "organization": "ООО Ремонт Урал",
+        "timezone": "Asia/Yekaterinburg",
     },
 )
 
@@ -207,6 +221,26 @@ class Command(BaseCommand):
             action="store_true",
             help="Только удалить demo-записи и не создавать новые данные",
         )
+        parser.add_argument(
+            "--portal-base-url",
+            default=os.environ.get("DEMO_PORTAL_BASE_URL", ""),
+            help="URL клиентского backend для demo-интеграции",
+        )
+        parser.add_argument(
+            "--portal-api-key",
+            default=os.environ.get("DEMO_PORTAL_API_KEY", ""),
+            help="Sync API ключ клиентского backend для demo-интеграции",
+        )
+        parser.add_argument(
+            "--portal-tenant-key",
+            default=os.environ.get("DEMO_PORTAL_TENANT_KEY", "repair-demo"),
+            help="Tenant key demo-компании в клиентском backend",
+        )
+        parser.add_argument(
+            "--portal-domain",
+            default=os.environ.get("DEMO_PORTAL_DOMAIN", ""),
+            help="Публичный домен клиентского кабинета для demo-интеграции",
+        )
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -214,6 +248,10 @@ class Command(BaseCommand):
         self.months = max(1, options["months"])
         self.orders_target = max(1, options["orders"])
         self.customers_target = max(1, options["customers"])
+        self.portal_base_url = options["portal_base_url"].strip()
+        self.portal_api_key = options["portal_api_key"].strip()
+        self.portal_tenant_key = options["portal_tenant_key"].strip() or "repair-demo"
+        self.portal_domain = options["portal_domain"].strip()
 
         self.stdout.write("Создание демо-данных Repair CRM...")
         call_command("init_permissions", verbosity=0)
@@ -257,6 +295,7 @@ class Command(BaseCommand):
         self.create_expenses(shops, users, payment_methods)
         self.refresh_customer_stats(customers)
         self.refresh_analytics_snapshots(shops)
+        self.configure_client_portal_demo(shops)
 
         self.stdout.write(self.style.SUCCESS("Демо-данные созданы."))
         self.stdout.write(f"Филиалы: {len(shops)}")
@@ -304,26 +343,32 @@ class Command(BaseCommand):
 
     def create_shops(self):
         shops = []
+        organization, _ = Organization.objects.update_or_create(
+            name=DEMO_ORGANIZATION,
+            defaults={
+                "inn": "7701234567",
+                "kpp": "770101001",
+                "address": "г. Москва, ул. Тверская, д. 1",
+                "phone": "+7 (495) 123-45-67",
+                "email": "demo@repair-crm.test",
+                "website": "https://b00bs.ru",
+            },
+        )
+        get_or_create_trial_subscription(organization)
         for data in DEMO_SHOPS:
             shop, _ = Shop.objects.update_or_create(
                 code=data["code"],
                 defaults={
                     "name": data["name"],
+                    "city": data["city"],
                     "address": data["address"],
+                    "latitude": Decimal(data["latitude"]),
+                    "longitude": Decimal(data["longitude"]),
                     "phone": data["phone"],
                     "email": data["email"],
                     "is_active": True,
+                    "timezone": data["timezone"],
                     "currency": "RUB",
-                },
-            )
-            organization, _ = Organization.objects.update_or_create(
-                name=data["organization"],
-                defaults={
-                    "inn": f"77{self.random.randrange(1000000000, 9999999999)}"[:10],
-                    "address": data["address"],
-                    "phone": data["phone"],
-                    "email": data["email"],
-                    "website": "https://repair-crm.test",
                 },
             )
             ShopSettings.objects.update_or_create(
@@ -334,9 +379,17 @@ class Command(BaseCommand):
                     "work_hours_end": "21:00",
                     "organization": organization,
                     "receipt_footer_text": "Спасибо за обращение в Repair CRM",
+                    "field_visit_enabled": True,
+                    "field_visit_service_name": "Выезд мастера",
+                    "field_visit_base_price": Decimal("990"),
+                    "field_visit_out_of_zone_price": Decimal("1490"),
+                    "field_visit_description": (
+                        "Мастер приедет, проведет первичную диагностику и "
+                        "согласует ремонт в удобной точке."
+                    ),
+                    "field_visit_advance_days": 1,
                 },
             )
-            get_or_create_trial_subscription(organization)
             shops.append(shop)
         return shops
 
@@ -356,8 +409,8 @@ class Command(BaseCommand):
         )
         b00bs = self.upsert_user(
             "b00bs",
-            "Тест",
-            "Пользователь",
+            "Demo",
+            "Директор",
             "b00bs@example.com",
             "QwsAzx@2000",
             roles["director"],
@@ -415,6 +468,98 @@ class Command(BaseCommand):
             "technicians": technicians,
             "cashiers": cashiers,
         }
+
+    def configure_client_portal_demo(self, shops):
+        if not shops:
+            return None
+
+        from client_sync.models import ClientPortalIntegration
+
+        organization = shops[0].settings.organization
+        integration, _ = ClientPortalIntegration.objects.get_or_create(
+            organization=organization
+        )
+        if self.portal_base_url:
+            integration.base_url = self.portal_base_url
+        if self.portal_api_key:
+            integration.api_key = self.portal_api_key
+        integration.tenant_key = self.portal_tenant_key
+        if self.portal_domain:
+            integration.client_domain = self.portal_domain
+        integration.enabled = bool(integration.base_url and integration.api_key)
+        integration.auth_policy = ClientPortalIntegration.AuthPolicy.PHONE_OR_EMAIL
+        integration.support_phone = "+7 (495) 123-45-67"
+        integration.support_email = "support@repair-crm.test"
+        integration.brand_name = "Repair CRM Demo"
+        integration.accent_color = "#0f766e"
+        integration.portal_banner_enabled = True
+        integration.portal_banner_title = "Весенняя диагностика без ожидания"
+        integration.portal_banner_subtitle = (
+            "Покажите заявку из кабинета клиента и получите приоритетную диагностику."
+        )
+        integration.portal_banner_link_url = self.portal_domain or "/login"
+        integration.landing_section_eyebrow = "Почему клиенты возвращаются"
+        integration.landing_section_title = "Ремонт прозрачно, быстро и рядом"
+        integration.landing_section_subtitle = (
+            "Статусы, согласование сметы, история заказов, выезд мастера и точки "
+            "приема в разных городах синхронизированы с CRM."
+        )
+        integration.landing_feature_cards = [
+            {
+                "title": "Статусы без звонков",
+                "body": (
+                    "Клиент видит диагностику, ремонт, готовность и оплату "
+                    "в личном кабинете."
+                ),
+                "icon": "status",
+            },
+            {
+                "title": "Согласование сметы",
+                "body": (
+                    "Допработы и суммы подтверждаются в кабинете, "
+                    "а решение возвращается в CRM."
+                ),
+                "icon": "pricing",
+            },
+            {
+                "title": "Точки по городам",
+                "body": (
+                    "На лендинге есть карта филиалов с координатами из CRM "
+                    "и быстрым маршрутом."
+                ),
+                "icon": "map",
+            },
+            {
+                "title": "Выезд мастера",
+                "body": (
+                    "Заявка с адресом и зоной обслуживания попадает в CRM "
+                    "как отдельный поток."
+                ),
+                "icon": "visit",
+            },
+        ]
+        integration.landing_promo_spotlight = {
+            "enabled": True,
+            "badge": "Demo",
+            "title": "Промокод DEMO-SPRING7",
+            "subtitle": "Для демонстрации скидок и маркетинга",
+            "body": (
+                "Акции из CRM автоматически появляются в клиентском кабинете "
+                "и на лендинге."
+            ),
+            "cta_label": "Открыть кабинет",
+            "cta_href": "/login",
+            "image_url": "",
+        }
+        integration.save()
+        ClientPortalIntegration.objects.filter(
+            tenant_key=integration.tenant_key
+        ).exclude(pk=integration.pk).update(enabled=False)
+        state = "включена" if integration.enabled else "создана без ключа"
+        self.stdout.write(
+            f"Клиентская demo-интеграция {state}: {integration.tenant_key}"
+        )
+        return integration
 
     def upsert_user(
         self,

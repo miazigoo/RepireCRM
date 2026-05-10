@@ -525,6 +525,8 @@ class ClientSyncTestCase(TestCase):
     def test_portal_public_shops_returns_org_locations(self):
         self.shop.city = "Москва"
         self.shop.address = "ул. Примерная, 10"
+        self.shop.latitude = "55.751244"
+        self.shop.longitude = "37.618423"
         self.shop.save()
         response = self.client.get(
             "/api/client-sync/portal-public-shops",
@@ -537,3 +539,5 @@ class ClientSyncTestCase(TestCase):
         self.assertEqual(data[0]["name"], "Main Shop")
         self.assertEqual(data[0]["city"], "Москва")
         self.assertEqual(data[0]["crm_shop_id"], self.shop.id)
+        self.assertEqual(data[0]["lat"], 55.751244)
+        self.assertEqual(data[0]["lng"], 37.618423)

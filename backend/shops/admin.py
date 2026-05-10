@@ -11,7 +11,16 @@ from .models import (
 
 @admin.register(Shop)
 class ShopAdmin(admin.ModelAdmin):
-    list_display = ("name", "code", "city", "is_active", "phone", "email")
+    list_display = (
+        "name",
+        "code",
+        "city",
+        "latitude",
+        "longitude",
+        "is_active",
+        "phone",
+        "email",
+    )
     list_filter = ("is_active",)
     search_fields = ("name", "code", "city", "phone", "email")
 

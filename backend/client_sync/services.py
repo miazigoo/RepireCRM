@@ -577,7 +577,17 @@ def _build_public_locations_payload(integration: ClientPortalIntegration) -> lis
     shops = (
         Shop.objects.filter(settings__organization=org, is_active=True)
         .order_by("name")
-        .only("id", "name", "code", "city", "address", "phone", "email")
+        .only(
+            "id",
+            "name",
+            "code",
+            "city",
+            "address",
+            "latitude",
+            "longitude",
+            "phone",
+            "email",
+        )
     )
     out: list[dict] = []
     for shop in shops:
@@ -592,6 +602,8 @@ def _build_public_locations_payload(integration: ClientPortalIntegration) -> lis
                 "phone": shop.phone or "",
                 "email": shop.email or "",
                 "city": city_raw or _infer_city_from_address(addr),
+                "lat": float(shop.latitude) if shop.latitude is not None else None,
+                "lng": float(shop.longitude) if shop.longitude is not None else None,
             }
         )
     return out

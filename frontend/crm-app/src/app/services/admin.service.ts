@@ -56,6 +56,8 @@ export interface ShopCreateRequest {
   code: string;
   city?: string;
   address?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   phone?: string;
   email?: string;
   timezone: string;
@@ -218,7 +220,6 @@ export class AdminService {
   updateShop(id: number, shopData: Partial<ShopCreateRequest>): Observable<Shop> {
     return this.apiService.put<Shop>(`/admin/shops/${id}`, shopData);
   }
-
 
   deleteShop(id: number): Observable<any> {
     return this.apiService.delete(`/admin/shops/${id}`);

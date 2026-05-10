@@ -24,11 +24,21 @@ class ShopSchema(Schema):
     code: str
     city: str = ""
     address: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
     phone: str | None = None
     email: str | None = None
     is_active: bool
     timezone: str
     currency: str
+
+    @staticmethod
+    def resolve_latitude(obj):
+        return float(obj.latitude) if obj.latitude is not None else None
+
+    @staticmethod
+    def resolve_longitude(obj):
+        return float(obj.longitude) if obj.longitude is not None else None
 
 
 class RoleSchema(Schema):

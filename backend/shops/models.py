@@ -1,6 +1,7 @@
 import math
+from decimal import Decimal
 
-from django.core.validators import RegexValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
 from django.utils import timezone
 
@@ -22,6 +23,30 @@ class Shop(models.Model):
         help_text="Для фильтра на лендинге; если пусто — берём из начала адреса",
     )
     address = models.TextField("Адрес", blank=True)
+    latitude = models.DecimalField(
+        "Широта",
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(Decimal("-90")),
+            MaxValueValidator(Decimal("90")),
+        ],
+        help_text="Координата точки для карты клиентского лендинга",
+    )
+    longitude = models.DecimalField(
+        "Долгота",
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(Decimal("-180")),
+            MaxValueValidator(Decimal("180")),
+        ],
+        help_text="Координата точки для карты клиентского лендинга",
+    )
     phone = models.CharField("Телефон", max_length=20, blank=True)
     email = models.EmailField("Email", blank=True)
 
