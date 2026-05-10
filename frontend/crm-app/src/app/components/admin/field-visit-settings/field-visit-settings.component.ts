@@ -1,3 +1,4 @@
+import * as L from 'leaflet';
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -74,7 +75,8 @@ export class FieldVisitSettingsComponent implements OnInit {
 
   form!: FormGroup;
 
-  private ymapInstances: Map<string, unknown> = new Map();
+  private leafletMaps: Map<string, L.Map> = new Map();
+  private drawCoords: Map<string, L.LatLng[]> = new Map();
 
   ngOnInit(): void {
     this.form = this.fb.group({
@@ -175,88 +177,66 @@ export class FieldVisitSettingsComponent implements OnInit {
   }
 
   initMap(zoneIdx: number): void {
-    const containerId = `ymap-zone-${zoneIdx}`;
-    const key = containerId;
-    if (this.ymapInstances.has(key)) return;
+    const containerId = `leaflet-zone-${zoneIdx}`;
+    if (this.leafletMaps.has(containerId)) return;
 
-    const ymapsUrl = 'https://api-maps.yandex.ru/2.1/?lang=ru_RU';
-    const existing = document.querySelector('script[data-ymap-crm]');
-    const trySetup = () => this.setupZoneMap(containerId, zoneIdx);
+    const container = document.getElementById(containerId);
+    if (!container) return;
 
-    if (existing) {
-    const ymaps = (window as unknown as Record<string, unknown>)['ymaps'];
-    if (ymaps) {
-      trySetup();
-    } else {
-      existing.addEventListener('load', trySetup);
+    // Fix Leaflet icon paths for Angular builds
+    const iconDefault = L.icon({
+      iconUrl: 'assets/leaflet/marker-icon.png',
+      iconRetinaUrl: 'assets/leaflet/marker-icon-2x.png',
+      shadowUrl: 'assets/leaflet/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+    });
+    L.Marker.prototype.options.icon = iconDefault;
+
+    const map = L.map(containerId, { center: [55.76, 37.64], zoom: 10 });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19,
+    }).addTo(map);
+    this.leafletMaps.set(containerId, map);
+
+    const zoneGroup = this.zonesArray.at(zoneIdx) as FormGroup;
+    const existing = zoneGroup.get('geometry')?.value as FieldVisitZone['geometry'] | null;
+    let polygon: L.Polygon | null = null;
+
+    if (existing?.type === 'Polygon' && existing.coordinates?.length) {
+      const latlngs = existing.coordinates[0].map(([lng, lat]: number[]) => [lat, lng] as [number, number]);
+      polygon = L.polygon(latlngs, { color: '#0f766e', fillOpacity: 0.2 }).addTo(map);
+      map.fitBounds(polygon.getBounds());
     }
-      return;
-    }
 
-    const script = document.createElement('script');
-    script.src = ymapsUrl;
-    script.setAttribute('data-ymap-crm', '1');
-    script.onload = trySetup;
-    document.head.appendChild(script);
-  }
+    const coords: L.LatLng[] = [];
+    this.drawCoords.set(containerId, coords);
 
-  private setupZoneMap(containerId: string, zoneIdx: number): void {
-    const ymaps = (window as unknown as Record<string, unknown>)['ymaps'] as {
-      ready: (fn: () => void) => void;
-      Map: new (id: string, opts: unknown) => {
-        events: { add(e: string, fn: (ev: unknown) => void): void };
-        geoObjects: { add(o: unknown): void; removeAll(): void };
-      };
-      Polygon: new (coords: unknown, props: unknown, opts: unknown) => unknown;
-      DrawingControl: unknown;
-    };
-    if (!ymaps) return;
-
-    ymaps.ready(() => {
-      const container = document.getElementById(containerId);
-      if (!container) return;
-      const map = new ymaps.Map(containerId, { center: [55.76, 37.64], zoom: 10 });
-      this.ymapInstances.set(containerId, map);
-
-      const zoneGroup = this.zonesArray.at(zoneIdx) as FormGroup;
-      const existing = zoneGroup.get('geometry')?.value as FieldVisitZone['geometry'] | null;
-
-      if (existing?.type === 'Polygon' && existing.coordinates?.length) {
-        const coords = existing.coordinates[0].map(([lng, lat]: number[]) => [lat, lng]);
-        const poly = new ymaps.Polygon([coords], {}, { fillColor: 'rgba(15,118,110,0.2)', strokeColor: '#0f766e', strokeWidth: 2 });
-        map.geoObjects.add(poly);
+    map.on('click', (e: L.LeafletMouseEvent) => {
+      coords.push(e.latlng);
+      if (polygon) { map.removeLayer(polygon); polygon = null; }
+      if (coords.length >= 3) {
+        polygon = L.polygon(coords, { color: '#0f766e', fillOpacity: 0.2 })
+          .bindTooltip('Зона обслуживания')
+          .addTo(map);
+        const geoJson = {
+          type: 'Polygon' as const,
+          coordinates: [coords.map((ll) => [ll.lng, ll.lat])],
+        };
+        zoneGroup.patchValue({ geometry: geoJson });
       }
-
-      // Simple polygon drawing via click to add points (minimal impl)
-      let drawCoords: [number, number][] = [];
-      map.events.add('click', (ev: unknown) => {
-        const coords = (ev as { get(k: string): [number, number] }).get('coords');
-        drawCoords.push(coords);
-        map.geoObjects.removeAll();
-        if (drawCoords.length >= 3) {
-          const poly = new ymaps.Polygon(
-            [drawCoords],
-            { hintContent: 'Зона обслуживания' },
-            { fillColor: 'rgba(15,118,110,0.2)', strokeColor: '#0f766e', strokeWidth: 2 }
-          );
-          map.geoObjects.add(poly);
-          const geoJson = {
-            type: 'Polygon' as const,
-            coordinates: [drawCoords.map(([lat, lng]) => [lng, lat])],
-          };
-          zoneGroup.patchValue({ geometry: geoJson });
-        }
-      });
     });
   }
 
   clearZoneMap(zoneIdx: number): void {
     const zoneGroup = this.zonesArray.at(zoneIdx) as FormGroup;
     zoneGroup.patchValue({ geometry: null });
-    const containerId = `ymap-zone-${zoneIdx}`;
-    const map = this.ymapInstances.get(containerId) as { geoObjects: { removeAll(): void } } | undefined;
-    if (map) map.geoObjects.removeAll();
-    this.ymapInstances.delete(containerId);
+    const containerId = `leaflet-zone-${zoneIdx}`;
+    const map = this.leafletMaps.get(containerId);
+    if (map) { map.eachLayer((l) => { if (l instanceof L.Polygon) map.removeLayer(l); }); }
+    const coords = this.drawCoords.get(containerId);
+    if (coords) coords.length = 0;
   }
 
   private newId(): string {
