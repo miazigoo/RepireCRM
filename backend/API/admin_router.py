@@ -72,6 +72,7 @@ class AdminUserSchema(Schema):
     email: str = ""
     phone: str = ""
     is_director: bool
+    can_field_visit: bool = False
     is_active: bool
     current_shop: AdminShopSchema | None = None
     avatar: str | None = None
@@ -125,6 +126,7 @@ class UserCreateSchema(Schema):
     role_id: int | None = None
     shop_ids: list[int] = []
     is_director: bool = False
+    can_field_visit: bool = False
     profile_status: str | None = None
     bio: str | None = None
     compensation_type: str = "fixed"
@@ -142,6 +144,7 @@ class UserUpdateSchema(Schema):
     role_id: int | None = None
     shop_ids: list[int] | None = None
     is_director: bool | None = None
+    can_field_visit: bool | None = None
     is_active: bool | None = None
     profile_status: str | None = None
     bio: str | None = None
@@ -293,6 +296,7 @@ def create_user(request, data: UserCreateSchema):
         phone=data.phone or "",
         role=role,
         is_director=data.is_director,
+        can_field_visit=data.can_field_visit,
         profile_status=data.profile_status or "",
         bio=data.bio or "",
         compensation_type=data.compensation_type,

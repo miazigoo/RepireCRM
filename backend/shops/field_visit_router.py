@@ -43,9 +43,21 @@ class FieldVisitWorkerSchema(Schema):
     avatar_url: str | None = None
 
 
+def _check_shop_access(request, shop: Shop) -> None:
+    """Raise 403 if the authenticated user has no access to this shop."""
+    from ninja.errors import HttpError
+
+    user = request.auth
+    if user.is_superuser or user.is_director:
+        return
+    if not user.shops.filter(id=shop.id).exists():
+        raise HttpError(403, "Нет доступа к этому магазину")
+
+
 @router.get("/shops/{shop_id}/field-visit", response=FieldVisitConfigSchema)
 def get_field_visit_config(request, shop_id: int) -> FieldVisitConfigSchema:
     shop = get_object_or_404(Shop, id=shop_id)
+    _check_shop_access(request, shop)
     settings, _ = ShopSettings.objects.get_or_create(shop=shop)
     return FieldVisitConfigSchema(
         enabled=settings.field_visit_enabled,
@@ -64,9 +76,10 @@ def update_field_visit_config(
 ) -> FieldVisitConfigSchema:
     from ninja.errors import HttpError
 
+    shop = get_object_or_404(Shop, id=shop_id)
+    _check_shop_access(request, shop)
     if not request.auth.has_permission("shops.change_shopsettings"):
         raise HttpError(403, "Нет прав для изменения настроек магазина")
-    shop = get_object_or_404(Shop, id=shop_id)
     settings, _ = ShopSettings.objects.get_or_create(shop=shop)
     payload = data.model_dump(exclude_unset=True)
     for field, value in payload.items():
@@ -98,6 +111,7 @@ def update_field_visit_config(
 )
 def get_field_visit_workers(request, shop_id: int) -> list[FieldVisitWorkerSchema]:
     shop = get_object_or_404(Shop, id=shop_id)
+    _check_shop_access(request, shop)
     workers = User.objects.filter(shops=shop, can_field_visit=True, is_active=True)
     return [
         FieldVisitWorkerSchema(

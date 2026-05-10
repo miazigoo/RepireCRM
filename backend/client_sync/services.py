@@ -509,6 +509,30 @@ def build_marketing_banner_dict(
     }
 
 
+def _build_field_visit_payload(integration: ClientPortalIntegration) -> dict | None:
+    """Return field_visit config dict for the portal marketing push, or None."""
+    from shops.models import ShopSettings
+
+    org = integration.organization
+    try:
+        shop_settings = (
+            ShopSettings.objects.filter(organization=org).select_related().first()
+        )
+    except Exception:
+        shop_settings = None
+    if not shop_settings:
+        return None
+    return {
+        "enabled": shop_settings.field_visit_enabled,
+        "service_name": shop_settings.field_visit_service_name,
+        "base_price": float(shop_settings.field_visit_base_price),
+        "out_of_zone_price": float(shop_settings.field_visit_out_of_zone_price),
+        "description": shop_settings.field_visit_description,
+        "zones": shop_settings.field_visit_zones or [],
+        "advance_days": shop_settings.field_visit_advance_days,
+    }
+
+
 def push_marketing_snapshot(
     integration: ClientPortalIntegration,
     session: requests.Session | None = None,
@@ -521,6 +545,7 @@ def push_marketing_snapshot(
         for p in promotions_for_client_portal(integration)
     ]
     banner = build_marketing_banner_dict(integration)
+    field_visit = _build_field_visit_payload(integration)
     try:
         response = session.post(
             build_sync_url(integration, "/api/sync/marketing/upsert"),
@@ -530,6 +555,7 @@ def push_marketing_snapshot(
                 "sent_at": serialize_datetime(timezone.now()),
                 "promotions": promotions,
                 "banner": banner,
+                "field_visit": field_visit,
             },
             timeout=DEFAULT_TIMEOUT_SECONDS,
         )

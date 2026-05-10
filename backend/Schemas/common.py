@@ -52,6 +52,7 @@ class UserSchema(Schema):
     phone: str | None = None
     is_active: bool
     is_director: bool
+    can_field_visit: bool = False
     current_shop: ShopSchema | None = None
     available_shops: list[ShopSchema] = []
     avatar: str | None = None
