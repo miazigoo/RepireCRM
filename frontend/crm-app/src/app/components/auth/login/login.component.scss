@@ -33,11 +33,11 @@
   color: #ffffff;
 }
 
-.brand-mark mat-icon,
-.mobile-brand mat-icon {
-  width: 27px;
-  height: 27px;
-  font-size: 27px;
+.brand-mark img,
+.mobile-brand img {
+  display: block;
+  width: 34px;
+  height: 34px;
 }
 
 .brand-row strong {
