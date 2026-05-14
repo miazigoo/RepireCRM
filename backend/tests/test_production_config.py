@@ -45,6 +45,17 @@ class ProductionConfigTestCase(SimpleTestCase):
             4,
         )
 
+    def test_frontend_nginx_serves_local_icon_fonts_with_correct_mime_types(self):
+        nginx_conf = (ROOT / "docker" / "nginx.conf").read_text()
+
+        self.assertIn(r"location ~* \.(?:woff2?|ttf|otf|eot)$", nginx_conf)
+        self.assertIn("font/otf otf;", nginx_conf)
+        self.assertIn("font/woff2 woff2;", nginx_conf)
+        self.assertIn(
+            "X-Content-Type-Options",
+            (ROOT / "docker" / "security-headers.conf").read_text(),
+        )
+
     def test_backend_container_uses_gunicorn_entrypoint(self):
         dockerfile = (ROOT / "docker" / "Dockerfile.backend").read_text()
         entrypoint = (ROOT / "docker" / "backend-entrypoint.sh").read_text()
