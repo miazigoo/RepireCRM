@@ -12,6 +12,9 @@
 - Backend контейнер выполняет `migrate`, `collectstatic`, затем запускает
   `gunicorn`.
 - Healthcheck backend проверяет `/api/health`.
+- Frontend nginx отдает SPA с security headers, immutable cache для
+  хешированных assets и healthcheck.
+- `db-backup` делает ежедневный `pg_dump` в Docker volume `backup_data`.
 
 ## Запуск
 
@@ -32,12 +35,38 @@ curl http://localhost/api/health
 docker compose -f docker-compose.yml ps
 ```
 
+## Бэкапы PostgreSQL
+
+Сервис `db-backup` запускается вместе с production compose и по умолчанию раз в
+сутки создает custom-format dump в volume `backup_data`. Периодичность и срок
+хранения меняются через:
+
+```env
+POSTGRES_BACKUP_INTERVAL_SECONDS=86400
+POSTGRES_BACKUP_RETENTION_DAYS=14
+```
+
+Проверить файлы:
+
+```bash
+docker compose --env-file .env -f docker-compose.yml exec -T db-backup \
+  sh -lc 'ls -lah /backups'
+```
+
+Восстановление в пустую БД:
+
+```bash
+docker compose --env-file .env -f docker-compose.yml exec -T db-backup \
+  sh -lc 'PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -h db -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists /backups/<dump-file>.dump'
+```
+
 ## Перед реальным публичным запуском
 
 - Поставить TLS на внешнем reverse proxy или включить HTTPS на edge.
 - Включить `SECURE_SSL_REDIRECT=True` и `SECURE_HSTS_SECONDS=31536000` только
   после проверки HTTPS.
-- Подключить бэкапы PostgreSQL и media volume.
+- Подключить внешний offsite-copy для `backup_data` и отдельный backup media
+  volume.
 - Подключить Sentry через `SENTRY_DSN`.
 - Проверка подписок уже вынесена в сервис `subscription-checker` в
   `docker-compose.yml`. По умолчанию он запускает

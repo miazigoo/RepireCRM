@@ -179,8 +179,13 @@ $mobile-breakpoint: 768px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
 
-  mat-icon {
+  svg {
     @include icon-size(17px);
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.9;
   }
 }
 
@@ -271,8 +276,13 @@ $mobile-breakpoint: 768px;
     color: var(--side-strong);
   }
 
-  mat-icon {
+  svg {
     @include icon-size(22px);
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.9;
   }
 }
 
@@ -283,53 +293,18 @@ $mobile-breakpoint: 768px;
   justify-content: center;
   font-weight: 850;
 
-  mat-icon {
+  .primary-nav-action-icon {
+    display: inline-block;
+    width: 19px;
+    height: 19px;
+    flex: 0 0 19px;
     margin-right: 8px;
-  }
-}
-
-:host ::ng-deep .shop-menu {
-  .shop-option .mat-mdc-menu-item-text {
-    display: flex;
-    min-width: 0;
-    align-items: center;
-    gap: 14px;
-    width: 100%;
-  }
-
-  .shop-option-copy {
-    display: grid;
-    min-width: 0;
-    gap: 2px;
-
-    span,
-    small {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    span {
-      font-weight: 750;
-    }
-
-    small {
-      color: var(--color-text-secondary);
-      font-size: 11px;
-      font-weight: 800;
-    }
-  }
-
-  .shop-option-check {
-    display: block;
-    width: 18px;
-    height: 18px;
-    margin-left: auto;
     fill: none;
-    stroke: var(--color-primary);
+    stroke: currentColor;
     stroke-linecap: round;
     stroke-linejoin: round;
-    stroke-width: 2.4;
+    stroke-width: 2.1;
+    vertical-align: -4px;
   }
 }
 
@@ -481,9 +456,18 @@ $mobile-breakpoint: 768px;
     background: color-mix(in srgb, var(--side-control-bg) 88%, var(--side-accent));
   }
 
-  mat-icon {
+  .account-chevron {
+    display: block;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
     margin-left: auto;
     color: var(--side-muted);
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.2;
   }
 }
 
@@ -609,7 +593,7 @@ $mobile-breakpoint: 768px;
       display: none;
     }
 
-    mat-icon {
+    .primary-nav-action-icon {
       margin: 0;
     }
   }
@@ -663,7 +647,7 @@ $mobile-breakpoint: 768px;
     place-items: center;
     padding: 0;
 
-    mat-icon,
+    .account-chevron,
     .profile-copy {
       display: none;
     }
@@ -742,6 +726,18 @@ $mobile-breakpoint: 768px;
   font-size: 14px;
 }
 
+.menu-item-icon {
+  display: block;
+  width: 21px;
+  height: 21px;
+  margin-right: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
+}
+
 @media (max-width: $mobile-breakpoint) {
   .sidenav {
     width: min(var(--sidebar-width, 292px), calc(100vw - 36px));
@@ -773,9 +769,38 @@ $mobile-breakpoint: 768px;
 
   .mobile-menu-button,
   .mobile-notifications {
+    position: relative;
     border: var(--panel-border);
     background: color-mix(in srgb, var(--panel-background) 84%, transparent);
     box-shadow: var(--panel-shadow);
+  }
+
+  .mobile-appbar-icon {
+    display: block;
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+  }
+
+  .mobile-notification-badge {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border: 2px solid var(--toolbar-background);
+    border-radius: 999px;
+    background: var(--color-warn);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 13px;
+    text-align: center;
   }
 
   .mobile-title {

@@ -27,6 +27,12 @@ describe('ThemeService', () => {
     expect(service.getAppearancePresets().length).toBeGreaterThan(5);
   });
 
+  it('uses the dark theme by default for new sessions', () => {
+    expect(service.getCurrentTheme().id).toBe('default-dark');
+    expect(document.body.classList).toContain('dark-theme');
+    expect(document.body.classList).toContain('default-dark');
+  });
+
   it('applies palette, visual skin and interface style independently', () => {
     service.setTheme('forest-dark');
     service.setSkin('command-center');

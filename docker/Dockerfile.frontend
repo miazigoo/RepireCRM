@@ -14,11 +14,14 @@ RUN npm run build:prod
 # Production stage
 FROM nginx:alpine
 
+RUN mkdir -p /etc/nginx/snippets
+
 # Копируем собранное приложение
 COPY --from=build /app/dist/crm-app /usr/share/nginx/html
 
 # Копируем конфигурацию nginx
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/security-headers.conf /etc/nginx/snippets/security-headers.conf
 
 EXPOSE 80
 

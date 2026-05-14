@@ -28,6 +28,22 @@ interface ProfileStat {
   icon: 'login' | 'role' | 'branch' | 'status';
 }
 
+interface ProfilePerformanceStats {
+  orders: {
+    completed: number;
+    services_revenue: number;
+  };
+  sales: {
+    revenue: number;
+  };
+  tasks: {
+    paid_amount: number;
+  };
+  compensation: {
+    estimated_salary: number;
+  };
+}
+
 @Component({
   selector: 'app-profile',
   standalone: true,
@@ -64,7 +80,7 @@ export class ProfileComponent implements OnInit {
   passwordForm: FormGroup;
   profileForm: FormGroup;
   profileStats: ProfileStat[] = [];
-  performanceStats: any = null;
+  performanceStats: ProfilePerformanceStats | null = null;
   savingProfile = false;
   private readonly avatarMaxSizeBytes = 5 * 1024 * 1024;
 
@@ -397,12 +413,32 @@ export class ProfileComponent implements OnInit {
   private loadPerformanceStats(): void {
     this.authService.getProfileStatistics({ period: 'month' }).subscribe({
       next: stats => {
-        this.performanceStats = stats;
+        this.performanceStats = this.normalizePerformanceStats(stats);
       },
       error: () => {
         this.performanceStats = null;
       }
     });
+  }
+
+  private normalizePerformanceStats(stats: any): ProfilePerformanceStats {
+    return {
+      orders: {
+        completed: Number(stats?.orders?.completed ?? stats?.orders_completed ?? 0),
+        services_revenue: Number(stats?.orders?.services_revenue ?? stats?.services_revenue ?? 0),
+      },
+      sales: {
+        revenue: Number(stats?.sales?.revenue ?? stats?.sales_revenue ?? 0),
+      },
+      tasks: {
+        paid_amount: Number(stats?.tasks?.paid_amount ?? stats?.tasks_paid_amount ?? 0),
+      },
+      compensation: {
+        estimated_salary: Number(
+          stats?.compensation?.estimated_salary ?? stats?.estimated_salary ?? 0,
+        ),
+      },
+    };
   }
 
   private extractErrorMessage(error: any): string {

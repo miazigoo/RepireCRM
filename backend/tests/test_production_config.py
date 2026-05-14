@@ -28,6 +28,23 @@ class ProductionConfigTestCase(SimpleTestCase):
         self.assertIn("proxy_pass http://backend:8000;", nginx_conf)
         self.assertNotIn("proxy_pass http://backend:8000/;", nginx_conf)
 
+    def test_frontend_nginx_keeps_security_headers_in_cached_locations(self):
+        nginx_conf = (ROOT / "docker" / "nginx.conf").read_text()
+        headers_conf = (ROOT / "docker" / "security-headers.conf").read_text()
+
+        self.assertIn("Content-Security-Policy", headers_conf)
+        self.assertIn("frame-ancestors 'none'", headers_conf)
+        self.assertIn("location ~* ", nginx_conf)
+        self.assertIn(
+            'Cache-Control "public, max-age=2592000, immutable" always',
+            nginx_conf,
+        )
+        self.assertIn('Cache-Control "public, max-age=604800" always', nginx_conf)
+        self.assertGreaterEqual(
+            nginx_conf.count("include /etc/nginx/snippets/security-headers.conf;"),
+            4,
+        )
+
     def test_backend_container_uses_gunicorn_entrypoint(self):
         dockerfile = (ROOT / "docker" / "Dockerfile.backend").read_text()
         entrypoint = (ROOT / "docker" / "backend-entrypoint.sh").read_text()
@@ -46,12 +63,23 @@ class ProductionConfigTestCase(SimpleTestCase):
         self.assertIn("127.0.0.1", env_template)
         self.assertIn("CSRF_TRUSTED_ORIGINS=", env_template)
         self.assertIn("SUBSCRIPTION_CHECK_INTERVAL_SECONDS=86400", env_template)
+        self.assertIn("POSTGRES_BACKUP_INTERVAL_SECONDS=86400", env_template)
+        self.assertIn("POSTGRES_BACKUP_RETENTION_DAYS=14", env_template)
 
     def test_production_docs_include_subscription_scheduler(self):
         production_doc = (ROOT / "docs" / "PRODUCTION.md").read_text()
 
         self.assertIn("subscription-checker", production_doc)
         self.assertIn("python manage.py check_subscriptions", production_doc)
+        self.assertIn("db-backup", production_doc)
+        self.assertIn("pg_dump", production_doc)
+
+    def test_frontend_service_has_healthcheck(self):
+        compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text())
+        frontend = compose["services"]["frontend"]
+
+        self.assertIn("healthcheck", frontend)
+        self.assertIn("http://127.0.0.1/", frontend["healthcheck"]["test"][1])
 
     def test_production_compose_runs_subscription_scheduler(self):
         compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text())
@@ -65,3 +93,21 @@ class ProductionConfigTestCase(SimpleTestCase):
         self.assertEqual(
             service["depends_on"]["backend"]["condition"], "service_healthy"
         )
+
+    def test_production_compose_runs_database_backups(self):
+        compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text())
+        service = compose["services"]["db-backup"]
+
+        self.assertEqual(service["image"], "postgres:15-alpine")
+        self.assertIn("pg_dump", service["command"])
+        self.assertEqual(
+            service["environment"]["POSTGRES_BACKUP_INTERVAL_SECONDS"],
+            "${POSTGRES_BACKUP_INTERVAL_SECONDS:-86400}",
+        )
+        self.assertEqual(
+            service["environment"]["POSTGRES_BACKUP_RETENTION_DAYS"],
+            "${POSTGRES_BACKUP_RETENTION_DAYS:-14}",
+        )
+        self.assertEqual(service["depends_on"]["db"]["condition"], "service_healthy")
+        self.assertIn("backup_data:/backups", service["volumes"])
+        self.assertIn("backup_data", compose["volumes"])

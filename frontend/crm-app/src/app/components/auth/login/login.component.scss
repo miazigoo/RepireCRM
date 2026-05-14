@@ -2,8 +2,8 @@
   display: grid;
   min-height: 100vh;
   grid-template-columns: minmax(0, 1.05fr) minmax(420px, 0.95fr);
-  background: #f4f7fb;
-  color: #0f172a;
+  background: var(--color-background);
+  color: var(--color-text-primary);
 }
 
 .login-visual {
@@ -13,7 +13,17 @@
   padding: 48px;
   background:
     linear-gradient(145deg, rgba(37, 99, 235, 0.12), rgba(22, 163, 74, 0.08)),
-    #eef4ff;
+    color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+}
+
+:host-context(body.dark-theme) .login-visual {
+  background:
+    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--color-primary) 26%, transparent), transparent 34%),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--color-surface-strong) 92%, #000),
+      color-mix(in srgb, var(--color-background) 88%, #000)
+    );
 }
 
 .brand-row {
@@ -29,7 +39,7 @@
   height: 46px;
   place-items: center;
   border-radius: 8px;
-  background: #0f172a;
+  background: color-mix(in srgb, var(--color-text-primary) 90%, transparent);
   color: #ffffff;
 }
 
@@ -47,7 +57,7 @@
 }
 
 .brand-row span:last-child {
-  color: #536076;
+  color: var(--color-text-secondary);
   font-size: 13px;
   font-weight: 700;
 }
@@ -57,7 +67,7 @@
 }
 
 .eyebrow {
-  color: #2563eb;
+  color: var(--color-primary);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0;
@@ -66,7 +76,7 @@
 
 .login-copy h1 {
   margin: 12px 0 18px;
-  color: #0f172a;
+  color: var(--color-text-primary);
   font-size: clamp(36px, 5vw, 64px);
   font-weight: 900;
   line-height: 1.02;
@@ -75,7 +85,7 @@
 .login-copy p {
   max-width: 560px;
   margin: 0;
-  color: #475569;
+  color: var(--color-text-secondary);
   font-size: 18px;
   line-height: 1.55;
 }
@@ -92,15 +102,15 @@
   align-items: center;
   gap: 10px;
   padding: 14px;
-  border: 1px solid rgba(37, 99, 235, 0.18);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 24%, var(--color-border));
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.72);
-  color: #1f2937;
+  background: color-mix(in srgb, var(--panel-background) 76%, transparent);
+  color: var(--color-text-primary);
   font-weight: 800;
 }
 
 .signal-grid mat-icon {
-  color: #2563eb;
+  color: var(--color-primary);
 }
 
 .login-panel {
@@ -112,9 +122,10 @@
 .login-card {
   width: min(100%, 440px);
   padding: 30px;
-  border: 1px solid #e2e8f0;
+  border: var(--panel-border);
   border-radius: 12px;
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
+  background: var(--panel-background);
+  box-shadow: var(--shadow-heavy);
 }
 
 .form-header {
@@ -130,14 +141,14 @@
 
 .form-header h2 {
   margin: 0;
-  color: #0f172a;
+  color: var(--color-text-primary);
   font-size: 25px;
   font-weight: 900;
 }
 
 .form-header p {
   margin: 6px 0 0;
-  color: #64748b;
+  color: var(--color-text-secondary);
   font-size: 14px;
   line-height: 1.45;
 }
@@ -173,14 +184,14 @@
   margin-top: 22px;
   padding: 12px;
   border-radius: 8px;
-  background: #f8fafc;
-  color: #475569;
+  background: var(--color-surface-strong);
+  color: var(--color-text-secondary);
   font-size: 13px;
   font-weight: 700;
 }
 
 .security-note mat-icon {
-  color: #2563eb;
+  color: var(--color-primary);
 }
 
 @media (max-width: 960px) {

@@ -9,7 +9,6 @@ import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatMenuModule } from '@angular/material/menu';
@@ -36,7 +35,6 @@ import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl'
     MatInputModule,
     MatSelectModule,
     MatButtonModule,
-    MatIconModule,
     MatCardModule,
     MatProgressSpinnerModule,
     MatMenuModule,
@@ -56,12 +54,10 @@ export class ShopManagementComponent implements OnInit {
 
   displayedColumns: string[] = [
     'name',
-    'code',
     'city',
     'address',
     'coordinates',
-    'phone',
-    'email',
+    'contacts',
     'is_active',
     'actions',
   ];
@@ -119,6 +115,14 @@ export class ShopManagementComponent implements OnInit {
   ngAfterViewInit(): void {
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
+  }
+
+  get mobileShops(): Shop[] {
+    const shops = this.dataSource.filter ? this.dataSource.filteredData : this.dataSource.data;
+    const pageSize = this.paginator?.pageSize || shops.length || 20;
+    const pageIndex = this.paginator?.pageIndex || 0;
+    const start = pageIndex * pageSize;
+    return shops.slice(start, start + pageSize);
   }
 
   private loadShops(): void {

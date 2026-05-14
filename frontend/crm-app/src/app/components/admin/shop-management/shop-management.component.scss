@@ -89,6 +89,48 @@
   min-width: 132px;
 }
 
+.button-svg,
+.inline-svg,
+.action-svg,
+.menu-svg {
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.button-svg {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin-right: 8px;
+  stroke-width: 2;
+  vertical-align: -4px;
+}
+
+.inline-svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  color: var(--color-primary);
+  stroke-width: 2;
+}
+
+.action-svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2.3;
+}
+
+.menu-svg {
+  width: 21px;
+  height: 21px;
+  margin-right: 14px;
+  stroke-width: 1.9;
+}
+
 .table-card {
   position: relative;
 }
@@ -101,7 +143,7 @@
 
 .shops-table {
   width: 100%;
-  min-width: 1100px;
+  min-width: 940px;
   background: transparent;
 }
 
@@ -139,23 +181,9 @@
   font-weight: 800;
 }
 
-.shop-code-badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 26px;
-  padding: 3px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-surface-strong) 86%, var(--panel-background));
-  color: var(--color-text-primary);
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  font-weight: 900;
-}
-
 .shop-address {
   display: block;
-  max-width: 300px;
+  max-width: 230px;
   color: var(--color-text-secondary);
   font-size: 13px;
   font-weight: 700;
@@ -172,18 +200,15 @@
   white-space: nowrap;
 }
 
-.shop-coordinates mat-icon {
-  width: 18px;
-  height: 18px;
-  color: var(--color-primary);
-  font-size: 18px;
-}
-
 .phone-link,
 .email-link {
+  display: block;
+  max-width: 190px;
+  overflow: hidden;
   color: var(--color-primary);
   font-weight: 800;
   text-decoration: none;
+  text-overflow: ellipsis;
 }
 
 .phone-link:hover,
@@ -198,7 +223,8 @@
 }
 
 .status-text {
-  margin-left: 8px;
+  display: block;
+  margin-top: 4px;
   font-size: 12px;
   font-weight: 900;
 }
@@ -215,6 +241,40 @@
   color: var(--color-danger) !important;
 }
 
+.shop-contacts {
+  display: grid;
+  min-width: 150px;
+  gap: 4px;
+}
+
+:host ::ng-deep .shops-table {
+  .mat-column-city {
+    width: 120px;
+  }
+
+  .mat-column-address {
+    width: 210px;
+  }
+
+  .mat-column-coordinates {
+    width: 170px;
+  }
+
+  .mat-column-contacts {
+    width: 190px;
+  }
+
+  .mat-column-is_active {
+    width: 96px;
+    text-align: center;
+  }
+
+  .mat-column-actions {
+    width: 64px;
+    text-align: center;
+  }
+}
+
 .loading-shade {
   position: absolute;
   inset: 0 0 56px;
@@ -224,6 +284,10 @@
   justify-content: center;
   background: color-mix(in srgb, var(--color-background) 62%, transparent);
   backdrop-filter: blur(2px);
+}
+
+.mobile-shop-list {
+  display: none;
 }
 
 @media (max-width: 768px) {
@@ -240,7 +304,94 @@
     flex-direction: column;
   }
 
-  .shop-address {
-    max-width: 150px;
+  .table-container {
+    display: none;
+  }
+
+  .mobile-shop-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  .mobile-shop-card {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--panel-background) 94%, transparent);
+    box-shadow: var(--shadow-light);
+  }
+
+  .mobile-shop-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+
+    h2 {
+      margin: 0;
+      color: var(--color-text-primary);
+      font-size: 17px;
+      font-weight: 950;
+      line-height: 1.2;
+    }
+
+    span {
+      display: inline-block;
+      margin-top: 5px;
+      color: var(--color-text-secondary);
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      font-weight: 850;
+    }
+  }
+
+  .mobile-shop-fields {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+
+    div {
+      display: grid;
+      gap: 4px;
+      padding-top: 10px;
+      border-top: 1px solid var(--color-border);
+    }
+
+    dt {
+      color: var(--color-text-secondary);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    dd {
+      display: grid;
+      gap: 4px;
+      margin: 0;
+      color: var(--color-text-primary);
+      font-size: 14px;
+      font-weight: 750;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    a {
+      color: var(--color-primary);
+      font-weight: 850;
+      text-decoration: none;
+    }
+  }
+
+  .mobile-shop-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+
+    button {
+      min-width: 0;
+    }
   }
 }

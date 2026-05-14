@@ -957,7 +957,7 @@ export class ThemeService {
   }
 
   private getDefaultTheme(): Theme {
-    return this.themes[0]; // default-light
+    return this.themes.find(theme => theme.id === 'default-dark') || this.themes[0];
   }
 
   private getDefaultStyle(): InterfaceStyle {

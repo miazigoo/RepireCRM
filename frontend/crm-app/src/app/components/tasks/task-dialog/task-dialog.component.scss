@@ -1,11 +1,10 @@
 .task-dialog {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   width: min(820px, calc(100vw - 40px));
-  max-height: calc(100vh - 40px);
+  max-height: min(760px, calc(100vh - 32px));
   box-sizing: border-box;
-  gap: 14px;
-  overflow: auto;
-  padding: 4px 6px 8px;
+  overflow: hidden;
   color: var(--color-text-primary);
 }
 
@@ -18,11 +17,21 @@ footer {
 }
 
 header {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+
+  > div {
+    min-width: 0;
+  }
+
   h2 {
     margin: 3px 0 0;
     color: var(--color-text-primary);
-    font-size: 24px;
+    font-size: 23px;
     font-weight: 950;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
   }
 
   span {
@@ -32,6 +41,25 @@ header {
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
+
+  .dialog-icon {
+    display: block;
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.2;
+  }
+}
+
+.task-dialog-body {
+  display: grid;
+  gap: 14px;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px 20px;
 }
 
 .form-grid {
@@ -58,6 +86,23 @@ header {
 
 footer {
   justify-content: flex-end;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+
+  .button-icon {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    margin-right: 8px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+    vertical-align: -4px;
+  }
 }
 
 :host ::ng-deep {
@@ -77,6 +122,27 @@ footer {
 }
 
 @media (max-width: 760px) {
+  .task-dialog {
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+  }
+
+  header {
+    padding: 16px 16px 12px;
+
+    h2 {
+      font-size: 21px;
+    }
+  }
+
+  .task-dialog-body {
+    padding: 16px;
+  }
+
+  footer {
+    padding: 12px 16px 14px;
+  }
+
   .form-grid,
   .form-grid.three,
   .payment-box {

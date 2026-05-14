@@ -140,6 +140,21 @@ describe('ProfileComponent', () => {
     expect(store.dispatch).toHaveBeenCalledWith(AuthActions.getCurrentUserSuccess({ user }));
   });
 
+  it('normalizes partial performance statistics from the backend', () => {
+    authService.getProfileStatistics.and.returnValue(of({
+      orders_completed: 4,
+      services_revenue: 2500,
+    }));
+
+    component.refreshProfile();
+
+    expect(component.performanceStats?.orders.completed).toBe(4);
+    expect(component.performanceStats?.orders.services_revenue).toBe(2500);
+    expect(component.performanceStats?.sales.revenue).toBe(0);
+    expect(component.performanceStats?.tasks.paid_amount).toBe(0);
+    expect(component.performanceStats?.compensation.estimated_salary).toBe(0);
+  });
+
   it('uploads a valid avatar through auth API', () => {
     const input = document.createElement('input');
     const file = new File(['avatar'], 'avatar.png', { type: 'image/png' });

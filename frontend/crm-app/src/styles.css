@@ -279,6 +279,142 @@ body .mat-mdc-icon-button {
   color: var(--color-text-primary) !important;
 }
 
+body .cdk-overlay-container .shop-menu.mat-mdc-menu-panel {
+  min-width: min(336px, calc(100vw - 24px)) !important;
+  max-width: min(380px, calc(100vw - 24px)) !important;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--panel-background) !important;
+  box-shadow: var(--shadow-heavy, var(--shadow-medium)) !important;
+  overflow: hidden;
+}
+
+body .cdk-overlay-container .shop-menu .mat-mdc-menu-content {
+  padding: 8px !important;
+}
+
+body .cdk-overlay-container .shop-menu .shop-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px 10px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 6px;
+}
+
+body .cdk-overlay-container .shop-menu .shop-menu-header span {
+  color: var(--color-text-primary) !important;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+body .cdk-overlay-container .shop-menu .shop-menu-header small {
+  color: var(--color-text-secondary) !important;
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+body .cdk-overlay-container .shop-menu .shop-option.mat-mdc-menu-item {
+  width: 100%;
+  min-height: 62px;
+  height: auto;
+  padding: 8px 10px !important;
+  border-radius: 8px;
+  margin: 2px 0;
+  line-height: 1.2;
+}
+
+body .cdk-overlay-container .shop-menu .shop-option.mat-mdc-menu-item:hover,
+body .cdk-overlay-container .shop-menu .shop-option.mat-mdc-menu-item.cdk-program-focused,
+body .cdk-overlay-container .shop-menu .shop-option.mat-mdc-menu-item.cdk-keyboard-focused {
+  background: var(--color-primary-soft) !important;
+}
+
+body .cdk-overlay-container .shop-menu .shop-option.active.mat-mdc-menu-item {
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--panel-background)) !important;
+}
+
+body .cdk-overlay-container .shop-menu .shop-option .mat-mdc-menu-item-text {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+body .cdk-overlay-container .shop-menu .shop-option-mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 24%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary) !important;
+}
+
+body .cdk-overlay-container .shop-menu .shop-option-mark svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
+}
+
+body .cdk-overlay-container .shop-menu .shop-option-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+body .cdk-overlay-container .shop-menu .shop-option-title,
+body .cdk-overlay-container .shop-menu .shop-option-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body .cdk-overlay-container .shop-menu .shop-option-title {
+  color: var(--color-text-primary) !important;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+body .cdk-overlay-container .shop-menu .shop-option-meta {
+  color: var(--color-text-secondary) !important;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+body .cdk-overlay-container .shop-menu .shop-option-current {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 13%, transparent);
+  color: var(--color-primary) !important;
+  font-size: 10px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+body .cdk-overlay-container .shop-menu .shop-option-check {
+  display: block;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--color-primary);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.4;
+}
+
 body .mat-mdc-form-field,
 body .mat-mdc-floating-label,
 body .mat-mdc-form-field-required-marker {

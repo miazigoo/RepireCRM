@@ -165,6 +165,21 @@ describe('MainLayoutComponent', () => {
     expect(element.querySelector('.workspace-title')?.textContent?.trim()).toBe('Ремонт+ Москва Центр');
   });
 
+  it('formats shop switcher metadata without merging the branch name and code', () => {
+    expect(fixture.componentInstance.getShopMeta({
+      id: 2,
+      name: 'Repair CRM Екатеринбург',
+      code: 'EKB01',
+      city: 'Екатеринбург',
+      is_active: true,
+      timezone: 'Europe/Moscow',
+      currency: 'RUB',
+    })).toBe('Екатеринбург · EKB01');
+    expect(fixture.componentInstance.getShopCountLabel(1)).toBe('точка');
+    expect(fixture.componentInstance.getShopCountLabel(3)).toBe('точки');
+    expect(fixture.componentInstance.getShopCountLabel(5)).toBe('точек');
+  });
+
   it('collapses the desktop sidebar from the header control', () => {
     fixture.componentInstance.toggleSidebar();
     fixture.detectChanges();

@@ -329,7 +329,6 @@
 }
 
 .order-sidebar {
-  order: -1;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   align-items: start;
 }

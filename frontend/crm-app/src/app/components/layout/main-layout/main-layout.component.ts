@@ -3,9 +3,7 @@ import { CommonModule } from '@angular/common';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { MatSidenavModule, MatSidenav } from '@angular/material/sidenav';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatBadgeModule } from '@angular/material/badge';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -47,9 +45,7 @@ interface NavigationGroup {
     RouterOutlet,
     MatSidenavModule,
     MatButtonModule,
-    MatIconModule,
     MatMenuModule,
-    MatBadgeModule,
     MatDividerModule,
     MatListModule,
     MatTooltipModule,
@@ -196,6 +192,26 @@ export class MainLayoutComponent implements OnInit {
 
   getCurrentShopName(): string {
     return this.currentShop?.name || 'Рабочее пространство';
+  }
+
+  getShopMeta(shop: Shop): string {
+    const parts = [shop.city, shop.code].filter(Boolean);
+    return parts.length > 0 ? parts.join(' · ') : 'Филиал';
+  }
+
+  getShopCountLabel(count: number): string {
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+
+    if (mod10 === 1 && mod100 !== 11) {
+      return 'точка';
+    }
+
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+      return 'точки';
+    }
+
+    return 'точек';
   }
 
   getUserDisplayName(): string {
