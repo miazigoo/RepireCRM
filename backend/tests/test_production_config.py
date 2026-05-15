@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 
@@ -72,6 +73,19 @@ class ProductionConfigTestCase(SimpleTestCase):
         self.assertNotIn("fonts.googleapis.com/icon", index_html)
         self.assertIn("/assets/fonts/MaterialIcons-Regular.ttf", styles_css)
         self.assertTrue(font_path.exists())
+
+    def test_frontend_production_build_keeps_stylesheet_csp_compatible(self):
+        angular_config = json.loads(
+            (ROOT / "frontend" / "crm-app" / "angular.json").read_text()
+        )
+        optimization = angular_config["projects"]["crm-app"]["architect"]["build"][
+            "options"
+        ]["optimization"]
+
+        self.assertFalse(optimization["fonts"])
+        self.assertTrue(optimization["scripts"])
+        self.assertTrue(optimization["styles"]["minify"])
+        self.assertFalse(optimization["styles"]["inlineCritical"])
 
     def test_backend_container_uses_gunicorn_entrypoint(self):
         dockerfile = (ROOT / "docker" / "Dockerfile.backend").read_text()
