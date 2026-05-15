@@ -263,3 +263,14 @@ class ProductionConfigTestCase(SimpleTestCase):
             step.get("run", "") for step in deploy_steps if isinstance(step, dict)
         )
         self.assertIn("./scripts/deploy-production.sh", deploy_commands)
+
+    def test_backup_restore_drill_script_restores_to_temporary_database(self):
+        restore_script = ROOT / "scripts" / "verify-backup-restore.sh"
+        script_text = restore_script.read_text()
+
+        self.assertTrue(restore_script.exists())
+        self.assertIn("restore_check_", script_text)
+        self.assertIn("pg_restore", script_text)
+        self.assertIn("dropdb", script_text)
+        self.assertIn("django_migrations", script_text)
+        self.assertNotIn('-d "$POSTGRES_DB"', script_text)

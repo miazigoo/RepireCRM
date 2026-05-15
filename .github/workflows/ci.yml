@@ -118,6 +118,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate shell scripts
+        run: |
+          bash -n scripts/deploy-production.sh
+          bash -n scripts/verify-backup-restore.sh
+          sh -n docker/backup-loop.sh
+          sh -n docker/health-monitor.sh
+
       - name: Validate production compose
         run: docker compose --env-file .env.production.example -f docker-compose.yml config -q
 

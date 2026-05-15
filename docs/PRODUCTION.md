@@ -111,6 +111,20 @@ docker compose --env-file .env -f docker-compose.yml exec -T db-backup \
   sh -lc 'PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -h db -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists /backups/<dump-file>.dump'
 ```
 
+Проверка восстановления без риска для production БД:
+
+```bash
+DEPLOY_HOST=130.49.151.251 \
+DEPLOY_USER=deploy \
+DEPLOY_PATH=/opt/repaircrm/crm \
+./scripts/verify-backup-restore.sh
+```
+
+Скрипт берет последний dump из `/backups`, создает временную БД,
+восстанавливает dump, проверяет наличие таблиц и миграций, затем удаляет
+временную БД. Для проверки конкретного dump можно передать
+`RESTORE_DUMP_FILE=/backups/<dump-file>.dump`.
+
 ## Health monitor и alerts
 
 `health-monitor` проверяет цели из `MONITOR_TARGETS`. Формат:
