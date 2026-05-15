@@ -29,6 +29,19 @@ class ProductionConfigTestCase(SimpleTestCase):
         self.assertIn("proxy_pass http://backend:8000;", nginx_conf)
         self.assertNotIn("proxy_pass http://backend:8000/;", nginx_conf)
 
+    def test_frontend_nginx_preserves_forwarded_https_proto(self):
+        nginx_conf = (ROOT / "docker" / "nginx.conf").read_text()
+
+        self.assertIn(
+            "map $http_x_forwarded_proto $repaircrm_forwarded_proto",
+            nginx_conf,
+        )
+        self.assertIn(
+            "proxy_set_header X-Forwarded-Proto $repaircrm_forwarded_proto",
+            nginx_conf,
+        )
+        self.assertNotIn("proxy_set_header X-Forwarded-Proto $scheme;", nginx_conf)
+
     def test_frontend_nginx_keeps_security_headers_in_cached_locations(self):
         nginx_conf = (ROOT / "docker" / "nginx.conf").read_text()
         headers_conf = (ROOT / "docker" / "security-headers.conf").read_text()
@@ -104,6 +117,8 @@ class ProductionConfigTestCase(SimpleTestCase):
         self.assertIn("ALLOWED_HOSTS=", env_template)
         self.assertIn("127.0.0.1", env_template)
         self.assertIn("CSRF_TRUSTED_ORIGINS=", env_template)
+        self.assertIn("SECURE_SSL_REDIRECT=True", env_template)
+        self.assertIn("SECURE_HSTS_SECONDS=31536000", env_template)
         self.assertIn("SECURE_HSTS_INCLUDE_SUBDOMAINS=False", env_template)
         self.assertIn("SECURE_HSTS_PRELOAD=False", env_template)
         self.assertIn("SUBSCRIPTION_CHECK_INTERVAL_SECONDS=86400", env_template)
@@ -113,6 +128,7 @@ class ProductionConfigTestCase(SimpleTestCase):
         self.assertIn("BACKUP_RCLONE_REMOTE=", env_template)
         self.assertIn("MONITOR_TARGETS=", env_template)
         self.assertIn("MONITOR_HOST_HEADER=b00bs.ru", env_template)
+        self.assertIn("MONITOR_FORWARDED_PROTO=https", env_template)
         self.assertIn("ALERT_WEBHOOK_URL=", env_template)
         self.assertIn("SENTRY_DSN=", env_template)
         self.assertIn("EMAIL_HOST=", env_template)
@@ -148,6 +164,14 @@ class ProductionConfigTestCase(SimpleTestCase):
 
         self.assertIn("healthcheck", frontend)
         self.assertIn("http://127.0.0.1/", frontend["healthcheck"]["test"][1])
+
+    def test_backend_healthcheck_supports_ssl_redirect(self):
+        compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text())
+        backend = compose["services"]["backend"]
+        healthcheck = backend["healthcheck"]["test"][1]
+
+        self.assertIn("X-Forwarded-Proto", healthcheck)
+        self.assertIn("https", healthcheck)
 
     def test_production_compose_runs_subscription_scheduler(self):
         compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text())
@@ -199,6 +223,7 @@ class ProductionConfigTestCase(SimpleTestCase):
         self.assertIn("MONITOR_TARGETS", monitor_script)
         self.assertIn("curl -fsS", monitor_script)
         self.assertIn("MONITOR_HOST_HEADER", monitor_script)
+        self.assertIn("MONITOR_FORWARDED_PROTO", monitor_script)
         self.assertIn("ALERT_WEBHOOK_URL", service["environment"])
         self.assertEqual(
             service["environment"]["MONITOR_FAILURE_THRESHOLD"],
@@ -209,8 +234,32 @@ class ProductionConfigTestCase(SimpleTestCase):
             "${MONITOR_HOST_HEADER:-b00bs.ru}",
         )
         self.assertEqual(
+            service["environment"]["MONITOR_FORWARDED_PROTO"],
+            "${MONITOR_FORWARDED_PROTO:-https}",
+        )
+        self.assertEqual(
             service["depends_on"]["frontend"]["condition"], "service_healthy"
         )
         self.assertEqual(
             service["depends_on"]["backend"]["condition"], "service_healthy"
         )
+
+    def test_ci_pipeline_runs_real_deploy_script(self):
+        workflow = yaml.safe_load(
+            (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+        )
+        deploy_script = ROOT / "scripts" / "deploy-production.sh"
+        deploy_script_text = deploy_script.read_text()
+
+        self.assertTrue(deploy_script.exists())
+        self.assertIn("health_status", deploy_script_text)
+        self.assertIn('"200"', deploy_script_text)
+        self.assertIn("deploy", workflow["jobs"])
+        self.assertIn("backend", workflow["jobs"]["deploy"]["needs"])
+        self.assertIn("frontend", workflow["jobs"]["deploy"]["needs"])
+        self.assertIn("production-compose", workflow["jobs"]["deploy"]["needs"])
+        deploy_steps = workflow["jobs"]["deploy"]["steps"]
+        deploy_commands = "\n".join(
+            step.get("run", "") for step in deploy_steps if isinstance(step, dict)
+        )
+        self.assertIn("./scripts/deploy-production.sh", deploy_commands)

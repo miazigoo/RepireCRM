@@ -1,131 +1,161 @@
-# .github/workflows/ci.yml
-name: CI/CD Pipeline
+name: CI/CD
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "22"
 
 jobs:
-  test-backend:
+  backend:
+    name: Backend Tests
     runs-on: ubuntu-latest
 
     services:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_PASSWORD: postgres
           POSTGRES_DB: test_repair_crm
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U postgres -d test_repair_crm"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
         ports:
           - 5432:5432
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-    - name: Run linting
-      run: |
-        black --check \
-          backend/core/api_app.py \
-          backend/core/asgi.py \
-          backend/core/middleware.py \
-          backend/customers/customers_schemas.py \
-          backend/client_portal \
-          backend/orders/admin.py \
-          backend/orders/models.py \
-          backend/orders/router.py \
-          backend/orders/orders_schemas.py \
-          backend/tests/test_client_portal.py \
-          backend/tests/test_orders.py \
-          backend/tests/test_production_config.py
-        isort --check-only \
-          backend/core/api_app.py \
-          backend/core/asgi.py \
-          backend/core/middleware.py \
-          backend/customers/customers_schemas.py \
-          backend/client_portal \
-          backend/orders/admin.py \
-          backend/orders/models.py \
-          backend/orders/router.py \
-          backend/orders/orders_schemas.py \
-          backend/tests/test_client_portal.py \
-          backend/tests/test_orders.py \
-          backend/tests/test_production_config.py
-        flake8 --config=backend/.flake8 \
-          backend/core/api_app.py \
-          backend/core/asgi.py \
-          backend/core/middleware.py \
-          backend/customers/customers_schemas.py \
-          backend/client_portal \
-          backend/orders/admin.py \
-          backend/orders/models.py \
-          backend/orders/router.py \
-          backend/orders/orders_schemas.py \
-          backend/tests/test_client_portal.py \
-          backend/tests/test_orders.py \
-          backend/tests/test_production_config.py
-        mypy --config-file backend/pyproject.toml backend/client_portal backend/tests/test_client_portal.py
+      - name: Validate Django project
+        working-directory: backend
+        env:
+          SECRET_KEY: ci-secret-key
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/test_repair_crm
+          REDIS_URL: redis://127.0.0.1:6379/0
+          ALLOWED_HOSTS: localhost,127.0.0.1,testserver,b00bs.ru
+          CSRF_TRUSTED_ORIGINS: https://b00bs.ru
+          CORS_ALLOWED_ORIGINS: https://b00bs.ru
+          YOOKASSA_MOCK: "true"
+        run: python manage.py check
 
-    - name: Run tests
-      env:
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_repair_crm
-      run: |
-        cd backend
-        python manage.py test
+      - name: Run backend tests
+        working-directory: backend
+        env:
+          SECRET_KEY: ci-secret-key
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/test_repair_crm
+          REDIS_URL: redis://127.0.0.1:6379/0
+          ALLOWED_HOSTS: localhost,127.0.0.1,testserver,b00bs.ru
+          CSRF_TRUSTED_ORIGINS: https://b00bs.ru
+          CORS_ALLOWED_ORIGINS: https://b00bs.ru
+          YOOKASSA_MOCK: "true"
+        run: python manage.py test tests --verbosity 2
 
-  test-frontend:
+  frontend:
+    name: Frontend Tests And Build
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '22'
-        cache: 'npm'
-        cache-dependency-path: frontend/crm-app/package-lock.json
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/crm-app/package-lock.json
 
-    - name: Install dependencies
-      run: |
-        cd frontend/crm-app
-        npm ci
+      - name: Install frontend dependencies
+        working-directory: frontend/crm-app
+        run: npm ci
 
-    - name: Build production frontend
-      run: |
-        cd frontend/crm-app
-        npm run build:prod
+      - name: Run frontend tests
+        working-directory: frontend/crm-app
+        run: npm run test:ci
 
-    - name: Run tests
-      run: |
-        cd frontend/crm-app
-        npm run test -- --watch=false --browsers=ChromeHeadless
+      - name: Build production frontend
+        working-directory: frontend/crm-app
+        run: npm run build:prod
 
-  build-and-deploy:
-    needs: [test-backend, test-frontend]
+  production-compose:
+    name: Production Compose
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Build and push Docker images
-      run: |
-        docker build -f docker/Dockerfile.backend -t repair-crm-backend .
-        docker build -f docker/Dockerfile.frontend-prod -t repair-crm-frontend .
-        # Здесь можно добавить push в registry
+      - name: Validate production compose
+        run: docker compose --env-file .env.production.example -f docker-compose.yml config -q
+
+      - name: Build support images
+        run: |
+          docker build -f docker/Dockerfile.backup -t repaircrm-backup-check .
+          docker build -f docker/Dockerfile.monitor -t repaircrm-monitor-check .
+
+  deploy:
+    name: Deploy Production
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, production-compose]
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        env:
+          PRODUCTION_SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+        run: |
+          test -n "$PRODUCTION_SSH_KEY"
+          test -n "$PRODUCTION_HOST"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$PRODUCTION_SSH_KEY" > ~/.ssh/repaircrm_production
+          chmod 600 ~/.ssh/repaircrm_production
+          ssh-keyscan -H "$PRODUCTION_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          DEPLOY_HOST: ${{ secrets.PRODUCTION_HOST }}
+          DEPLOY_USER: ${{ secrets.PRODUCTION_USER }}
+          DEPLOY_PATH: ${{ secrets.PRODUCTION_PATH }}
+          DEPLOY_DOMAIN: ${{ secrets.PRODUCTION_DOMAIN }}
+          DEPLOY_SSH_KEY_PATH: /home/runner/.ssh/repaircrm_production
+          DEPLOY_COMPOSE_PROJECT: repaircrm
+          DEPLOY_ENV_FILE: .env.production
+        run: ./scripts/deploy-production.sh

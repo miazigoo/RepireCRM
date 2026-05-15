@@ -31,8 +31,19 @@ target_url() {
 }
 
 check_url() {
-  if [ -n "${MONITOR_HOST_HEADER:-}" ]; then
-    curl -fsS -m "$MONITOR_TIMEOUT_SECONDS" -H "Host: ${MONITOR_HOST_HEADER}" "$1" >/dev/null
+  if [ -n "${MONITOR_HOST_HEADER:-}" ] && [ -n "${MONITOR_FORWARDED_PROTO:-}" ]; then
+    curl -fsS -m "$MONITOR_TIMEOUT_SECONDS" \
+      -H "Host: ${MONITOR_HOST_HEADER}" \
+      -H "X-Forwarded-Proto: ${MONITOR_FORWARDED_PROTO}" \
+      "$1" >/dev/null
+  elif [ -n "${MONITOR_HOST_HEADER:-}" ]; then
+    curl -fsS -m "$MONITOR_TIMEOUT_SECONDS" \
+      -H "Host: ${MONITOR_HOST_HEADER}" \
+      "$1" >/dev/null
+  elif [ -n "${MONITOR_FORWARDED_PROTO:-}" ]; then
+    curl -fsS -m "$MONITOR_TIMEOUT_SECONDS" \
+      -H "X-Forwarded-Proto: ${MONITOR_FORWARDED_PROTO}" \
+      "$1" >/dev/null
   else
     curl -fsS -m "$MONITOR_TIMEOUT_SECONDS" "$1" >/dev/null
   fi
@@ -43,6 +54,7 @@ MONITOR_INTERVAL_SECONDS="${MONITOR_INTERVAL_SECONDS:-60}"
 MONITOR_TIMEOUT_SECONDS="${MONITOR_TIMEOUT_SECONDS:-10}"
 MONITOR_FAILURE_THRESHOLD="${MONITOR_FAILURE_THRESHOLD:-3}"
 MONITOR_HOST_HEADER="${MONITOR_HOST_HEADER:-}"
+MONITOR_FORWARDED_PROTO="${MONITOR_FORWARDED_PROTO:-https}"
 
 log "Health monitor started: ${MONITOR_TARGETS}"
 

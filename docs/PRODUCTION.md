@@ -19,7 +19,7 @@
 - `health-monitor` регулярно проверяет frontend/backend и может отправлять
   webhook-alert при деградации.
 
-## Запуск
+## Запуск вручную
 
 1. Скопировать `.env.production.example` в `.env`.
 2. Задать сильный `SECRET_KEY`, `POSTGRES_PASSWORD`, домены в `ALLOWED_HOSTS`,
@@ -37,6 +37,37 @@ docker compose --env-file .env -f docker-compose.yml up -d --build
 curl http://localhost/api/health
 docker compose -f docker-compose.yml ps
 ```
+
+## CI/CD деплой
+
+Основной pipeline находится в `.github/workflows/ci.yml`.
+На `push` в `main`/`master` он выполняет backend tests, frontend tests/build,
+проверяет production compose и после этого запускает деплой через
+`scripts/deploy-production.sh`.
+
+Для GitHub Actions нужны repository secrets:
+
+```text
+PRODUCTION_HOST=130.49.151.251
+PRODUCTION_USER=root
+PRODUCTION_PATH=/opt/repaircrm/crm
+PRODUCTION_DOMAIN=b00bs.ru
+PRODUCTION_SSH_KEY=<private ssh key with server access>
+```
+
+Тот же деплой можно запустить локально:
+
+```bash
+DEPLOY_HOST=130.49.151.251 \
+DEPLOY_USER=root \
+DEPLOY_PATH=/opt/repaircrm/crm \
+DEPLOY_DOMAIN=b00bs.ru \
+./scripts/deploy-production.sh
+```
+
+Скрипт синхронизирует код через `rsync`, сохраняет серверный
+`.env.production`, выполняет `docker compose up -d --build --remove-orphans`,
+затем проверяет Django и `/api/health`.
 
 ## Бэкапы PostgreSQL
 
@@ -91,6 +122,7 @@ MONITOR_INTERVAL_SECONDS=60
 MONITOR_TIMEOUT_SECONDS=10
 MONITOR_FAILURE_THRESHOLD=3
 MONITOR_HOST_HEADER=b00bs.ru
+MONITOR_FORWARDED_PROTO=https
 ALERT_WEBHOOK_URL=
 ```
 
@@ -102,11 +134,14 @@ webhook, принимающий JSON с полем `text`. Если URL пуст
 отклоняет неизвестные hostnames, поэтому мониторинг должен ходить с доменным
 именем из `ALLOWED_HOSTS`.
 
+`MONITOR_FORWARDED_PROTO=https` нужен после включения
+`SECURE_SSL_REDIRECT=True`, чтобы внутренняя проверка не получала redirect.
+
 ## Перед реальным публичным запуском
 
-- Поставить TLS на внешнем reverse proxy или включить HTTPS на edge.
-- Включить `SECURE_SSL_REDIRECT=True` и `SECURE_HSTS_SECONDS=31536000` только
-  после проверки HTTPS.
+- TLS на внешнем reverse proxy должен прокидывать `X-Forwarded-Proto`.
+  После проверки домена можно включать `SECURE_SSL_REDIRECT=True` и
+  `SECURE_HSTS_SECONDS=31536000`.
 - Подключить внешний offsite-copy через `BACKUP_RCLONE_REMOTE` и проверить
   восстановление из удаленного dump.
 - Подключить Sentry через `SENTRY_DSN`.

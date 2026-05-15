@@ -78,7 +78,11 @@ services:
       - media_data:/app/media
       - static_data:/app/static
     healthcheck:
-      test: ["CMD-SHELL", "python - <<'PY'\nimport urllib.request\nurllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5).read()\nPY"]
+      test:
+        [
+          "CMD-SHELL",
+          "python - <<'PY'\nimport urllib.request\nrequest = urllib.request.Request('http://127.0.0.1:8000/api/health', headers={'Host': '127.0.0.1', 'X-Forwarded-Proto': 'https'})\nurllib.request.urlopen(request, timeout=5).read()\nPY",
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -197,6 +201,7 @@ services:
       MONITOR_TIMEOUT_SECONDS: "${MONITOR_TIMEOUT_SECONDS:-10}"
       MONITOR_FAILURE_THRESHOLD: "${MONITOR_FAILURE_THRESHOLD:-3}"
       MONITOR_HOST_HEADER: "${MONITOR_HOST_HEADER:-b00bs.ru}"
+      MONITOR_FORWARDED_PROTO: "${MONITOR_FORWARDED_PROTO:-https}"
       ALERT_WEBHOOK_URL: "${ALERT_WEBHOOK_URL:-}"
       ALERT_WEBHOOK_TIMEOUT_SECONDS: "${ALERT_WEBHOOK_TIMEOUT_SECONDS:-10}"
     restart: unless-stopped
