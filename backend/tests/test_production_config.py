@@ -112,6 +112,7 @@ class ProductionConfigTestCase(SimpleTestCase):
         self.assertIn("BACKUP_INCLUDE_MEDIA=true", env_template)
         self.assertIn("BACKUP_RCLONE_REMOTE=", env_template)
         self.assertIn("MONITOR_TARGETS=", env_template)
+        self.assertIn("MONITOR_HOST_HEADER=b00bs.ru", env_template)
         self.assertIn("ALERT_WEBHOOK_URL=", env_template)
         self.assertIn("SENTRY_DSN=", env_template)
         self.assertIn("EMAIL_HOST=", env_template)
@@ -197,10 +198,15 @@ class ProductionConfigTestCase(SimpleTestCase):
         self.assertEqual(service["build"]["dockerfile"], "docker/Dockerfile.monitor")
         self.assertIn("MONITOR_TARGETS", monitor_script)
         self.assertIn("curl -fsS", monitor_script)
+        self.assertIn("MONITOR_HOST_HEADER", monitor_script)
         self.assertIn("ALERT_WEBHOOK_URL", service["environment"])
         self.assertEqual(
             service["environment"]["MONITOR_FAILURE_THRESHOLD"],
             "${MONITOR_FAILURE_THRESHOLD:-3}",
+        )
+        self.assertEqual(
+            service["environment"]["MONITOR_HOST_HEADER"],
+            "${MONITOR_HOST_HEADER:-b00bs.ru}",
         )
         self.assertEqual(
             service["depends_on"]["frontend"]["condition"], "service_healthy"

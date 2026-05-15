@@ -30,10 +30,19 @@ target_url() {
   printf '%s' "$1" | cut -d= -f2-
 }
 
+check_url() {
+  if [ -n "${MONITOR_HOST_HEADER:-}" ]; then
+    curl -fsS -m "$MONITOR_TIMEOUT_SECONDS" -H "Host: ${MONITOR_HOST_HEADER}" "$1" >/dev/null
+  else
+    curl -fsS -m "$MONITOR_TIMEOUT_SECONDS" "$1" >/dev/null
+  fi
+}
+
 MONITOR_TARGETS="${MONITOR_TARGETS:-frontend=http://frontend/ backend=http://backend:8000/api/health}"
 MONITOR_INTERVAL_SECONDS="${MONITOR_INTERVAL_SECONDS:-60}"
 MONITOR_TIMEOUT_SECONDS="${MONITOR_TIMEOUT_SECONDS:-10}"
 MONITOR_FAILURE_THRESHOLD="${MONITOR_FAILURE_THRESHOLD:-3}"
+MONITOR_HOST_HEADER="${MONITOR_HOST_HEADER:-}"
 
 log "Health monitor started: ${MONITOR_TARGETS}"
 
@@ -49,7 +58,7 @@ while true; do
       failures="$(cat "$state_file" 2>/dev/null || printf '0')"
     fi
 
-    if curl -fsS -m "$MONITOR_TIMEOUT_SECONDS" "$url" >/dev/null; then
+    if check_url "$url"; then
       if [ "$failures" -ge "$MONITOR_FAILURE_THRESHOLD" ] || [ -f "$alert_file" ]; then
         log "Recovered: ${name} ${url}"
         notify "RepairCRM recovered: ${name} ${url}"

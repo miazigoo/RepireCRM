@@ -90,12 +90,17 @@ MONITOR_TARGETS=frontend=http://frontend/ backend=http://backend:8000/api/health
 MONITOR_INTERVAL_SECONDS=60
 MONITOR_TIMEOUT_SECONDS=10
 MONITOR_FAILURE_THRESHOLD=3
+MONITOR_HOST_HEADER=b00bs.ru
 ALERT_WEBHOOK_URL=
 ```
 
 `ALERT_WEBHOOK_URL` может быть Slack/Discord/Telegram bridge или любой внутренний
 webhook, принимающий JSON с полем `text`. Если URL пустой, мониторинг работает
 только в логах контейнера.
+
+`MONITOR_HOST_HEADER` нужен для прямой проверки backend-контейнера: Django
+отклоняет неизвестные hostnames, поэтому мониторинг должен ходить с доменным
+именем из `ALLOWED_HOSTS`.
 
 ## Перед реальным публичным запуском
 
