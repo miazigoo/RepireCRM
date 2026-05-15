@@ -56,6 +56,23 @@ class ProductionConfigTestCase(SimpleTestCase):
             (ROOT / "docker" / "security-headers.conf").read_text(),
         )
 
+    def test_frontend_uses_local_material_icon_font(self):
+        index_html = (ROOT / "frontend" / "crm-app" / "src" / "index.html").read_text()
+        styles_css = (ROOT / "frontend" / "crm-app" / "src" / "styles.css").read_text()
+        font_path = (
+            ROOT
+            / "frontend"
+            / "crm-app"
+            / "src"
+            / "assets"
+            / "fonts"
+            / "MaterialIcons-Regular.ttf"
+        )
+
+        self.assertNotIn("fonts.googleapis.com/icon", index_html)
+        self.assertIn("/assets/fonts/MaterialIcons-Regular.ttf", styles_css)
+        self.assertTrue(font_path.exists())
+
     def test_backend_container_uses_gunicorn_entrypoint(self):
         dockerfile = (ROOT / "docker" / "Dockerfile.backend").read_text()
         entrypoint = (ROOT / "docker" / "backend-entrypoint.sh").read_text()
