@@ -1,0 +1,11 @@
+FROM alpine:3.20
+
+RUN apk add --no-cache \
+    ca-certificates \
+    curl \
+    tzdata
+
+COPY docker/health-monitor.sh /usr/local/bin/health-monitor
+RUN chmod +x /usr/local/bin/health-monitor
+
+ENTRYPOINT ["/usr/local/bin/health-monitor"]
