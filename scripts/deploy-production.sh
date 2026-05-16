@@ -44,6 +44,7 @@ rsync -az --delete \
   --exclude 'a.txt' \
   --exclude '.env.production' \
   --exclude 'node_modules/' \
+  --exclude 'frontend/crm-app/.angular/' \
   --exclude 'frontend/crm-app/node_modules/' \
   --exclude 'frontend/crm-app/dist/' \
   --exclude '.tmp-screens/' \
