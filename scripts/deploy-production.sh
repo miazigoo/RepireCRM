@@ -23,6 +23,8 @@ DEPLOY_ENV_FILE="${DEPLOY_ENV_FILE:-.env.production}"
 DEPLOY_DOMAIN="${DEPLOY_DOMAIN:-b00bs.ru}"
 DEPLOY_SSH_PORT="${DEPLOY_SSH_PORT:-22}"
 DEPLOY_SSH_KEY_PATH="${DEPLOY_SSH_KEY_PATH:-}"
+DEPLOY_BACKUP_BEFORE_DEPLOY="${DEPLOY_BACKUP_BEFORE_DEPLOY:-true}"
+DEPLOY_BACKUP_KEEP="${DEPLOY_BACKUP_KEEP:-5}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REMOTE="${DEPLOY_USER}@${DEPLOY_HOST}"
@@ -61,6 +63,8 @@ REMOTE_ENV=(
   "DEPLOY_ENV_FILE=$(quote "$DEPLOY_ENV_FILE")"
   "DEPLOY_COMPOSE_PROJECT=$(quote "$DEPLOY_COMPOSE_PROJECT")"
   "DEPLOY_DOMAIN=$(quote "$DEPLOY_DOMAIN")"
+  "DEPLOY_BACKUP_BEFORE_DEPLOY=$(quote "$DEPLOY_BACKUP_BEFORE_DEPLOY")"
+  "DEPLOY_BACKUP_KEEP=$(quote "$DEPLOY_BACKUP_KEEP")"
 )
 
 "${SSH_CMD[@]}" "$REMOTE" "${REMOTE_ENV[*]} bash -s" <<'REMOTE_SCRIPT'
@@ -69,12 +73,38 @@ set -Eeuo pipefail
 cd "$DEPLOY_PATH"
 test -f "$DEPLOY_ENV_FILE"
 
-docker compose -p "$DEPLOY_COMPOSE_PROJECT" --env-file "$DEPLOY_ENV_FILE" config -q
-docker compose -p "$DEPLOY_COMPOSE_PROJECT" --env-file "$DEPLOY_ENV_FILE" up -d --build --remove-orphans
-docker compose -p "$DEPLOY_COMPOSE_PROJECT" --env-file "$DEPLOY_ENV_FILE" ps
+compose() {
+  docker compose -p "$DEPLOY_COMPOSE_PROJECT" --env-file "$DEPLOY_ENV_FILE" "$@"
+}
 
-docker compose -p "$DEPLOY_COMPOSE_PROJECT" --env-file "$DEPLOY_ENV_FILE" exec -T backend \
-  python manage.py check
+compose config -q
+
+case "$DEPLOY_BACKUP_KEEP" in
+  ''|*[!0-9]*) DEPLOY_BACKUP_KEEP=5 ;;
+esac
+
+if [ "$DEPLOY_BACKUP_BEFORE_DEPLOY" = "true" ]; then
+  backup_dir="${DEPLOY_PATH}/backups/pre-deploy"
+  mkdir -p "$backup_dir"
+  db_container="$(compose ps -q db || true)"
+  if [ -n "$db_container" ] && [ "$(docker inspect -f '{{.State.Running}}' "$db_container" 2>/dev/null || true)" = "true" ]; then
+    backup_file="${backup_dir}/repaircrm-predeploy-$(date -u +%Y%m%dT%H%M%SZ).dump"
+    echo "Creating pre-deploy database backup: ${backup_file}"
+    compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$backup_file"
+    test -s "$backup_file"
+    find "$backup_dir" -type f -name 'repaircrm-predeploy-*.dump' \
+      | sort -r \
+      | tail -n +"$((DEPLOY_BACKUP_KEEP + 1))" \
+      | xargs -r rm -f
+  else
+    echo "Skipping pre-deploy backup: db container is not running"
+  fi
+fi
+
+compose up -d --build --remove-orphans
+compose ps
+
+compose exec -T backend python manage.py check
 
 health_status="$(curl -sS \
   -o /tmp/repaircrm-health-response \
