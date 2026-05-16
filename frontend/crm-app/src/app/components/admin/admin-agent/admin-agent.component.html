@@ -1,0 +1,179 @@
+<div class="agent-shell">
+  <section class="agent-hero">
+    <div>
+      <span class="eyebrow">Центральная админка</span>
+      <h1>Подписка и поддержка RepireCRM</h1>
+      <p>
+        Контроль связи с сервисным контуром: подписка, объявления, heartbeat и чат с
+        поддержкой.
+      </p>
+    </div>
+
+    <div class="hero-actions">
+      <button mat-stroked-button type="button" (click)="load()" [disabled]="loading">
+        Обновить
+      </button>
+      <button
+        mat-flat-button
+        type="button"
+        (click)="sendHeartbeat()"
+        [disabled]="heartbeatLoading"
+      >
+        <mat-spinner *ngIf="heartbeatLoading" diameter="18"></mat-spinner>
+        Heartbeat
+      </button>
+    </div>
+  </section>
+
+  <section class="state-grid" *ngIf="status; else loadingState">
+    <article class="state-card">
+      <span class="card-label">Связь</span>
+      <strong [ngClass]="status.configured ? 'ok' : 'danger'">
+        {{ status.configured ? 'Настроена' : 'Не настроена' }}
+      </strong>
+      <p>Heartbeat {{ status.heartbeat_enabled ? 'включен' : 'выключен' }}</p>
+    </article>
+
+    <article class="state-card">
+      <span class="card-label">Read-only защита</span>
+      <strong [ngClass]="status.enforcement.enabled ? 'warn' : 'muted'">
+        {{ status.enforcement.enabled ? 'Включена' : 'Выключена' }}
+      </strong>
+      <p>grace {{ status.enforcement.stale_grace_hours }} ч</p>
+    </article>
+
+    <article class="state-card">
+      <span class="card-label">Подписка</span>
+      <strong [ngClass]="statusClass(status.subscription?.status)">
+        {{ status.subscription?.status || 'unknown' }}
+      </strong>
+      <p>{{ status.subscription?.plan_name || status.subscription?.plan_code || 'Тариф не задан' }}</p>
+    </article>
+
+    <article class="state-card">
+      <span class="card-label">Доступ</span>
+      <strong [ngClass]="status.subscription?.access_allowed ? 'ok' : 'danger'">
+        {{ status.subscription?.access_allowed ? 'Разрешен' : 'Ограничен' }}
+      </strong>
+      <p>{{ status.subscription?.reason || 'нет данных' }}</p>
+    </article>
+
+    <article class="state-card">
+      <span class="card-label">Support</span>
+      <strong [ngClass]="status.support_unread > 0 ? 'warn' : 'ok'">
+        {{ status.support_unread }}
+      </strong>
+      <p>непрочитанных ответов</p>
+    </article>
+  </section>
+
+  <section class="sync-strip" *ngIf="status">
+    <div>
+      <span>Последняя синхронизация</span>
+      <strong>{{ status.last_synced_at ? (status.last_synced_at | date: 'dd.MM.yyyy HH:mm') : 'еще не было' }}</strong>
+    </div>
+    <div [class.has-error]="status.last_error_message">
+      <span>Последняя ошибка</span>
+      <strong>{{ status.last_error_message || 'нет' }}</strong>
+    </div>
+  </section>
+
+  <section class="support-layout">
+    <div class="panel threads-panel">
+      <header class="panel-header">
+        <div>
+          <span class="eyebrow">Обращения</span>
+          <h2>Диалог с поддержкой</h2>
+        </div>
+      </header>
+
+      <button
+        type="button"
+        class="thread-row"
+        *ngFor="let thread of threads; trackBy: trackByThread"
+        [class.active]="selectedThread?.id === thread.id"
+        (click)="openThread(thread)"
+      >
+        <span class="thread-dot" [ngClass]="threadTone(thread)"></span>
+        <span>
+          <strong>{{ thread.subject }}</strong>
+          <small>{{ thread.status }} · {{ thread.priority }} · {{ thread.last_message_at | date: 'dd.MM HH:mm' }}</small>
+        </span>
+        <em *ngIf="thread.unread_client > 0">{{ thread.unread_client }}</em>
+      </button>
+
+      <div class="empty" *ngIf="!threads.length && !loading">Обращений пока нет</div>
+    </div>
+
+    <div class="panel chat-panel">
+      <header class="panel-header">
+        <div>
+          <span class="eyebrow">Переписка</span>
+          <h2>{{ selectedThread?.subject || 'Выберите обращение' }}</h2>
+        </div>
+      </header>
+
+      <div class="messages" *ngIf="selectedThread; else noThread">
+        <mat-spinner *ngIf="messagesLoading" diameter="28"></mat-spinner>
+        <article
+          class="message"
+          *ngFor="let message of messages; trackBy: trackByMessage"
+          [class.client]="message.author_type === 'client'"
+        >
+          <span>{{ message.author_type }} · {{ message.created_at | date: 'dd.MM.yyyy HH:mm' }}</span>
+          <p>{{ message.body }}</p>
+        </article>
+      </div>
+
+      <form class="reply-form" [formGroup]="replyForm" (ngSubmit)="sendReply()" *ngIf="selectedThread">
+        <mat-form-field appearance="outline">
+          <mat-label>Сообщение</mat-label>
+          <textarea matInput rows="4" formControlName="body"></textarea>
+        </mat-form-field>
+        <button mat-flat-button type="submit">Отправить</button>
+      </form>
+    </div>
+
+    <form class="panel create-panel" [formGroup]="threadForm" (ngSubmit)="createThread()">
+      <header class="panel-header">
+        <div>
+          <span class="eyebrow">Новое</span>
+          <h2>Создать обращение</h2>
+        </div>
+      </header>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Тема</mat-label>
+        <input matInput formControlName="subject" />
+      </mat-form-field>
+
+      <label class="native-field">
+        <span>Приоритет</span>
+        <select formControlName="priority">
+          <option value="low">low</option>
+          <option value="normal">normal</option>
+          <option value="high">high</option>
+          <option value="urgent">urgent</option>
+        </select>
+      </label>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Описание</mat-label>
+        <textarea matInput rows="5" formControlName="body"></textarea>
+      </mat-form-field>
+
+      <button mat-flat-button type="submit">Создать</button>
+    </form>
+  </section>
+</div>
+
+<ng-template #loadingState>
+  <section class="loading-state">
+    <mat-spinner diameter="34"></mat-spinner>
+    <span>Загрузка связи с центральной админкой</span>
+  </section>
+</ng-template>
+
+<ng-template #noThread>
+  <div class="empty large">Выберите обращение слева или создайте новое.</div>
+</ng-template>

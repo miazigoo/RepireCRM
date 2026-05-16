@@ -83,6 +83,13 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       route: '/admin/landing',
       tone: 'settings',
     },
+    {
+      title: 'Подписка и поддержка',
+      description: 'Heartbeat, доступ, объявления и чат с сервисной командой',
+      icon: 'support_agent',
+      route: '/admin/service',
+      tone: 'settings',
+    },
   ];
 
   constructor(

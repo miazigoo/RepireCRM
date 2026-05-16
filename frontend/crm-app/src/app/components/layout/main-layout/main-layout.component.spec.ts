@@ -124,6 +124,7 @@ describe('MainLayoutComponent', () => {
     expect(targets).toContain('/reports');
     expect(targets).toContain('/admin');
     expect(targets).toContain('/admin/settings');
+    expect(targets).toContain('/admin/service');
     expect(targets).toContain('/themes');
   });
 

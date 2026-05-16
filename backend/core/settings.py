@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "analytics",
     "client_sync",
     "promotions",
+    "admin_agent.apps.AdminAgentConfig",
 ]
 
 MIDDLEWARE = [
@@ -284,6 +285,33 @@ TWILIO_FROM_NUMBER = config("TWILIO_FROM_NUMBER", default=None)
 # Клиентский кабинет
 PORTAL_DEFAULT_SHOP_CODE = config("PORTAL_DEFAULT_SHOP_CODE", default="")
 
+# Центральная RepireCRM Admin. Используется только для коммерческого контура:
+# подписка, промо-кампании, support, агрегированный heartbeat VPS.
+ADMIN_SERVICE_URL = config("ADMIN_SERVICE_URL", default="")
+ADMIN_SERVICE_AGENT_TOKEN = config("ADMIN_SERVICE_AGENT_TOKEN", default="")
+ADMIN_SERVICE_HEARTBEAT_ENABLED = config(
+    "ADMIN_SERVICE_HEARTBEAT_ENABLED", default=False, cast=bool
+)
+ADMIN_SERVICE_HEARTBEAT_INTERVAL_SECONDS = config(
+    "ADMIN_SERVICE_HEARTBEAT_INTERVAL_SECONDS", default=300, cast=int
+)
+ADMIN_SERVICE_TIMEOUT_SECONDS = config(
+    "ADMIN_SERVICE_TIMEOUT_SECONDS", default=5, cast=int
+)
+ADMIN_SERVICE_ENFORCEMENT_ENABLED = config(
+    "ADMIN_SERVICE_ENFORCEMENT_ENABLED", default=False, cast=bool
+)
+ADMIN_SERVICE_ENFORCEMENT_REQUIRE_SYNC = config(
+    "ADMIN_SERVICE_ENFORCEMENT_REQUIRE_SYNC", default=False, cast=bool
+)
+ADMIN_SERVICE_ENFORCEMENT_STALE_GRACE_HOURS = config(
+    "ADMIN_SERVICE_ENFORCEMENT_STALE_GRACE_HOURS", default=72, cast=int
+)
+ADMIN_SERVICE_ENFORCEMENT_ALLOW_SUPERUSER_BYPASS = config(
+    "ADMIN_SERVICE_ENFORCEMENT_ALLOW_SUPERUSER_BYPASS", default=True, cast=bool
+)
+APP_VERSION = config("APP_VERSION", default="")
+
 
 CELERY_BROKER_URL = config("CELERY_BROKER_URL", default=REDIS_URL)
 CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default=REDIS_URL)
@@ -309,3 +337,9 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 60,  # every 60 seconds
     },
 }
+
+if ADMIN_SERVICE_HEARTBEAT_ENABLED:
+    CELERY_BEAT_SCHEDULE["admin-agent-heartbeat"] = {
+        "task": "admin_agent.tasks.send_admin_heartbeat",
+        "schedule": ADMIN_SERVICE_HEARTBEAT_INTERVAL_SECONDS,
+    }

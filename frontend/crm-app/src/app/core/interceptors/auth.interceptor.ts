@@ -32,6 +32,13 @@ export class AuthInterceptor implements HttpInterceptor {
         if (err.status === 401) {
           this.clearPrimarySession();
         }
+        if (err.status === 402) {
+          sessionStorage.setItem(
+            'repaircrm.subscriptionBlockMessage',
+            this.extractErrorMessage(err),
+          );
+          this.router.navigate(['/admin/service']);
+        }
         return throwError(() => err);
       })
     );
@@ -41,5 +48,14 @@ export class AuthInterceptor implements HttpInterceptor {
     localStorage.removeItem('access_token');
     localStorage.removeItem('current_shop_id');
     this.router.navigate(['/login']);
+  }
+
+  private extractErrorMessage(error: HttpErrorResponse): string {
+    return (
+      error.error?.error ||
+      error.error?.detail ||
+      error.error?.message ||
+      'Доступ ограничен подпиской RepireCRM'
+    );
   }
 }

@@ -104,6 +104,7 @@ export class MainLayoutComponent implements OnInit {
           activeRoutes: ['/admin/users', '/admin/shops', '/admin/roles']
         },
         { label: 'Настройки', icon: 'tune', route: '/admin/settings', directorOnly: true },
+        { label: 'Подписка и поддержка', icon: 'support_agent', route: '/admin/service', directorOnly: true },
         { label: 'Темы', icon: 'palette', route: '/themes' }
       ]
     }
@@ -130,6 +131,7 @@ export class MainLayoutComponent implements OnInit {
     '/admin/shops': 'Магазины',
     '/admin/roles': 'Роли и права',
     '/admin/settings': 'Настройки',
+    '/admin/service': 'Подписка и поддержка',
     '/themes': 'Темы'
   };
 

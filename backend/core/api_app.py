@@ -8,6 +8,9 @@ from django.http import JsonResponse
 from ninja import NinjaAPI
 from ninja.security import HttpBearer
 
+from admin_agent.enforcement import enforce_admin_subscription
+from admin_agent.router import router as admin_agent_router
+
 # Подключаем роутеры
 from API.admin_router import router as admin_router
 from API.auth.router import is_token_blacklisted
@@ -37,6 +40,7 @@ class AuthBearer(HttpBearer):
                 return None
             user_id = payload.get("user_id")
             user = User.objects.get(id=user_id)
+            enforce_admin_subscription(request, user)
             self._attach_current_shop(request, user)
             return user
         except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, User.DoesNotExist):
@@ -154,3 +158,4 @@ api.add_router("/finance", finance_router)
 api.add_router("/client-sync", client_sync_router)
 api.add_router("/promotions", promotions_router)
 api.add_router("/admin", admin_router)
+api.add_router("/admin-agent", admin_agent_router)

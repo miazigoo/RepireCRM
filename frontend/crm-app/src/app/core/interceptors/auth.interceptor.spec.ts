@@ -62,4 +62,22 @@ describe('AuthInterceptor', () => {
     expect(localStorage.getItem('current_shop_id')).toBeNull();
     expect(router.navigate).toHaveBeenCalledOnceWith(['/login']);
   });
+
+  it('shows subscription guidance on 402 responses', () => {
+    const router = TestBed.inject(Router);
+    spyOn(router, 'navigate');
+
+    http.post('/api/orders', {}).subscribe({ error: () => undefined });
+
+    const request = httpTesting.expectOne('/api/orders');
+    request.flush(
+      { detail: 'Доступ к коммерческим операциям ограничен' },
+      { status: 402, statusText: 'Payment Required' },
+    );
+
+    expect(sessionStorage.getItem('repaircrm.subscriptionBlockMessage')).toBe(
+      'Доступ к коммерческим операциям ограничен',
+    );
+    expect(router.navigate).toHaveBeenCalledWith(['/admin/service']);
+  });
 });

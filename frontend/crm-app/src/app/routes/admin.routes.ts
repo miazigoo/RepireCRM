@@ -36,5 +36,9 @@ export const ADMIN_ROUTES: Routes = [
   {
     path: 'landing',
     loadComponent: () => import('../components/admin/landing-settings/landing-settings.component').then(m => m.LandingSettingsComponent)
+  },
+  {
+    path: 'service',
+    loadComponent: () => import('../components/admin/admin-agent/admin-agent.component').then(m => m.AdminAgentComponent)
   }
 ];

@@ -173,6 +173,72 @@ export interface ClientSyncAction {
   synced_back_at?: string | null;
 }
 
+export interface AdminAgentStatus {
+  configured: boolean;
+  heartbeat_enabled: boolean;
+  enforcement: {
+    enabled: boolean;
+    require_sync: boolean;
+    stale_grace_hours: number;
+    superuser_bypass: boolean;
+  };
+  last_synced_at?: string | null;
+  last_error_at?: string | null;
+  last_error_message?: string | null;
+  subscription?: {
+    status?: string;
+    access_allowed?: boolean;
+    reason?: string;
+    paid_until?: string | null;
+    trial_until?: string | null;
+    grace_until?: string | null;
+    plan_code?: string | null;
+    plan_name?: string | null;
+    features?: Record<string, unknown>;
+    limits?: Record<string, unknown>;
+  } | null;
+  campaigns: Array<Record<string, unknown>>;
+  support_unread: number;
+}
+
+export interface AdminSupportThread {
+  id: number;
+  client_id: number;
+  installation_id?: number | null;
+  client_name?: string | null;
+  subject: string;
+  status: string;
+  priority: string;
+  last_message_at?: string | null;
+  unread_admin: number;
+  unread_client: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminSupportMessage {
+  id: number;
+  thread_id: number;
+  author_type: 'admin' | 'client' | 'system' | string;
+  admin_user_id?: number | null;
+  external_author?: string | null;
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminSupportThreadCreateRequest {
+  subject: string;
+  priority: string;
+  body: string;
+  author_name?: string | null;
+}
+
+export interface AdminSupportMessageCreateRequest {
+  body: string;
+  author_name?: string | null;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -329,5 +395,39 @@ export class AdminService {
 
   patchClientLanding(data: ClientLandingPatchRequest): Observable<ClientLandingConfig> {
     return this.apiService.patch<ClientLandingConfig>('/client-sync/landing', data);
+  }
+
+  getAdminAgentStatus(): Observable<AdminAgentStatus> {
+    return this.apiService.get<AdminAgentStatus>('/admin-agent/status');
+  }
+
+  sendAdminAgentHeartbeat(): Observable<Record<string, unknown>> {
+    return this.apiService.post<Record<string, unknown>>('/admin-agent/heartbeat', {});
+  }
+
+  getAdminSupportThreads(): Observable<AdminSupportThread[]> {
+    return this.apiService.get<AdminSupportThread[]>('/admin-agent/support/threads');
+  }
+
+  createAdminSupportThread(
+    data: AdminSupportThreadCreateRequest,
+  ): Observable<AdminSupportThread> {
+    return this.apiService.post<AdminSupportThread>('/admin-agent/support/threads', data);
+  }
+
+  getAdminSupportMessages(threadId: number): Observable<AdminSupportMessage[]> {
+    return this.apiService.get<AdminSupportMessage[]>(
+      `/admin-agent/support/threads/${threadId}/messages`,
+    );
+  }
+
+  replyAdminSupportThread(
+    threadId: number,
+    data: AdminSupportMessageCreateRequest,
+  ): Observable<AdminSupportMessage> {
+    return this.apiService.post<AdminSupportMessage>(
+      `/admin-agent/support/threads/${threadId}/messages`,
+      data,
+    );
   }
 }
