@@ -1,5 +1,6 @@
 import json
 from datetime import timedelta
+from unittest.mock import patch
 
 import jwt
 import requests
@@ -30,6 +31,7 @@ from device.models import Device, DeviceBrand, DeviceModel, DeviceType
 from finance.models import Payment, PaymentMethod
 from orders.models import Order, OrderApproval, RepairStage
 from shops.models import Organization, Shop, ShopSettings
+from tasks.models import Task
 from users.models import Permission, Role
 
 User = get_user_model()
@@ -499,6 +501,52 @@ class ClientSyncTestCase(TestCase):
             1,
         )
 
+    def test_portal_field_visit_request_creates_task_and_marks_remote(self):
+        session = FakeSession(
+            get_payload={
+                "actions": [
+                    {
+                        "id": "act-visit",
+                        "type": "field_visit.created",
+                        "payload": {
+                            "field_visit_request_id": 15,
+                            "customer": {
+                                "first_name": self.customer.first_name,
+                                "last_name": self.customer.last_name,
+                                "phone": str(self.customer.phone),
+                                "email": self.customer.email,
+                            },
+                            "field_visit": {
+                                "id": 15,
+                                "address": "Москва, Тверская, 1",
+                                "preferred_date": "2026-05-20",
+                                "preferred_time": "11:30",
+                                "device_title": "iPhone 15",
+                                "problem_description": "Не заряжается",
+                                "description": "Позвонить за час",
+                                "lat": 55.757,
+                                "lng": 37.615,
+                            },
+                        },
+                    }
+                ]
+            }
+        )
+
+        result = pull_pending_actions(self.integration, session=session)
+
+        self.assertEqual(result.applied, 1)
+        action = ClientSyncAction.objects.get(external_id="act-visit")
+        self.assertIsNotNone(action.related_task_id)
+        task = Task.objects.get(id=action.related_task_id)
+        self.assertIn("Выезд мастера", task.title)
+        self.assertIn("Москва, Тверская, 1", task.description)
+        self.assertEqual(task.related_customer_id, self.customer.id)
+        self.assertEqual(task.assigned_shop_id, self.shop.id)
+        self.assertEqual(task.due_date.date().isoformat(), "2026-05-20")
+        mark_posts = [p for p in session.posts if "mark-synced" in p["url"]]
+        self.assertEqual(mark_posts[0]["json"]["crm_task_id"], task.id)
+
     def test_push_marketing_snapshot_posts_payload(self):
         session = FakeSession()
         ok = push_marketing_snapshot(self.integration, session=session)
@@ -587,3 +635,38 @@ class ClientSyncTestCase(TestCase):
         self.assertEqual(data[0]["crm_shop_id"], self.shop.id)
         self.assertEqual(data[0]["lat"], 55.751244)
         self.assertEqual(data[0]["lng"], 37.618423)
+
+    def test_run_by_token_triggers_only_matching_integration(self):
+        with patch(
+            "client_sync.router.sync_client_service",
+            return_value={
+                "pushed": 1,
+                "skipped": 0,
+                "pulled": 0,
+                "applied": 0,
+                "errors": 0,
+            },
+        ) as mocked_sync:
+            response = self.client.post(
+                "/api/client-sync/run-by-token",
+                data=json.dumps({"push": True, "pull": False, "limit": 25}),
+                content_type="application/json",
+                HTTP_X_SYNC_TOKEN="sync-secret",
+                HTTP_X_TENANT_KEY="test-company",
+            )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()["pushed"], 1)
+        mocked_sync.assert_called_once()
+        self.assertEqual(mocked_sync.call_args.args[0].id, self.integration.id)
+
+    def test_run_by_token_rejects_bad_headers(self):
+        response = self.client.post(
+            "/api/client-sync/run-by-token",
+            data=json.dumps({"push": True, "pull": True, "limit": 25}),
+            content_type="application/json",
+            HTTP_X_SYNC_TOKEN="wrong",
+            HTTP_X_TENANT_KEY="test-company",
+        )
+
+        self.assertEqual(response.status_code, 401)

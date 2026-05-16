@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from datetime import datetime, time
 from decimal import Decimal
 from typing import Any
 from urllib.parse import urljoin
@@ -12,6 +13,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
+from django.utils.dateparse import parse_date, parse_time
 
 from customers.models import Customer, CustomerShopHistory
 from device.models import Device, DeviceBrand, DeviceModel, DeviceType
@@ -783,6 +785,11 @@ def apply_client_action(action: ClientSyncAction) -> ClientSyncAction:
             _apply_approval_decision(action)
         elif action.action_type in {"repair_request.created", "order.created"}:
             _apply_repair_request(action)
+        elif action.action_type in {
+            "field_visit.created",
+            "field_visit_request.created",
+        }:
+            _apply_field_visit_request(action)
         else:
             _create_task_from_action(action, title_prefix="Действие клиента")
         action.status = ClientSyncAction.Status.APPLIED
@@ -975,6 +982,74 @@ def _apply_repair_request(action: ClientSyncAction) -> None:
             changes={"external_action_id": action.external_id},
         )
         mark_order_for_sync(order)
+
+
+def _apply_field_visit_request(action: ClientSyncAction) -> None:
+    if action.related_task_id:
+        return
+    payload = action.payload
+    visit_payload = payload.get("field_visit") or payload
+    shop = _shop_from_payload(action.integration.organization, payload)
+    customer = _customer_from_payload(payload)
+    category, _ = TaskCategory.objects.get_or_create(
+        name=CLIENT_ACTION_CATEGORY,
+        defaults={
+            "description": "Автоматические задачи из клиентского кабинета",
+            "color": "#0f62fe",
+            "icon": "support_agent",
+        },
+    )
+    address = (visit_payload.get("address") or "Адрес не указан").strip()
+    device_title = (visit_payload.get("device_title") or "").strip()
+    problem = (visit_payload.get("problem_description") or "").strip()
+    description = (visit_payload.get("description") or "").strip()
+    preferred_date = (visit_payload.get("preferred_date") or "").strip()
+    preferred_time = (visit_payload.get("preferred_time") or "").strip()
+    lat = visit_payload.get("lat")
+    lng = visit_payload.get("lng")
+    lines = [
+        "Заявка на выезд мастера из клиентского кабинета.",
+        f"Адрес: {address}",
+    ]
+    if preferred_date or preferred_time:
+        lines.append(f"Желаемое время: {preferred_date} {preferred_time}".strip())
+    if device_title:
+        lines.append(f"Устройство: {device_title}")
+    if problem:
+        lines.append(f"Проблема: {problem}")
+    if description:
+        lines.append(f"Комментарий: {description}")
+    if lat is not None and lng is not None:
+        lines.append(f"Координаты: {lat}, {lng}")
+    portal_request_id = payload.get("field_visit_request_id") or visit_payload.get("id")
+    lines.append(f"Portal request: {portal_request_id}")
+    lines.append(f"Action: {action.external_id}")
+    task = Task.objects.create(
+        title=f"Выезд мастера: {address[:150]}",
+        description="\n".join(lines),
+        category=category,
+        priority=Task.Priority.NORMAL,
+        kind=Task.TaskKind.PLANNED,
+        status=Task.Status.PENDING,
+        substatus=Task.Substatus.NEW,
+        assignment_type=Task.AssignmentType.SHOP,
+        assigned_shop=shop,
+        related_customer=customer,
+        due_date=_field_visit_due_at(preferred_date, preferred_time),
+        created_by=_sync_user(shop),
+    )
+    action.related_task = task
+
+
+def _field_visit_due_at(date_raw: str, time_raw: str):
+    date_value = parse_date(date_raw or "")
+    if not date_value:
+        return None
+    time_value = parse_time(time_raw or "") or time(hour=18, minute=0)
+    value = datetime.combine(date_value, time_value)
+    if timezone.is_naive(value):
+        return timezone.make_aware(value, timezone.get_current_timezone())
+    return value
 
 
 def _existing_order_for_action(action: ClientSyncAction) -> Order | None:

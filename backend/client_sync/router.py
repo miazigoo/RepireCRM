@@ -2,6 +2,7 @@ from typing import List
 
 from django.db.models import Count
 from ninja import Router
+from ninja.errors import HttpError
 
 from shops.models import ShopSettings
 from shops.subscription_services import ensure_shop_organization
@@ -34,8 +35,6 @@ router = Router(tags=["Синхронизация клиентского сер�
 @router.get("/portal-public-shops", response=list, auth=None)
 def portal_public_shops(request):
     """Точки для лендинга портала (заголовки как у client sync)."""
-    from ninja.errors import HttpError
-
     token = (request.META.get("HTTP_X_SYNC_TOKEN") or "").strip()
     tenant = (request.META.get("HTTP_X_TENANT_KEY") or "").strip()
     if not token or not tenant:
@@ -111,12 +110,12 @@ def _serialize_integration(
         "portal_banner_image_url": integration.portal_banner_image_url or None,
         "portal_banner_link_url": integration.portal_banner_link_url or None,
         "api_key_configured": bool(integration.api_key),
-        "last_push_at": integration.last_push_at.isoformat()
-        if integration.last_push_at
-        else None,
-        "last_pull_at": integration.last_pull_at.isoformat()
-        if integration.last_pull_at
-        else None,
+        "last_push_at": (
+            integration.last_push_at.isoformat() if integration.last_push_at else None
+        ),
+        "last_pull_at": (
+            integration.last_pull_at.isoformat() if integration.last_pull_at else None
+        ),
         "last_error": integration.last_error or None,
         "field_visit": _get_field_visit_config(integration),
         "landing": serialize_landing_for_portal(integration),
@@ -210,6 +209,24 @@ def run_client_sync(request, data: ClientSyncRunSchema):
     if not request.auth.has_permission("settings.change_shop"):
         raise PermissionError("Нет прав для запуска синхронизации")
     integration = _integration_for_request(request)
+    return sync_client_service(
+        integration,
+        push=data.push,
+        pull=data.pull,
+        limit=max(1, min(data.limit, 500)),
+    )
+
+
+@router.post("/run-by-token", response=dict, auth=None)
+def run_client_sync_by_token(request, data: ClientSyncRunSchema):
+    """Trigger sync from the client portal worker using sync headers."""
+    token = (request.META.get("HTTP_X_SYNC_TOKEN") or "").strip()
+    tenant = (request.META.get("HTTP_X_TENANT_KEY") or "").strip()
+    if not token or not tenant:
+        raise HttpError(401, "Нужны заголовки X-Sync-Token и X-Tenant-Key")
+    integration = resolve_portal_integration_by_sync(token, tenant)
+    if integration is None:
+        raise HttpError(401, "Некорректный ключ или tenant")
     return sync_client_service(
         integration,
         push=data.push,
