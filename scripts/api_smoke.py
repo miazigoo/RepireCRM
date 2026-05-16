@@ -14,6 +14,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import requests
+import urllib3
+
+OPTIONAL_ADMIN_AGENT_PREFIX = "/api/admin-agent/support"
+SYNC_PUBLIC_SHOPS_PATH = "/api/client-sync/portal-public-shops"
 
 
 def unwrap_list(payload: Any) -> list[Any]:
@@ -63,11 +67,45 @@ def main() -> int:
     parser.add_argument("--base-url", default="http://127.0.0.1:4200/api")
     parser.add_argument("--username", default="b00bs")
     parser.add_argument("--password", default="QwsAzx@2000")
+    parser.add_argument(
+        "--host-header",
+        default="",
+        help="Override HTTP Host header, useful when base-url points to an IP.",
+    )
+    parser.add_argument(
+        "--insecure",
+        action="store_true",
+        help="Disable TLS certificate verification for IP/Host-header smoke checks.",
+    )
+    parser.add_argument(
+        "--sync-token",
+        default="",
+        help="X-Sync-Token for public client-sync endpoints.",
+    )
+    parser.add_argument(
+        "--tenant-key",
+        default="",
+        help="X-Tenant-Key for public client-sync endpoints.",
+    )
+    parser.add_argument(
+        "--strict-optional-integrations",
+        action="store_true",
+        help="Fail instead of skipping optional integration endpoints that are disabled.",
+    )
     args = parser.parse_args()
 
     base_url = args.base_url.rstrip("/")
     origin_url = base_url.removesuffix("/api")
     session = requests.Session()
+    session.verify = not args.insecure
+    if args.insecure:
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    if args.host_header:
+        session.headers.update({"Host": args.host_header})
+    if args.sync_token:
+        session.headers.update({"X-Sync-Token": args.sync_token})
+    if args.tenant_key:
+        session.headers.update({"X-Tenant-Key": args.tenant_key})
 
     login_response, login_payload = request_json(
         session,
@@ -158,6 +196,15 @@ def main() -> int:
         ):
             skipped.append(f"GET {path} loyalty program is not configured")
             continue
+        if (
+            path == SYNC_PUBLIC_SHOPS_PATH
+            and not args.sync_token
+            and not args.tenant_key
+        ):
+            skipped.append(
+                f"GET {path} requires X-Sync-Token and X-Tenant-Key"
+            )
+            continue
 
         resolved_path = path
         missing_param = None
@@ -199,6 +246,16 @@ def main() -> int:
         )
         checked.append(f"GET {resolved_path}")
         if response.status_code >= 400:
+            if (
+                not args.strict_optional_integrations
+                and resolved_path.startswith(OPTIONAL_ADMIN_AGENT_PREFIX)
+                and response.status_code == 502
+            ):
+                skipped.append(
+                    f"GET {resolved_path} optional admin integration is not configured"
+                )
+                checked.pop()
+                continue
             failures.append(
                 f"GET {resolved_path} -> {response.status_code}: "
                 f"{str(payload)[:220]}"
