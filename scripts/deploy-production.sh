@@ -41,6 +41,8 @@ echo "Deploying RepairCRM to ${REMOTE}:${DEPLOY_PATH}"
 rsync -az --delete \
   -e "$RSYNC_SSH" \
   --exclude '.git/' \
+  --exclude '.venv/' \
+  --exclude 'venv/' \
   --exclude 'a.txt' \
   --exclude '.env.production' \
   --exclude 'node_modules/' \
