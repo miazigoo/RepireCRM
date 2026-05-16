@@ -104,15 +104,19 @@ def organization_shops(organization: Organization):
 
 def mark_order_for_sync(order: Order) -> None:
     """Mark an order snapshot as dirty for every enabled portal integration."""
-    if not getattr(order, "id", None) or not getattr(order, "shop_id", None):
+    order_id = getattr(order, "id", None)
+    shop_id = getattr(order, "shop_id", None)
+    if not order_id or not shop_id:
         return
 
     organization_id = (
-        Shop.objects.filter(id=order.shop_id)
+        Shop.objects.filter(id=shop_id)
         .values_list("settings__organization_id", flat=True)
         .first()
     )
     if not organization_id:
+        return
+    if not Order.objects.filter(id=order_id, shop_id=shop_id).exists():
         return
 
     integrations = ClientPortalIntegration.objects.filter(
@@ -122,7 +126,7 @@ def mark_order_for_sync(order: Order) -> None:
     for integration in integrations:
         state, created = ClientSyncOrderState.objects.get_or_create(
             integration=integration,
-            order=order,
+            order_id=order_id,
             defaults={"status": ClientSyncOrderState.Status.PENDING},
         )
         if created:

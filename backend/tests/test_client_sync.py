@@ -19,6 +19,7 @@ from client_sync.models import (
     ClientSyncOrderState,
 )
 from client_sync.services import (
+    mark_order_for_sync,
     pull_pending_actions,
     push_marketing_snapshot,
     push_order_snapshots,
@@ -292,6 +293,17 @@ class ClientSyncTestCase(TestCase):
 
         state.refresh_from_db()
         self.assertEqual(state.status, ClientSyncOrderState.Status.PENDING)
+
+    def test_mark_order_for_sync_ignores_deleted_order_instance(self):
+        order = self.order
+        order_id = order.id
+        order.delete()
+
+        mark_order_for_sync(order)
+
+        self.assertFalse(
+            ClientSyncOrderState.objects.filter(order_id=order_id).exists()
+        )
 
     def test_payment_change_is_pushed_even_when_order_timestamp_is_unchanged(self):
         first_session = FakeSession(
