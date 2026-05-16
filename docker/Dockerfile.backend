@@ -21,9 +21,7 @@ WORKDIR /app
 
 COPY requirements.prod.txt .
 COPY --from=wheels /wheels /wheels
-RUN apt-get update && apt-get install -y --no-install-recommends fonts-dejavu-core \
-    && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir --no-index --find-links=/wheels -r requirements.prod.txt \
+RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements.prod.txt \
     && rm -rf /wheels
 
 COPY backend/ .

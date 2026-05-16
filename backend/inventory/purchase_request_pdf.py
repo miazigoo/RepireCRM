@@ -15,11 +15,16 @@ from .models import PurchaseRequest, PurchaseRequestBatch
 
 FONT_REGULAR = "Helvetica"
 FONT_BOLD = "Helvetica-Bold"
+FONT_DIR = Path(__file__).resolve().parents[1] / "assets" / "fonts"
 
 
 def _register_fonts() -> None:
     global FONT_REGULAR, FONT_BOLD
     candidates = [
+        (
+            str(FONT_DIR / "DejaVuSans.ttf"),
+            str(FONT_DIR / "DejaVuSans-Bold.ttf"),
+        ),
         (
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
