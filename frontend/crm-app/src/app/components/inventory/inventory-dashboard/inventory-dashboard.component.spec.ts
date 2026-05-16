@@ -63,6 +63,7 @@ describe('InventoryDashboardComponent', () => {
     inventoryService = jasmine.createSpyObj<InventoryService>('InventoryService', [
       'getInventoryItems',
       'getSuppliers',
+      'getProductGroups',
       'getStockAlerts',
       'getInventoryStatistics',
       'updateInventoryItem',
@@ -73,6 +74,7 @@ describe('InventoryDashboardComponent', () => {
     inventoryService.getSuppliers.and.returnValue(of([
       { id: 4, name: 'Склад Москва' },
     ]));
+    inventoryService.getProductGroups.and.returnValue(of([]));
     inventoryService.getStockAlerts.and.returnValue(of(alerts));
     inventoryService.getInventoryStatistics.and.returnValue(of({
       total_items: 2,
@@ -138,8 +140,8 @@ describe('InventoryDashboardComponent', () => {
     component.createPurchaseOrder();
     component.createPurchaseOrderFor(items[1]);
 
-    expect(navigate).toHaveBeenCalledWith(['/inventory/purchase-orders/new']);
-    expect(navigate).toHaveBeenCalledWith(['/inventory/purchase-orders/new'], {
+    expect(navigate).toHaveBeenCalledWith(['/inventory/purchase-requests/new']);
+    expect(navigate).toHaveBeenCalledWith(['/inventory/purchase-requests/new'], {
       queryParams: { item_id: 2 },
     });
   });

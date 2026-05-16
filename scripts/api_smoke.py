@@ -96,6 +96,7 @@ def main() -> int:
         ("customer_id", "/customers"),
         ("item_id", "/inventory/items"),
         ("supplier_id", "/inventory/suppliers"),
+        ("request_id", "/inventory/purchase-requests"),
         ("role_id", "/admin/roles"),
     ]
     for key, path in seed_endpoints:
@@ -113,6 +114,22 @@ def main() -> int:
                     customer_id = customer.get("id")
                     if customer_id:
                         context["customer_id"] = customer_id
+            if key == "request_id":
+                context["purchase_request_id"] = found_id
+
+    if context.get("request_id"):
+        response, payload = request_json(
+            session,
+            "GET",
+            f"{base_url}/inventory/purchase-requests/{context['request_id']}",
+        )
+        if response.status_code < 400 and isinstance(payload, dict):
+            request_items = payload.get("items") or []
+            if request_items and isinstance(request_items[0], dict):
+                context["request_item_id"] = request_items[0].get("id")
+            batches = payload.get("batches") or []
+            if batches and isinstance(batches[0], dict):
+                context["batch_id"] = batches[0].get("id")
 
     loyalty_response, loyalty_payload = request_json(
         session, "GET", f"{base_url}/loyalty/programs"

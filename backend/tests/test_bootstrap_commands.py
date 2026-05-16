@@ -6,7 +6,14 @@ from django.test import TestCase
 from analytics.models import RevenueSnapshot
 from customers.models import Customer
 from finance.models import Expense, Payment
-from inventory.models import PurchaseOrder, StockBalance
+from inventory.models import (
+    InventoryItem,
+    InventoryProductGroup,
+    PurchaseOrder,
+    PurchaseRequest,
+    PurchaseRequestBatch,
+    StockBalance,
+)
 from orders.models import Order
 from users.models import Permission, Role
 
@@ -92,6 +99,37 @@ class BootstrapCommandsTestCase(TestCase):
         )
         self.assertTrue(
             PurchaseOrder.objects.filter(notes__startswith="[demo]").exists()
+        )
+        self.assertTrue(
+            InventoryProductGroup.objects.filter(
+                description__startswith="[demo]"
+            ).exists()
+        )
+        self.assertTrue(
+            InventoryItem.objects.filter(
+                sku__startswith="DEMO-",
+                procurement_group__isnull=False,
+            ).exists()
+        )
+        self.assertTrue(
+            PurchaseRequest.objects.filter(
+                notes__startswith="[demo-procurement]"
+            ).exists()
+        )
+        self.assertTrue(
+            PurchaseRequestBatch.objects.filter(
+                purchase_request__notes__startswith="[demo-procurement]"
+            ).exists()
+        )
+        self.assertTrue(
+            PurchaseRequest.objects.filter(
+                notes__startswith="[demo-procurement]",
+                status__in=[
+                    PurchaseRequest.Status.SUBMITTED,
+                    PurchaseRequest.Status.SPLIT,
+                    PurchaseRequest.Status.PARTIALLY_RECEIVED,
+                ],
+            ).exists()
         )
         self.assertTrue(
             StockBalance.objects.filter(shop__code__in=["MSK01", "SPB01"]).exists()

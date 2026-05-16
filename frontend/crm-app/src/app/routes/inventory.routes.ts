@@ -10,7 +10,16 @@ export const INVENTORY_ROUTES: Routes = [
     loadComponent: () => import('../components/inventory/inventory-item-form/inventory-item-form.component').then(m => m.InventoryItemFormComponent)
   },
   {
-    path: 'purchase-orders/new',
+    path: 'purchase-requests',
+    loadComponent: () => import('../components/inventory/purchase-requests/purchase-requests.component').then(m => m.PurchaseRequestsComponent)
+  },
+  {
+    path: 'purchase-requests/new',
     loadComponent: () => import('../components/inventory/purchase-order-form/purchase-order-form.component').then(m => m.PurchaseOrderFormComponent)
+  },
+  {
+    path: 'purchase-orders/new',
+    redirectTo: 'purchase-requests/new',
+    pathMatch: 'full'
   }
 ];

@@ -45,6 +45,30 @@
           </mat-form-field>
 
           <mat-form-field>
+            <mat-label>Группа закупки</mat-label>
+            <input
+              matInput
+              formControlName="procurement_group_name"
+              [matAutocomplete]="groupAutocomplete"
+              autocomplete="off">
+            <mat-autocomplete #groupAutocomplete="matAutocomplete">
+              <mat-option *ngFor="let group of productGroups" [value]="group.name">
+                {{ group.name }}
+              </mat-option>
+            </mat-autocomplete>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Поставщик по умолчанию</mat-label>
+            <mat-select formControlName="primary_supplier_id">
+              <mat-option [value]="null">Не указан</mat-option>
+              <mat-option *ngFor="let supplier of suppliers" [value]="supplier.id">
+                {{ supplier.name }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field>
             <mat-label>Штрихкод</mat-label>
             <input matInput formControlName="barcode" autocomplete="off">
           </mat-form-field>

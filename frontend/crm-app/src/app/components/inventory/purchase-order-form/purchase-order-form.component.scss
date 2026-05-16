@@ -1,5 +1,5 @@
 .purchase-form-page {
-  max-width: 920px;
+  width: min(100%, 1240px);
   margin: 0 auto;
 }
 
@@ -30,6 +30,16 @@
   letter-spacing: 0;
 }
 
+.eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
 .page-header p {
   margin: 0;
   color: var(--color-text-secondary);
@@ -44,14 +54,105 @@
   padding: 24px !important;
 }
 
-.form-grid {
+.request-meta {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 180px 190px minmax(0, 1fr);
   gap: 14px 16px;
 }
 
-.span-2 {
-  grid-column: span 2;
+.notes-field {
+  min-width: 0;
+}
+
+.request-lines {
+  margin-top: 18px;
+}
+
+.request-lines header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-border);
+}
+
+.request-lines h2 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.request-line {
+  display: grid;
+  grid-template-areas:
+    "index item qty price supplier remove"
+    "index supplierName group notes notes remove";
+  grid-template-columns: 32px minmax(260px, 2fr) 96px 124px minmax(190px, 1fr) 42px;
+  gap: 10px;
+  align-items: start;
+  margin-bottom: 10px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface-strong) 82%, transparent);
+}
+
+.line-index {
+  grid-area: index;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-top: 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--color-primary);
+  font-weight: 900;
+}
+
+.item-field {
+  grid-area: item;
+}
+
+.quantity-field {
+  grid-area: qty;
+}
+
+.price-field {
+  grid-area: price;
+}
+
+.supplier-field {
+  grid-area: supplier;
+}
+
+.supplier-name-field {
+  grid-area: supplierName;
+}
+
+.group-field {
+  grid-area: group;
+}
+
+.item-field,
+.line-notes,
+.supplier-field,
+.supplier-name-field,
+.group-field {
+  min-width: 0;
+}
+
+.line-notes {
+  grid-area: notes;
+}
+
+.remove-line {
+  grid-area: remove;
+  margin-top: 5px;
+  color: var(--color-danger);
 }
 
 .empty-state {
@@ -87,17 +188,49 @@
   margin-right: 8px;
 }
 
+@media (max-width: 1100px) {
+  .request-line {
+    grid-template-areas:
+      "index item item remove"
+      "index qty price remove"
+      "index supplier supplierName remove"
+      "index group notes remove";
+    grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr) 42px;
+  }
+}
+
 @media (max-width: 720px) {
   .page-header {
     flex-direction: column;
   }
 
-  .form-grid {
+  .request-line {
+    grid-template-areas:
+      "index"
+      "item"
+      "qty"
+      "price"
+      "supplier"
+      "supplierName"
+      "group"
+      "notes"
+      "remove";
     grid-template-columns: 1fr;
   }
 
-  .span-2 {
-    grid-column: auto;
+  .request-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .request-lines header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .line-index {
+    width: 100%;
+    justify-content: start;
+    padding-left: 12px;
   }
 
   .form-actions {

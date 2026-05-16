@@ -17,6 +17,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import {
   InventoryItem,
+  InventoryProductGroup,
   InventoryService,
   StockAlert,
   Supplier,
@@ -27,6 +28,7 @@ import { RussianPaginatorIntl } from '../../../core/i18n/russian-paginator-intl'
 interface InventoryItemEditDialogData {
   item: InventoryItem;
   suppliers: Supplier[];
+  productGroups: InventoryProductGroup[];
   itemTypes: Array<{ value: string; label: string }>;
 }
 
@@ -85,6 +87,11 @@ interface InventoryItemEditDialogData {
         <mat-form-field>
           <mat-label>Категория</mat-label>
           <input matInput formControlName="category_name" autocomplete="off">
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Группа закупки</mat-label>
+          <input matInput formControlName="procurement_group_name" autocomplete="off">
         </mat-form-field>
 
         <mat-form-field>
@@ -200,6 +207,7 @@ export class InventoryItemEditDialogComponent {
       sku: [item.sku || '', Validators.required],
       item_type: [item.item_type || 'component', Validators.required],
       category_name: [item.category_name || item.category || 'Запчасти', Validators.required],
+      procurement_group_name: [item.procurement_group_name || ''],
       primary_supplier_id: [item.primary_supplier_id ?? null],
       stock_quantity: [Number(item.total_stock || 0), [Validators.required, Validators.min(0)]],
       min_quantity: [Number(item.min_quantity || 0), [Validators.required, Validators.min(0)]],
@@ -220,6 +228,7 @@ export class InventoryItemEditDialogComponent {
       sku: String(value.sku || '').trim(),
       item_type: value.item_type || 'component',
       category_name: String(value.category_name || 'Запчасти').trim(),
+      procurement_group_name: String(value.procurement_group_name || '').trim(),
       primary_supplier_id: value.primary_supplier_id ?? null,
       stock_quantity: Number(value.stock_quantity || 0),
       min_quantity: Number(value.min_quantity || 0),
@@ -274,6 +283,7 @@ export class InventoryDashboardComponent implements OnInit, AfterViewInit {
   dataSource = new MatTableDataSource<InventoryItem>();
   allItems: InventoryItem[] = [];
   suppliers: Supplier[] = [];
+  productGroups: InventoryProductGroup[] = [];
   filtersForm: FormGroup;
 
   stockAlerts: StockAlert[] = [];
@@ -318,6 +328,7 @@ export class InventoryDashboardComponent implements OnInit, AfterViewInit {
   ngOnInit(): void {
     this.loadInventoryData();
     this.loadSuppliers();
+    this.loadProductGroups();
     this.loadStockAlerts();
     this.loadInventoryStats();
     this.setupFilters();
@@ -408,6 +419,17 @@ export class InventoryDashboardComponent implements OnInit, AfterViewInit {
       },
       error: (error) => {
         console.error('Error loading suppliers:', error);
+      }
+    });
+  }
+
+  private loadProductGroups(): void {
+    this.inventoryService.getProductGroups().subscribe({
+      next: (groups) => {
+        this.productGroups = groups;
+      },
+      error: (error) => {
+        console.error('Error loading product groups:', error);
       }
     });
   }
@@ -531,11 +553,11 @@ export class InventoryDashboardComponent implements OnInit, AfterViewInit {
   }
 
   createPurchaseOrder(): void {
-    this.router.navigate(['/inventory/purchase-orders/new']);
+    this.router.navigate(['/inventory/purchase-requests/new']);
   }
 
   createPurchaseOrderFor(item: InventoryItem): void {
-    this.router.navigate(['/inventory/purchase-orders/new'], {
+    this.router.navigate(['/inventory/purchase-requests/new'], {
       queryParams: {
         item_id: item.id
       }
@@ -552,6 +574,7 @@ export class InventoryDashboardComponent implements OnInit, AfterViewInit {
       data: {
         item,
         suppliers: this.suppliers,
+        productGroups: this.productGroups,
         itemTypes: this.itemTypes
       }
     });

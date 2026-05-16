@@ -1,3 +1,4 @@
+from datetime import datetime, time
 from decimal import Decimal
 
 from django.db import transaction
@@ -14,18 +15,871 @@ from .models import (
     InventoryItem,
     InventoryItemBarcode,
     InventoryItemCostHistory,
+    InventoryProductGroup,
     PurchaseOrder,
     PurchaseOrderItem,
+    PurchaseRequest,
+    PurchaseRequestAuditLog,
+    PurchaseRequestBatch,
+    PurchaseRequestBatchItem,
+    PurchaseRequestBatchStatusHistory,
+    PurchaseRequestItem,
+    PurchaseRequestStatusHistory,
     RetailSale,
     RetailSaleItem,
     StockBalance,
     StockMovement,
+    Supplier,
     SupplierItem,
 )
 
 
 class InventoryService:
     """Складские операции"""
+
+    def _resolve_supplier_from_payload(self, payload: dict) -> Supplier | None:
+        supplier_id = payload.get("supplier_id")
+        supplier_name = (payload.get("supplier_name") or "").strip()
+        if supplier_id:
+            return get_object_or_404(Supplier, id=supplier_id, is_active=True)
+        if supplier_name:
+            supplier, _ = Supplier.objects.get_or_create(name=supplier_name)
+            return supplier
+        return None
+
+    def _resolve_procurement_group_from_payload(
+        self, payload: dict
+    ) -> InventoryProductGroup | None:
+        group_id = payload.get("procurement_group_id")
+        group_name = (payload.get("procurement_group_name") or "").strip()
+        if group_id:
+            return get_object_or_404(InventoryProductGroup, id=group_id, is_active=True)
+        if group_name:
+            group, _ = InventoryProductGroup.objects.get_or_create(name=group_name)
+            return group
+        return None
+
+    def log_purchase_request_event(
+        self,
+        purchase_request: PurchaseRequest,
+        action: str,
+        message: str,
+        actor: User | None = None,
+        batch: PurchaseRequestBatch | None = None,
+        changes: dict | None = None,
+    ) -> None:
+        PurchaseRequestAuditLog.objects.create(
+            purchase_request=purchase_request,
+            batch=batch,
+            action=action,
+            actor=actor,
+            message=message[:255],
+            changes=changes or {},
+        )
+
+    def _record_purchase_request_status(
+        self,
+        purchase_request: PurchaseRequest,
+        old_status: str,
+        new_status: str,
+        user: User | None = None,
+        comment: str = "",
+    ) -> None:
+        if old_status == new_status:
+            return
+        PurchaseRequestStatusHistory.objects.create(
+            purchase_request=purchase_request,
+            old_status=old_status or "",
+            new_status=new_status,
+            changed_by=user,
+            comment=comment,
+        )
+
+    def _record_purchase_request_batch_status(
+        self,
+        batch: PurchaseRequestBatch,
+        old_status: str,
+        new_status: str,
+        user: User | None = None,
+        comment: str = "",
+    ) -> None:
+        if old_status == new_status:
+            return
+        PurchaseRequestBatchStatusHistory.objects.create(
+            batch=batch,
+            old_status=old_status or "",
+            new_status=new_status,
+            changed_by=user,
+            comment=comment,
+        )
+
+    @transaction.atomic
+    def create_purchase_request(
+        self, shop, user: User, payload: dict
+    ) -> PurchaseRequest:
+        items = payload.get("items") or []
+        if not items:
+            raise ValueError("Добавьте хотя бы одну позицию заявки")
+
+        priority = payload.get("priority") or PurchaseRequest.Priority.NORMAL
+        if priority not in PurchaseRequest.Priority.values:
+            raise ValueError("Некорректный приоритет заявки")
+
+        request = PurchaseRequest.objects.create(
+            shop=shop,
+            created_by=user,
+            status=PurchaseRequest.Status.DRAFT
+            if payload.get("as_draft")
+            else PurchaseRequest.Status.SUBMITTED,
+            priority=priority,
+            due_date=payload.get("due_date"),
+            notes=(payload.get("notes") or "").strip(),
+        )
+
+        seen_item_ids: set[int] = set()
+        for row in items:
+            item = get_object_or_404(
+                InventoryItem.objects.select_related(
+                    "primary_supplier", "procurement_group", "category"
+                ),
+                id=row.get("item_id"),
+                is_active=True,
+            )
+            if item.id in seen_item_ids:
+                raise ValueError(f"Товар {item.name} уже добавлен в заявку")
+            seen_item_ids.add(item.id)
+
+            quantity = int(row.get("quantity") or 0)
+            if quantity <= 0:
+                raise ValueError("Количество в заявке должно быть больше нуля")
+
+            supplier = self._resolve_supplier_from_payload(row) or item.primary_supplier
+            group = (
+                self._resolve_procurement_group_from_payload(row)
+                or item.procurement_group
+            )
+            unit_price = Decimal(
+                str(
+                    row.get("unit_price")
+                    if row.get("unit_price") is not None
+                    else item.purchase_price
+                )
+            )
+            if unit_price < 0:
+                raise ValueError("Ожидаемая цена не может быть отрицательной")
+
+            PurchaseRequestItem.objects.create(
+                purchase_request=request,
+                item=item,
+                supplier=supplier,
+                procurement_group=group,
+                requested_quantity=quantity,
+                approved_quantity=quantity,
+                unit_price=unit_price,
+                notes=(row.get("notes") or "").strip(),
+            )
+
+        request.recalculate_totals()
+        self._record_purchase_request_status(
+            request,
+            "",
+            request.status,
+            user,
+            "Заявка создана",
+        )
+        self.log_purchase_request_event(
+            request,
+            PurchaseRequestAuditLog.ActionChoices.CREATED,
+            f"Создана заявка {request.request_number}",
+            actor=user,
+            changes={
+                "items_count": len(items),
+                "priority": request.priority,
+                "total_amount": str(request.total_amount),
+            },
+        )
+        return request
+
+    @transaction.atomic
+    def update_purchase_request_item(
+        self,
+        purchase_request: PurchaseRequest,
+        request_item_id: int,
+        payload: dict,
+        user: User | None = None,
+    ) -> PurchaseRequestItem:
+        request_item = get_object_or_404(
+            PurchaseRequestItem.objects.select_for_update().select_related("item"),
+            id=request_item_id,
+            purchase_request=purchase_request,
+        )
+        if purchase_request.status in {
+            PurchaseRequest.Status.SENT,
+            PurchaseRequest.Status.PARTIALLY_RECEIVED,
+            PurchaseRequest.Status.RECEIVED,
+            PurchaseRequest.Status.REJECTED,
+            PurchaseRequest.Status.CANCELLED,
+        }:
+            raise ValueError(
+                "Заявку нельзя менять после отправки, отклонения или закрытия"
+            )
+        if purchase_request.batches.filter(purchase_order__isnull=False).exists():
+            raise ValueError("Заявку нельзя менять после создания заказа поставщику")
+
+        old_request_status = purchase_request.status
+        had_batches = purchase_request.batches.exists()
+        before = {
+            "requested_quantity": request_item.requested_quantity,
+            "approved_quantity": request_item.approved_quantity,
+            "unit_price": str(request_item.unit_price),
+            "supplier_id": request_item.supplier_id,
+            "procurement_group_id": request_item.procurement_group_id,
+            "notes": request_item.notes,
+        }
+
+        if (
+            "requested_quantity" in payload
+            and payload["requested_quantity"] is not None
+        ):
+            quantity = int(payload["requested_quantity"])
+            if quantity <= 0:
+                raise ValueError("Запрошенное количество должно быть больше нуля")
+            request_item.requested_quantity = quantity
+            if not payload.get("approved_quantity"):
+                request_item.approved_quantity = quantity
+
+        if "approved_quantity" in payload and payload["approved_quantity"] is not None:
+            approved_quantity = int(payload["approved_quantity"])
+            if approved_quantity <= 0:
+                raise ValueError("Согласованное количество должно быть больше нуля")
+            if approved_quantity < request_item.received_quantity:
+                raise ValueError("Согласовано меньше уже полученного количества")
+            request_item.approved_quantity = approved_quantity
+
+        if "unit_price" in payload and payload["unit_price"] is not None:
+            unit_price = Decimal(str(payload["unit_price"]))
+            if unit_price < 0:
+                raise ValueError("Ожидаемая цена не может быть отрицательной")
+            request_item.unit_price = unit_price
+
+        if "supplier_id" in payload or "supplier_name" in payload:
+            request_item.supplier = self._resolve_supplier_from_payload(payload)
+
+        if "procurement_group_id" in payload or "procurement_group_name" in payload:
+            request_item.procurement_group = (
+                self._resolve_procurement_group_from_payload(payload)
+            )
+
+        if "notes" in payload:
+            request_item.notes = (payload.get("notes") or "").strip()
+
+        request_item.save()
+        after = {
+            "requested_quantity": request_item.requested_quantity,
+            "approved_quantity": request_item.approved_quantity,
+            "unit_price": str(request_item.unit_price),
+            "supplier_id": request_item.supplier_id,
+            "procurement_group_id": request_item.procurement_group_id,
+            "notes": request_item.notes,
+        }
+        changes = {
+            key: {"old": before[key], "new": after[key]}
+            for key in before
+            if before[key] != after[key]
+        }
+        purchase_request.batches.all().delete()
+        if purchase_request.status == PurchaseRequest.Status.SPLIT:
+            purchase_request.status = PurchaseRequest.Status.APPROVED
+            purchase_request.save(update_fields=["status", "updated_at"])
+            self._record_purchase_request_status(
+                purchase_request,
+                old_request_status,
+                purchase_request.status,
+                user,
+                "Позиция изменена, документы разбиения сброшены",
+            )
+        purchase_request.recalculate_totals()
+        if changes or had_batches:
+            self.log_purchase_request_event(
+                purchase_request,
+                PurchaseRequestAuditLog.ActionChoices.UPDATED,
+                f"Обновлена позиция {request_item.item.name}",
+                actor=user,
+                changes={
+                    "item_id": request_item.item_id,
+                    "fields": changes,
+                    "batches_reset": had_batches,
+                },
+            )
+        return request_item
+
+    @transaction.atomic
+    def set_purchase_request_status(
+        self,
+        purchase_request: PurchaseRequest,
+        status: str,
+        user: User,
+        reason: str = "",
+    ) -> PurchaseRequest:
+        if status not in PurchaseRequest.Status.values:
+            raise ValueError("Некорректный статус заявки")
+
+        old_status = purchase_request.status
+        if old_status == status and not reason:
+            return purchase_request
+
+        endpoint_statuses = {
+            PurchaseRequest.Status.APPROVED,
+            PurchaseRequest.Status.REJECTED,
+            PurchaseRequest.Status.CANCELLED,
+        }
+        if status not in endpoint_statuses:
+            raise ValueError("Этот статус выставляется отдельным действием")
+
+        terminal_statuses = {
+            PurchaseRequest.Status.SENT,
+            PurchaseRequest.Status.PARTIALLY_RECEIVED,
+            PurchaseRequest.Status.RECEIVED,
+            PurchaseRequest.Status.REJECTED,
+            PurchaseRequest.Status.CANCELLED,
+        }
+        if old_status in terminal_statuses:
+            raise ValueError("Текущий статус заявки нельзя изменить вручную")
+
+        purchase_request.status = status
+        if status == PurchaseRequest.Status.APPROVED:
+            purchase_request.reviewed_by = user
+            purchase_request.approved_at = timezone.now()
+        if status == PurchaseRequest.Status.REJECTED:
+            purchase_request.reviewed_by = user
+            purchase_request.rejection_reason = reason.strip()
+        purchase_request.save(
+            update_fields=[
+                "status",
+                "reviewed_by",
+                "approved_at",
+                "rejection_reason",
+                "updated_at",
+            ]
+        )
+        self._record_purchase_request_status(
+            purchase_request,
+            old_status,
+            status,
+            user,
+            reason.strip(),
+        )
+        if old_status != status or reason:
+            self.log_purchase_request_event(
+                purchase_request,
+                PurchaseRequestAuditLog.ActionChoices.STATUS_CHANGED,
+                f"Статус заявки изменен: {old_status or 'new'} -> {status}",
+                actor=user,
+                changes={
+                    "old_status": old_status,
+                    "new_status": status,
+                    "reason": reason.strip(),
+                },
+            )
+        return purchase_request
+
+    @transaction.atomic
+    def split_purchase_request(
+        self,
+        purchase_request: PurchaseRequest,
+        user: User,
+        mode: str = "supplier",
+        rebuild: bool = True,
+    ) -> list[PurchaseRequestBatch]:
+        if mode not in {"supplier", "group", "supplier_group"}:
+            raise ValueError("Некорректный режим разбиения")
+        if purchase_request.status in {
+            PurchaseRequest.Status.SENT,
+            PurchaseRequest.Status.PARTIALLY_RECEIVED,
+            PurchaseRequest.Status.RECEIVED,
+            PurchaseRequest.Status.CANCELLED,
+            PurchaseRequest.Status.REJECTED,
+        }:
+            raise ValueError("Эту заявку нельзя разбить")
+
+        existing_batches = purchase_request.batches.all()
+        if rebuild and existing_batches.filter(purchase_order__isnull=False).exists():
+            raise ValueError(
+                "Нельзя пересобрать документы после создания заказа поставщику"
+            )
+
+        if rebuild:
+            purchase_request.batches.all().delete()
+
+        batches_by_key: dict[tuple[int | None, int | None], PurchaseRequestBatch] = {}
+        old_request_status = purchase_request.status
+        request_items = purchase_request.items.select_related(
+            "item", "supplier", "procurement_group"
+        ).order_by("id")
+
+        for request_item in request_items:
+            supplier = request_item.supplier
+            group = request_item.procurement_group
+            if mode == "supplier":
+                key = (supplier.id if supplier else None, None)
+                group_for_batch = None
+            elif mode == "group":
+                key = (None, group.id if group else None)
+                supplier_for_batch = None
+                group_for_batch = group
+            else:
+                key = (
+                    supplier.id if supplier else None,
+                    group.id if group else None,
+                )
+                supplier_for_batch = supplier
+                group_for_batch = group
+
+            if mode == "supplier":
+                supplier_for_batch = supplier
+
+            batch = batches_by_key.get(key)
+            if batch is None:
+                batch = PurchaseRequestBatch.objects.create(
+                    purchase_request=purchase_request,
+                    supplier=supplier_for_batch,
+                    procurement_group=group_for_batch,
+                    created_by=user,
+                )
+                self._record_purchase_request_batch_status(
+                    batch,
+                    "",
+                    batch.status,
+                    user,
+                    "Документ создан при автоматическом разбиении",
+                )
+                self.log_purchase_request_event(
+                    purchase_request,
+                    PurchaseRequestAuditLog.ActionChoices.BATCH_CREATED,
+                    f"Создан документ {batch.batch_number}",
+                    actor=user,
+                    batch=batch,
+                    changes={
+                        "mode": mode,
+                        "supplier_id": batch.supplier_id,
+                        "procurement_group_id": batch.procurement_group_id,
+                    },
+                )
+                batches_by_key[key] = batch
+
+            quantity = request_item.approved_quantity or request_item.requested_quantity
+            if quantity <= 0:
+                continue
+            PurchaseRequestBatchItem.objects.create(
+                batch=batch,
+                request_item=request_item,
+                quantity=quantity,
+                unit_price=request_item.unit_price,
+                notes=request_item.notes,
+            )
+            batch.recalculate_totals()
+
+        if batches_by_key and purchase_request.status in {
+            PurchaseRequest.Status.DRAFT,
+            PurchaseRequest.Status.SUBMITTED,
+            PurchaseRequest.Status.APPROVED,
+        }:
+            purchase_request.status = PurchaseRequest.Status.SPLIT
+            purchase_request.reviewed_by = user
+            if not purchase_request.approved_at:
+                purchase_request.approved_at = timezone.now()
+            purchase_request.save(
+                update_fields=["status", "reviewed_by", "approved_at", "updated_at"]
+            )
+            self._record_purchase_request_status(
+                purchase_request,
+                old_request_status,
+                purchase_request.status,
+                user,
+                "Заявка разбита на документы поставщикам",
+            )
+
+        if batches_by_key:
+            self.log_purchase_request_event(
+                purchase_request,
+                PurchaseRequestAuditLog.ActionChoices.SPLIT,
+                f"Заявка разбита на {len(batches_by_key)} документ(ов)",
+                actor=user,
+                changes={"mode": mode, "rebuild": rebuild},
+            )
+
+        return list(batches_by_key.values())
+
+    @transaction.atomic
+    def create_purchase_request_batch(
+        self, purchase_request: PurchaseRequest, user: User, payload: dict
+    ) -> PurchaseRequestBatch:
+        if purchase_request.status in {
+            PurchaseRequest.Status.SENT,
+            PurchaseRequest.Status.PARTIALLY_RECEIVED,
+            PurchaseRequest.Status.RECEIVED,
+            PurchaseRequest.Status.CANCELLED,
+            PurchaseRequest.Status.REJECTED,
+        }:
+            raise ValueError("Эту заявку нельзя разбить")
+        if not payload.get("items"):
+            raise ValueError("Добавьте позиции в документ поставщику")
+
+        old_request_status = purchase_request.status
+        supplier = self._resolve_supplier_from_payload(payload)
+        group = self._resolve_procurement_group_from_payload(payload)
+        batch = PurchaseRequestBatch.objects.create(
+            purchase_request=purchase_request,
+            supplier=supplier,
+            procurement_group=group,
+            title=(payload.get("title") or "").strip(),
+            notes=(payload.get("notes") or "").strip(),
+            created_by=user,
+        )
+        self._record_purchase_request_batch_status(
+            batch,
+            "",
+            batch.status,
+            user,
+            "Документ создан вручную",
+        )
+
+        for row in payload["items"]:
+            request_item = get_object_or_404(
+                PurchaseRequestItem,
+                id=row.get("request_item_id"),
+                purchase_request=purchase_request,
+            )
+            quantity = int(row.get("quantity") or 0)
+            if quantity <= 0:
+                raise ValueError("Количество в документе должно быть больше нуля")
+            approved = request_item.approved_quantity or request_item.requested_quantity
+            already_batched = (
+                request_item.batch_items.aggregate(total=Sum("quantity"))["total"] or 0
+            )
+            if quantity > approved - already_batched:
+                raise ValueError("Количество превышает нераспределенный остаток")
+            unit_price = Decimal(str(row.get("unit_price") or request_item.unit_price))
+            if unit_price < 0:
+                raise ValueError("Цена не может быть отрицательной")
+            PurchaseRequestBatchItem.objects.create(
+                batch=batch,
+                request_item=request_item,
+                quantity=quantity,
+                unit_price=unit_price,
+                notes=(row.get("notes") or "").strip(),
+            )
+
+        batch.recalculate_totals()
+        if purchase_request.status in {
+            PurchaseRequest.Status.DRAFT,
+            PurchaseRequest.Status.SUBMITTED,
+            PurchaseRequest.Status.APPROVED,
+        }:
+            purchase_request.status = PurchaseRequest.Status.SPLIT
+            purchase_request.reviewed_by = user
+            if not purchase_request.approved_at:
+                purchase_request.approved_at = timezone.now()
+            purchase_request.save(
+                update_fields=["status", "reviewed_by", "approved_at", "updated_at"]
+            )
+            self._record_purchase_request_status(
+                purchase_request,
+                old_request_status,
+                purchase_request.status,
+                user,
+                "Создан ручной документ поставщику",
+            )
+        self.log_purchase_request_event(
+            purchase_request,
+            PurchaseRequestAuditLog.ActionChoices.BATCH_CREATED,
+            f"Создан документ {batch.batch_number}",
+            actor=user,
+            batch=batch,
+            changes={
+                "supplier_id": batch.supplier_id,
+                "procurement_group_id": batch.procurement_group_id,
+                "items_count": len(payload["items"]),
+            },
+        )
+        return batch
+
+    @transaction.atomic
+    def create_purchase_order_from_batch(
+        self, batch: PurchaseRequestBatch, user: User
+    ) -> PurchaseOrder:
+        if batch.purchase_order_id:
+            return batch.purchase_order
+        if not batch.supplier_id:
+            raise ValueError("Перед созданием заказа укажите поставщика документа")
+        if not batch.items.exists():
+            raise ValueError("В документе нет позиций")
+
+        old_batch_status = batch.status
+        old_request_status = batch.purchase_request.status
+        expected_delivery_date = None
+        if batch.purchase_request.due_date:
+            expected_delivery_date = timezone.make_aware(
+                datetime.combine(batch.purchase_request.due_date, time(hour=18))
+            )
+
+        purchase_order = PurchaseOrder.objects.create(
+            supplier=batch.supplier,
+            shop=batch.purchase_request.shop,
+            status=PurchaseOrder.OrderStatus.SENT,
+            expected_delivery_date=expected_delivery_date,
+            notes=(
+                f"Создано из заявки {batch.purchase_request.request_number}, "
+                f"документ {batch.batch_number}.\n"
+                f"{batch.notes or batch.purchase_request.notes or ''}"
+            ).strip(),
+            created_by=user,
+            approved_by=user,
+        )
+
+        total_amount = Decimal("0")
+        for batch_item in batch.items.select_related("request_item__item"):
+            po_item = PurchaseOrderItem.objects.create(
+                purchase_order=purchase_order,
+                item=batch_item.request_item.item,
+                ordered_quantity=batch_item.quantity,
+                unit_price=batch_item.unit_price,
+                notes=batch_item.notes,
+            )
+            total_amount += po_item.total_price
+
+        purchase_order.subtotal = total_amount
+        purchase_order.total_amount = total_amount
+        purchase_order.save(update_fields=["subtotal", "total_amount", "updated_at"])
+
+        batch.purchase_order = purchase_order
+        batch.status = PurchaseRequestBatch.Status.SENT
+        batch.recalculate_totals()
+        batch.save(
+            update_fields=["purchase_order", "status", "subtotal", "total_amount"]
+        )
+        self._record_purchase_request_batch_status(
+            batch,
+            old_batch_status,
+            batch.status,
+            user,
+            f"Создан заказ поставщику {purchase_order.order_number}",
+        )
+
+        purchase_request = batch.purchase_request
+        if purchase_request.status in {
+            PurchaseRequest.Status.APPROVED,
+            PurchaseRequest.Status.SPLIT,
+        }:
+            purchase_request.status = PurchaseRequest.Status.SENT
+            purchase_request.save(update_fields=["status", "updated_at"])
+            self._record_purchase_request_status(
+                purchase_request,
+                old_request_status,
+                purchase_request.status,
+                user,
+                f"Создан заказ поставщику {purchase_order.order_number}",
+            )
+
+        self.log_purchase_request_event(
+            purchase_request,
+            PurchaseRequestAuditLog.ActionChoices.ORDER_CREATED,
+            f"Создан заказ поставщику {purchase_order.order_number}",
+            actor=user,
+            batch=batch,
+            changes={
+                "purchase_order_id": purchase_order.id,
+                "purchase_order_number": purchase_order.order_number,
+                "total_amount": str(purchase_order.total_amount),
+            },
+        )
+
+        return purchase_order
+
+    @transaction.atomic
+    def receive_purchase_request_batch_full(
+        self, batch: PurchaseRequestBatch, user: User
+    ) -> dict:
+        if not batch.purchase_order_id:
+            raise ValueError("Сначала создайте заказ поставщику из документа")
+
+        purchase_order = (
+            PurchaseOrder.objects.select_for_update()
+            .prefetch_related("items")
+            .get(id=batch.purchase_order_id)
+        )
+        if purchase_order.status == PurchaseOrder.OrderStatus.RECEIVED:
+            return {
+                "success": True,
+                "order_id": purchase_order.id,
+                "status": purchase_order.status,
+                "received_total": sum(
+                    item.received_quantity for item in purchase_order.items.all()
+                ),
+            }
+
+        receive_items = []
+        for order_item in purchase_order.items.all():
+            remaining = order_item.ordered_quantity - order_item.received_quantity
+            if remaining > 0:
+                receive_items.append(
+                    {
+                        "purchase_order_item_id": order_item.id,
+                        "received_quantity": remaining,
+                    }
+                )
+
+        if not receive_items:
+            self._sync_purchase_request_receipt_state(purchase_order, user)
+            return {
+                "success": True,
+                "order_id": purchase_order.id,
+                "status": purchase_order.status,
+                "received_total": sum(
+                    item.received_quantity for item in purchase_order.items.all()
+                ),
+            }
+
+        return self.receive_purchase_order(purchase_order, receive_items, user)
+
+    @transaction.atomic
+    def receive_purchase_request_batch(
+        self, batch: PurchaseRequestBatch, items: list[dict], user: User
+    ) -> dict:
+        if not batch.purchase_order_id:
+            raise ValueError("Сначала создайте заказ поставщику из документа")
+        if not items:
+            raise ValueError("Укажите позиции для приемки")
+
+        purchase_order = (
+            PurchaseOrder.objects.select_for_update()
+            .prefetch_related("items")
+            .get(id=batch.purchase_order_id)
+        )
+        order_items_by_item_id = {
+            order_item.item_id: order_item for order_item in purchase_order.items.all()
+        }
+        receive_by_order_item: dict[int, int] = {}
+
+        for row in items:
+            batch_item = get_object_or_404(
+                PurchaseRequestBatchItem.objects.select_related("request_item__item"),
+                id=row.get("batch_item_id"),
+                batch=batch,
+            )
+            qty = int(row.get("received_quantity") or 0)
+            if qty <= 0:
+                continue
+
+            order_item = order_items_by_item_id.get(batch_item.request_item.item_id)
+            if not order_item:
+                raise ValueError("Позиция отсутствует в заказе поставщику")
+            remaining = order_item.ordered_quantity - order_item.received_quantity
+            already_planned = receive_by_order_item.get(order_item.id, 0)
+            if qty + already_planned > remaining:
+                raise ValueError("Нельзя принять больше остатка по документу")
+
+            receive_by_order_item[order_item.id] = already_planned + qty
+
+        receive_items = [
+            {
+                "purchase_order_item_id": order_item_id,
+                "received_quantity": quantity,
+            }
+            for order_item_id, quantity in receive_by_order_item.items()
+        ]
+        if not receive_items:
+            raise ValueError("Укажите количество больше нуля")
+
+        return self.receive_purchase_order(purchase_order, receive_items, user)
+
+    def _sync_purchase_request_receipt_state(
+        self, purchase_order: PurchaseOrder, user: User | None = None
+    ) -> None:
+        batch = getattr(purchase_order, "purchase_request_batch", None)
+        if not batch:
+            return
+
+        purchase_request = batch.purchase_request
+        for batch_item in batch.items.select_related("request_item__item"):
+            request_filter = "purchase_order__purchase_request_batch__purchase_request"
+            received = (
+                PurchaseOrderItem.objects.filter(
+                    **{request_filter: purchase_request},
+                    item=batch_item.request_item.item,
+                ).aggregate(total=Sum("received_quantity"))["total"]
+                or 0
+            )
+            batch_item.request_item.received_quantity = min(
+                int(received), batch_item.request_item.approved_quantity
+            )
+            batch_item.request_item.save(update_fields=["received_quantity"])
+
+        current_order_items = {
+            order_item.item_id: order_item.received_quantity
+            for order_item in PurchaseOrderItem.objects.filter(
+                purchase_order=purchase_order
+            )
+        }
+        batch_items = list(batch.items.select_related("request_item"))
+        batch_total = sum(item.quantity for item in batch_items)
+        batch_received = sum(
+            min(current_order_items.get(item.request_item.item_id, 0), item.quantity)
+            for item in batch_items
+        )
+        old_batch_status = batch.status
+        if batch_received <= 0:
+            batch.status = PurchaseRequestBatch.Status.SENT
+        elif batch_received < batch_total:
+            batch.status = PurchaseRequestBatch.Status.PARTIALLY_RECEIVED
+        else:
+            batch.status = PurchaseRequestBatch.Status.RECEIVED
+        batch.save(update_fields=["status"])
+        self._record_purchase_request_batch_status(
+            batch,
+            old_batch_status,
+            batch.status,
+            user,
+            f"Приемка по заказу {purchase_order.order_number}",
+        )
+
+        old_request_status = purchase_request.status
+        request_items = list(purchase_request.items.all())
+        request_total = sum(
+            item.approved_quantity or item.requested_quantity for item in request_items
+        )
+        request_received = sum(item.received_quantity for item in request_items)
+        if request_received <= 0:
+            purchase_request.status = PurchaseRequest.Status.SENT
+        elif request_received < request_total:
+            purchase_request.status = PurchaseRequest.Status.PARTIALLY_RECEIVED
+        else:
+            purchase_request.status = PurchaseRequest.Status.RECEIVED
+        purchase_request.save(update_fields=["status", "updated_at"])
+        self._record_purchase_request_status(
+            purchase_request,
+            old_request_status,
+            purchase_request.status,
+            user,
+            f"Приемка по заказу {purchase_order.order_number}",
+        )
+        if (
+            old_batch_status != batch.status
+            or old_request_status != purchase_request.status
+        ):
+            self.log_purchase_request_event(
+                purchase_request,
+                PurchaseRequestAuditLog.ActionChoices.RECEIVED,
+                f"Принята поставка по документу {batch.batch_number}",
+                actor=user,
+                batch=batch,
+                changes={
+                    "purchase_order_id": purchase_order.id,
+                    "purchase_order_number": purchase_order.order_number,
+                    "batch_status": batch.status,
+                    "request_status": purchase_request.status,
+                },
+            )
 
     def find_item_by_barcode(self, barcode: str) -> InventoryItem | None:
         # Только таблица мульти-ШК
@@ -275,6 +1129,9 @@ class InventoryService:
             qty = int(item.get("received_quantity", 0))
             if qty <= 0:
                 continue
+            remaining = po_item.ordered_quantity - po_item.received_quantity
+            if qty > remaining:
+                raise ValueError("Нельзя принять больше заказанного количества")
 
             # Обновляем полученное количество
             po_item.received_quantity = (po_item.received_quantity or 0) + qty
@@ -313,8 +1170,14 @@ class InventoryService:
             )
 
         # Обновление статуса заказа поставщику
-        total_ordered = sum(p.ordered_quantity for p in purchase_order.items.all())
-        total_received = sum(p.received_quantity for p in purchase_order.items.all())
+        totals = PurchaseOrderItem.objects.filter(
+            purchase_order=purchase_order
+        ).aggregate(
+            total_ordered=Sum("ordered_quantity"),
+            total_received=Sum("received_quantity"),
+        )
+        total_ordered = totals["total_ordered"] or 0
+        total_received = totals["total_received"] or 0
         if total_received == 0:
             purchase_order.status = PurchaseOrder.OrderStatus.SENT
         elif total_received < total_ordered:
@@ -324,6 +1187,7 @@ class InventoryService:
 
         purchase_order.actual_delivery_date = timezone.now()
         purchase_order.save(update_fields=["status", "actual_delivery_date"])
+        self._sync_purchase_request_receipt_state(purchase_order, user)
 
         return {
             "success": True,
@@ -638,12 +1502,15 @@ class InventoryService:
             )
             category_id = category.id
 
+        procurement_group = self._resolve_procurement_group_from_payload(data)
+
         item = InventoryItem.objects.create(
             name=data["name"].strip(),
             sku=sku,
             barcode="",  # одиночное поле не используется
             item_type=data["item_type"],
             category_id=category_id,
+            procurement_group=procurement_group,
             description=(data.get("description") or "").strip(),
             purchase_price=Decimal(str(data["purchase_price"])),
             selling_price=Decimal(str(data["selling_price"])),

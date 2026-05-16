@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -7,10 +7,15 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { InventoryService } from '../../../services/inventory.service';
+import {
+  InventoryProductGroup,
+  InventoryService,
+  Supplier
+} from '../../../services/inventory.service';
 
 @Component({
   selector: 'app-inventory-item-form',
@@ -23,6 +28,7 @@ import { InventoryService } from '../../../services/inventory.service';
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatAutocompleteModule,
     MatProgressSpinnerModule,
     MatSelectModule,
     MatSnackBarModule
@@ -30,8 +36,10 @@ import { InventoryService } from '../../../services/inventory.service';
   templateUrl: './inventory-item-form.component.html',
   styleUrl: './inventory-item-form.component.scss'
 })
-export class InventoryItemFormComponent {
+export class InventoryItemFormComponent implements OnInit {
   loading = false;
+  suppliers: Supplier[] = [];
+  productGroups: InventoryProductGroup[] = [];
 
   itemTypes = [
     { value: 'component', label: 'Комплектующие' },
@@ -55,11 +63,22 @@ export class InventoryItemFormComponent {
       sku: ['', Validators.required],
       item_type: ['component', Validators.required],
       category_name: ['Запчасти', Validators.required],
+      procurement_group_name: [''],
+      primary_supplier_id: [null as number | null],
       purchase_price: [0, [Validators.required, Validators.min(0)]],
       selling_price: [0, [Validators.required, Validators.min(0)]],
       unit: ['шт', Validators.required],
       barcode: [''],
       description: ['']
+    });
+  }
+
+  ngOnInit(): void {
+    this.inventoryService.getSuppliers().subscribe((suppliers) => {
+      this.suppliers = suppliers;
+    });
+    this.inventoryService.getProductGroups().subscribe((groups) => {
+      this.productGroups = groups;
     });
   }
 
@@ -78,6 +97,8 @@ export class InventoryItemFormComponent {
       sku: (value.sku || '').trim(),
       item_type: value.item_type || 'component',
       category_name: (value.category_name || 'Запчасти').trim(),
+      procurement_group_name: (value.procurement_group_name || '').trim() || undefined,
+      primary_supplier_id: value.primary_supplier_id || undefined,
       purchase_price: Number(value.purchase_price || 0),
       selling_price: Number(value.selling_price || 0),
       unit: value.unit || 'шт',

@@ -5,6 +5,8 @@ describe('inventory routes', () => {
     expect(INVENTORY_ROUTES.map(route => route.path)).toEqual([
       '',
       'items/new',
+      'purchase-requests',
+      'purchase-requests/new',
       'purchase-orders/new'
     ]);
   });

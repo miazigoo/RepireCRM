@@ -26,8 +26,11 @@ from inventory.models import (
     InventoryItem,
     InventoryItemBarcode,
     InventoryItemCostHistory,
+    InventoryProductGroup,
     PurchaseOrder,
     PurchaseOrderItem,
+    PurchaseRequest,
+    PurchaseRequestBatch,
     RetailSale,
     RetailSaleItem,
     StockBalance,
@@ -35,6 +38,7 @@ from inventory.models import (
     Supplier,
     SupplierItem,
 )
+from inventory.services import InventoryService
 from orders.models import (
     AdditionalService,
     Order,
@@ -269,7 +273,10 @@ class Command(BaseCommand):
         cash_registers = self.create_cash_registers(shops, users["cashiers"])
         device_models = self.create_device_catalog()
         suppliers = self.create_suppliers()
-        inventory_items = self.create_inventory(shops, suppliers, users["director"])
+        procurement_groups = self.create_procurement_groups()
+        inventory_items = self.create_inventory(
+            shops, suppliers, users["director"], procurement_groups
+        )
         services = self.create_services(shops, device_models)
         promo_codes = self.create_promotions(shops, users["director"])
         customers = self.create_customers(users["managers"])
@@ -291,6 +298,9 @@ class Command(BaseCommand):
         )
         self.create_retail_sales(
             shops, customers, inventory_items, users["cashiers"], payment_methods
+        )
+        self.create_purchase_requests(
+            shops, inventory_items, users["managers"], users["b00bs"]
         )
         self.create_expenses(shops, users, payment_methods)
         self.refresh_customer_stats(customers)
@@ -322,11 +332,13 @@ class Command(BaseCommand):
         Expense.objects.filter(invoice_number__startswith="DEMO-").delete()
         RetailSaleItem.objects.filter(sale__notes__startswith="[demo]").delete()
         RetailSale.objects.filter(notes__startswith="[demo]").delete()
+        self.delete_demo_purchase_requests()
         StockMovement.objects.filter(notes__startswith="[demo]").delete()
         PurchaseOrderItem.objects.filter(
             purchase_order__notes__startswith="[demo]"
         ).delete()
         PurchaseOrder.objects.filter(notes__startswith="[demo]").delete()
+        PurchaseRequest.objects.filter(notes__startswith="[demo-procurement]").delete()
         Order.objects.filter(notes__startswith="[demo]").delete()
         PromoCode.objects.filter(description__startswith="[demo]").delete()
         Promotion.objects.filter(description__startswith="[demo]").delete()
@@ -337,9 +349,32 @@ class Command(BaseCommand):
         InventoryItemBarcode.objects.filter(item__sku__startswith="DEMO-").delete()
         SupplierItem.objects.filter(item__sku__startswith="DEMO-").delete()
         InventoryItem.objects.filter(sku__startswith="DEMO-").delete()
+        InventoryProductGroup.objects.filter(description__startswith="[demo]").delete()
         Device.objects.filter(serial_number__startswith="DEMO-").delete()
         CustomerShopHistory.objects.filter(customer__phone__startswith="+7908").delete()
         Customer.objects.filter(phone__startswith="+7908").delete()
+
+    def delete_demo_purchase_requests(self):
+        demo_requests = PurchaseRequest.objects.filter(
+            notes__startswith="[demo-procurement]"
+        )
+        linked_orders = PurchaseOrder.objects.filter(
+            purchase_request_batch__purchase_request__in=demo_requests
+        ).distinct()
+        linked_order_ids = list(linked_orders.values_list("id", flat=True))
+        if linked_order_ids:
+            StockMovement.objects.filter(
+                purchase_order_id__in=linked_order_ids
+            ).delete()
+            InventoryItemCostHistory.objects.filter(
+                source_type=InventoryItemCostHistory.SourceType.PO,
+                source_id__in=linked_order_ids,
+            ).delete()
+            PurchaseOrderItem.objects.filter(
+                purchase_order_id__in=linked_order_ids
+            ).delete()
+            linked_orders.delete()
+        demo_requests.delete()
 
     def create_shops(self):
         shops = []
@@ -816,7 +851,58 @@ class Command(BaseCommand):
             suppliers.append(supplier)
         return suppliers
 
-    def create_inventory(self, shops, suppliers, created_by):
+    def create_procurement_groups(self):
+        groups = {}
+        group_specs = (
+            (
+                "Дисплеи",
+                "Дисплейные модули",
+                "OLED/IPS модули, тачскрины и сборки дисплеев.",
+            ),
+            (
+                "Аккумуляторы",
+                "Аккумуляторы",
+                "АКБ для телефонов, планшетов и носимых устройств.",
+            ),
+            (
+                "Разъемы",
+                "Разъемы и шлейфы",
+                "Шлейфы зарядки, Type-C/Lightning и мелкая коммутация.",
+            ),
+            ("Камеры", "Камеры", "Основные, фронтальные камеры и линзы."),
+            (
+                "Корпусные детали",
+                "Корпусные детали",
+                "Крышки, рамки, кнопки и элементы корпуса.",
+            ),
+            (
+                "Аксессуары",
+                "Аксессуары",
+                "Чехлы, стекла, кабели и зарядные устройства.",
+            ),
+            (
+                "Расходники",
+                "Расходники",
+                "Клей, скотч, спирт, салфетки и расходные материалы.",
+            ),
+            (
+                "Инструменты",
+                "Инструменты",
+                "Оснастка и ручной инструмент для мастерской.",
+            ),
+        )
+        for category_name, group_name, description in group_specs:
+            group, _ = InventoryProductGroup.objects.update_or_create(
+                name=group_name,
+                defaults={
+                    "description": f"[demo] {description}",
+                    "is_active": True,
+                },
+            )
+            groups[category_name] = group
+        return groups
+
+    def create_inventory(self, shops, suppliers, created_by, procurement_groups):
         categories = {
             name: Category.objects.get_or_create(name=name)[0]
             for name in (
@@ -930,6 +1016,7 @@ class Command(BaseCommand):
                     if category_name == "Аксессуары"
                     else InventoryItem.ItemType.COMPONENT,
                     "category": categories[category_name],
+                    "procurement_group": procurement_groups.get(category_name),
                     "description": "Демо-товар для проверки склада и отчетов",
                     "purchase_price": purchase,
                     "selling_price": selling,
@@ -1201,6 +1288,200 @@ class Command(BaseCommand):
                 )
                 payment.external_id = f"DEMO-PO-{month_index}-{shop.code}"
                 payment.save(update_fields=["external_id"])
+
+    def create_purchase_requests(self, shops, items, managers, director):
+        self.delete_demo_purchase_requests()
+        service = InventoryService()
+
+        by_group = {}
+        for item in items:
+            group_name = item.procurement_group.name if item.procurement_group else ""
+            by_group.setdefault(group_name, []).append(item)
+
+        display_items = by_group.get("Дисплейные модули", [])
+        battery_items = by_group.get("Аккумуляторы", [])
+        connector_items = by_group.get("Разъемы и шлейфы", [])
+        camera_items = by_group.get("Камеры", [])
+        accessory_items = by_group.get("Аксессуары", [])
+        consumable_items = by_group.get("Расходники", [])
+
+        procurement_items = (
+            display_items[:3]
+            + battery_items[:3]
+            + connector_items[:2]
+            + camera_items[:1]
+            + accessory_items[:2]
+            + consumable_items[:2]
+        )
+        self.force_low_stock_for_procurement(shops[:2], procurement_items, director)
+
+        today = timezone.localdate()
+        scenarios = [
+            {
+                "shop": shops[0],
+                "manager": self.user_for_shop(managers, shops[0]),
+                "status_flow": "submitted",
+                "created_at": timezone.now() - timedelta(hours=8),
+                "payload": {
+                    "priority": PurchaseRequest.Priority.URGENT,
+                    "due_date": today + timedelta(days=2),
+                    "notes": (
+                        "[demo-procurement] Срочная заявка склада: витринные "
+                        "модули и АКБ подходят к минимальному остатку."
+                    ),
+                    "items": [
+                        {"item_id": display_items[0].id, "quantity": 3},
+                        {"item_id": battery_items[0].id, "quantity": 6},
+                        {"item_id": connector_items[0].id, "quantity": 8},
+                    ],
+                },
+            },
+            {
+                "shop": shops[0],
+                "manager": self.user_for_shop(managers, shops[0]),
+                "status_flow": "split",
+                "created_at": timezone.now() - timedelta(hours=6),
+                "payload": {
+                    "priority": PurchaseRequest.Priority.HIGH,
+                    "due_date": today + timedelta(days=5),
+                    "notes": (
+                        "[demo-procurement] Плановая закупка для ближайшей "
+                        "недели. Директор разбил позиции по поставщикам."
+                    ),
+                    "items": [
+                        {"item_id": display_items[1].id, "quantity": 2},
+                        {"item_id": battery_items[1].id, "quantity": 5},
+                        {"item_id": camera_items[0].id, "quantity": 2},
+                    ],
+                },
+            },
+            {
+                "shop": shops[1],
+                "manager": self.user_for_shop(managers, shops[1]),
+                "status_flow": "partial",
+                "created_at": timezone.now() - timedelta(hours=4),
+                "payload": {
+                    "priority": PurchaseRequest.Priority.NORMAL,
+                    "due_date": today + timedelta(days=7),
+                    "notes": (
+                        "[demo-procurement] Поставка аксессуаров и расходников "
+                        "частично пришла, остаток ожидается от поставщика."
+                    ),
+                    "items": [
+                        {"item_id": accessory_items[0].id, "quantity": 10},
+                        {"item_id": accessory_items[1].id, "quantity": 12},
+                        {"item_id": consumable_items[0].id, "quantity": 5},
+                    ],
+                },
+            },
+        ]
+
+        created_requests = []
+        for scenario in scenarios:
+            request = service.create_purchase_request(
+                scenario["shop"], scenario["manager"], scenario["payload"]
+            )
+            PurchaseRequest.objects.filter(pk=request.pk).update(
+                created_at=scenario["created_at"],
+                updated_at=scenario["created_at"],
+            )
+            request.refresh_from_db()
+            created_requests.append(request)
+
+            if scenario["status_flow"] in {"split", "partial"}:
+                service.set_purchase_request_status(
+                    request,
+                    PurchaseRequest.Status.APPROVED,
+                    director,
+                    "Согласовано для demo-флоу закупок",
+                )
+                batches = service.split_purchase_request(
+                    request,
+                    director,
+                    mode="supplier_group",
+                    rebuild=True,
+                )
+                for batch in batches:
+                    set_created_at(
+                        PurchaseRequestBatch,
+                        batch,
+                        scenario["created_at"] + timedelta(minutes=15),
+                    )
+
+                if scenario["status_flow"] == "partial" and batches:
+                    batch = sorted(
+                        batches,
+                        key=lambda item: (
+                            item.supplier.name if item.supplier else "",
+                            item.batch_number,
+                        ),
+                    )[0]
+                    purchase_order = service.create_purchase_order_from_batch(
+                        batch, director
+                    )
+                    purchase_order.notes = f"[demo-procurement] {purchase_order.notes}"
+                    purchase_order.save(update_fields=["notes"])
+                    batch.refresh_from_db()
+                    batch_item = batch.items.order_by("-quantity").first()
+                    if batch_item:
+                        service.receive_purchase_request_batch(
+                            batch,
+                            [
+                                {
+                                    "batch_item_id": batch_item.id,
+                                    "received_quantity": max(
+                                        1, min(batch_item.quantity - 1, 2)
+                                    ),
+                                }
+                            ],
+                            director,
+                        )
+
+        return created_requests
+
+    def force_low_stock_for_procurement(self, shops, items, user):
+        for shop in shops:
+            for index, item in enumerate(items, start=1):
+                balance, _ = StockBalance.objects.get_or_create(
+                    shop=shop,
+                    item=item,
+                    defaults={
+                        "quantity": 0,
+                        "reserved_quantity": 0,
+                        "available_quantity": 0,
+                    },
+                )
+                target_quantity = index % 3
+                before = balance.quantity
+                balance.quantity = target_quantity
+                balance.reserved_quantity = 0
+                balance.min_quantity = max(balance.min_quantity, 5)
+                balance.reorder_point = max(balance.reorder_point, 8)
+                balance.max_quantity = max(balance.max_quantity, 80)
+                balance.save(
+                    update_fields=[
+                        "quantity",
+                        "reserved_quantity",
+                        "available_quantity",
+                        "min_quantity",
+                        "reorder_point",
+                        "max_quantity",
+                        "last_movement_date",
+                    ]
+                )
+                if before == target_quantity:
+                    continue
+                StockMovement.objects.create(
+                    stock_balance=balance,
+                    movement_type=StockMovement.MovementType.ADJUSTMENT,
+                    quantity_before=before,
+                    quantity_change=target_quantity - before,
+                    quantity_after=target_quantity,
+                    reference_number=f"DEMO-REQ-{shop.code}-{item.sku}",
+                    notes="[demo] корректировка остатка под закупочную заявку",
+                    cost_per_unit=item.purchase_price,
+                    created_by=user,
+                )
 
     def create_orders(
         self,

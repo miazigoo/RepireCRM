@@ -1,7 +1,9 @@
+from datetime import date
 from decimal import Decimal
 
 from django.db import transaction
 from django.db.models import F, Prefetch, Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from ninja import Body, Router
 from ninja.pagination import paginate
@@ -16,9 +18,20 @@ from .inventory_schemas import (
     FinalizeSalePaymentInputSchema,
     FinalizeSaleResponseSchema,
     InventoryItemSchema,
+    InventoryProductGroupSchema,
     ItemBarcodeSchema,
     ItemStockByCodeSchema,
     PurchaseOrderSchema,
+    PurchaseRequestBatchCreateSchema,
+    PurchaseRequestBatchReceiveSchema,
+    PurchaseRequestBatchSchema,
+    PurchaseRequestCreateSchema,
+    PurchaseRequestItemSchema,
+    PurchaseRequestItemUpdateSchema,
+    PurchaseRequestSchema,
+    PurchaseRequestSplitInputSchema,
+    PurchaseRequestStatusInputSchema,
+    PurchaseRequestTimelineEventSchema,
     QuickCreateItemInputSchema,
     QuickCreateItemResponseSchema,
     StockBalanceSchema,
@@ -29,8 +42,12 @@ from .inventory_schemas import (
 from .models import (
     Category,
     InventoryItem,
+    InventoryProductGroup,
     PurchaseOrder,
     PurchaseOrderItem,
+    PurchaseRequest,
+    PurchaseRequestAuditLog,
+    PurchaseRequestBatch,
     RetailSale,
     StockBalance,
     StockMovement,
@@ -74,6 +91,39 @@ def _get_accessible_sale(request, sale_id: int) -> RetailSale:
     return sale
 
 
+def _purchase_request_queryset():
+    return PurchaseRequest.objects.select_related(
+        "shop",
+        "created_by",
+        "reviewed_by",
+    ).prefetch_related(
+        "items__item__category",
+        "items__supplier",
+        "items__procurement_group",
+        "batches__supplier",
+        "batches__procurement_group",
+        "batches__purchase_order__items",
+        "batches__items__request_item__item",
+    )
+
+
+def _get_accessible_purchase_request(request, request_id: int) -> PurchaseRequest:
+    purchase_request = get_object_or_404(_purchase_request_queryset(), id=request_id)
+    if not request.auth.can_access_shop(purchase_request.shop):
+        raise PermissionError("Нет доступа к заявке другого филиала")
+    current_shop = getattr(request, "current_shop", None)
+    if current_shop and purchase_request.shop_id != current_shop.id:
+        if not request.auth.has_permission("inventory.view_other_shop_stock"):
+            raise PermissionError("Нет доступа к заявке другого филиала")
+    return purchase_request
+
+
+def _actor_name(user) -> str | None:
+    if not user:
+        return None
+    return user.get_full_name() or user.username
+
+
 @router.get("/items", response=list[InventoryItemSchema])
 @paginate
 def list_inventory_items(
@@ -96,7 +146,9 @@ def list_inventory_items(
         balances = balances.filter(shop__in=request.auth.get_available_shops())
 
     queryset = (
-        InventoryItem.objects.select_related("category", "primary_supplier")
+        InventoryItem.objects.select_related(
+            "category", "primary_supplier", "procurement_group"
+        )
         .prefetch_related(Prefetch("stock_balances", queryset=balances))
         .filter(is_active=True)
     )
@@ -157,6 +209,431 @@ def create_stock_movement(request, data: dict):
         "movement_id": movement.id,
         "new_balance": movement.quantity_after,
     }
+
+
+@router.get("/product-groups", response=list[InventoryProductGroupSchema])
+def list_product_groups(request, active_only: bool = True):
+    """Группы закупки для номенклатуры."""
+    if not request.auth.has_permission("inventory.view_item"):
+        raise PermissionError("Нет прав для просмотра групп товаров")
+
+    queryset = InventoryProductGroup.objects.all()
+    if active_only:
+        queryset = queryset.filter(is_active=True)
+    return queryset.order_by("name")
+
+
+@router.get("/purchase-requests", response=list[PurchaseRequestSchema])
+@paginate
+def list_purchase_requests(
+    request,
+    status: str | None = None,
+    supplier_id: int | None = None,
+    due_from: date | None = None,
+    due_to: date | None = None,
+    search: str | None = None,
+):
+    """Внутренние заявки склада на закупку."""
+    if not _has_any_permission(
+        request.auth,
+        "inventory.view_purchase_requests",
+        "inventory.view_purchase_orders",
+        "inventory.view_purchase",
+    ):
+        raise PermissionError("Нет прав для просмотра заявок на закупку")
+
+    queryset = _scope_to_current_shop(request, _purchase_request_queryset())
+    if status:
+        queryset = queryset.filter(status=status)
+    if supplier_id:
+        queryset = queryset.filter(
+            Q(items__supplier_id=supplier_id) | Q(batches__supplier_id=supplier_id)
+        )
+    if due_from:
+        queryset = queryset.filter(due_date__gte=due_from)
+    if due_to:
+        queryset = queryset.filter(due_date__lte=due_to)
+    if search:
+        normalized = search.strip()
+        if normalized:
+            queryset = queryset.filter(
+                Q(request_number__icontains=normalized)
+                | Q(notes__icontains=normalized)
+                | Q(items__item__name__icontains=normalized)
+                | Q(items__item__sku__icontains=normalized)
+            )
+    return queryset.distinct().order_by("-created_at")
+
+
+@router.post("/purchase-requests", response={201: PurchaseRequestSchema, 400: dict})
+def create_purchase_request(request, data: PurchaseRequestCreateSchema):
+    """Создать заявку на закупку для директора."""
+    if not _has_any_permission(
+        request.auth,
+        "inventory.add_purchase_request",
+        "inventory.add_purchase_order",
+        "inventory.add_purchase",
+    ):
+        raise PermissionError("Нет прав для создания заявок на закупку")
+    if not getattr(request, "current_shop", None):
+        return 400, {"error": "Не выбран магазин для заявки"}
+
+    try:
+        service = InventoryService()
+        purchase_request = service.create_purchase_request(
+            shop=request.current_shop,
+            user=request.auth,
+            payload=data.model_dump(),
+        )
+        return 201, _purchase_request_queryset().get(id=purchase_request.id)
+    except ValueError as e:
+        return 400, {"error": str(e)}
+
+
+@router.get("/purchase-requests/{request_id}", response=PurchaseRequestSchema)
+def get_purchase_request(request, request_id: int):
+    if not _has_any_permission(
+        request.auth,
+        "inventory.view_purchase_requests",
+        "inventory.view_purchase_orders",
+        "inventory.view_purchase",
+    ):
+        raise PermissionError("Нет прав для просмотра заявки")
+    return _get_accessible_purchase_request(request, request_id)
+
+
+@router.get(
+    "/purchase-requests/{request_id}/timeline",
+    response=list[PurchaseRequestTimelineEventSchema],
+)
+def list_purchase_request_timeline(request, request_id: int):
+    if not _has_any_permission(
+        request.auth,
+        "inventory.view_purchase_requests",
+        "inventory.view_purchase_orders",
+        "inventory.view_purchase",
+    ):
+        raise PermissionError("Нет прав для просмотра истории заявки")
+    purchase_request = _get_accessible_purchase_request(request, request_id)
+
+    events = []
+    for item in purchase_request.status_history.select_related("changed_by").all():
+        events.append(
+            {
+                "id": item.id,
+                "event_type": "request_status",
+                "action": "status_changed",
+                "message": item.comment or "Изменен статус заявки",
+                "old_status": item.old_status or None,
+                "new_status": item.new_status,
+                "batch_id": None,
+                "batch_number": None,
+                "actor_name": _actor_name(item.changed_by),
+                "changes": None,
+                "created_at": item.changed_at,
+            }
+        )
+
+    for batch in purchase_request.batches.all():
+        for item in batch.status_history.select_related("changed_by").all():
+            events.append(
+                {
+                    "id": item.id,
+                    "event_type": "batch_status",
+                    "action": "status_changed",
+                    "message": item.comment or "Изменен статус документа",
+                    "old_status": item.old_status or None,
+                    "new_status": item.new_status,
+                    "batch_id": batch.id,
+                    "batch_number": batch.batch_number,
+                    "actor_name": _actor_name(item.changed_by),
+                    "changes": None,
+                    "created_at": item.changed_at,
+                }
+            )
+
+    for item in purchase_request.audit_logs.select_related("actor", "batch").all():
+        events.append(
+            {
+                "id": item.id,
+                "event_type": "audit",
+                "action": item.action,
+                "message": item.message,
+                "old_status": None,
+                "new_status": None,
+                "batch_id": item.batch_id,
+                "batch_number": item.batch.batch_number if item.batch else None,
+                "actor_name": _actor_name(item.actor),
+                "changes": item.changes,
+                "created_at": item.created_at,
+            }
+        )
+
+    return sorted(events, key=lambda event: event["created_at"], reverse=True)
+
+
+@router.patch(
+    "/purchase-requests/{request_id}/items/{request_item_id}",
+    response={200: PurchaseRequestItemSchema, 400: dict},
+)
+def update_purchase_request_item(
+    request,
+    request_id: int,
+    request_item_id: int,
+    data: PurchaseRequestItemUpdateSchema,
+):
+    if not _has_any_permission(
+        request.auth,
+        "inventory.change_purchase_request",
+        "inventory.approve_purchase_request",
+        "inventory.add_purchase_order",
+    ):
+        raise PermissionError("Нет прав для редактирования заявки")
+    purchase_request = _get_accessible_purchase_request(request, request_id)
+    try:
+        service = InventoryService()
+        item = service.update_purchase_request_item(
+            purchase_request,
+            request_item_id,
+            data.model_dump(exclude_unset=True),
+            user=request.auth,
+        )
+        return 200, item
+    except ValueError as e:
+        return 400, {"error": str(e)}
+
+
+@router.post(
+    "/purchase-requests/{request_id}/status",
+    response={200: PurchaseRequestSchema, 400: dict},
+)
+def set_purchase_request_status(
+    request, request_id: int, data: PurchaseRequestStatusInputSchema
+):
+    if not _has_any_permission(
+        request.auth,
+        "inventory.approve_purchase_request",
+        "inventory.change_purchase_request",
+        "inventory.add_purchase_order",
+    ):
+        raise PermissionError("Нет прав для согласования заявки")
+    purchase_request = _get_accessible_purchase_request(request, request_id)
+    try:
+        service = InventoryService()
+        service.set_purchase_request_status(
+            purchase_request,
+            data.status,
+            request.auth,
+            reason=data.reason or "",
+        )
+        return 200, _purchase_request_queryset().get(id=purchase_request.id)
+    except ValueError as e:
+        return 400, {"error": str(e)}
+
+
+@router.post(
+    "/purchase-requests/{request_id}/split",
+    response={200: list[PurchaseRequestBatchSchema], 400: dict},
+)
+def split_purchase_request(
+    request, request_id: int, data: PurchaseRequestSplitInputSchema
+):
+    if not _has_any_permission(
+        request.auth,
+        "inventory.approve_purchase_request",
+        "inventory.change_purchase_request",
+        "inventory.add_purchase_order",
+    ):
+        raise PermissionError("Нет прав для разбиения заявки")
+    purchase_request = _get_accessible_purchase_request(request, request_id)
+    try:
+        service = InventoryService()
+        service.split_purchase_request(
+            purchase_request,
+            user=request.auth,
+            mode=data.mode,
+            rebuild=data.rebuild,
+        )
+        refreshed = _purchase_request_queryset().get(id=purchase_request.id)
+        return 200, list(refreshed.batches.all())
+    except ValueError as e:
+        return 400, {"error": str(e)}
+
+
+@router.post(
+    "/purchase-requests/{request_id}/batches",
+    response={201: PurchaseRequestBatchSchema, 400: dict},
+)
+def create_purchase_request_batch(
+    request, request_id: int, data: PurchaseRequestBatchCreateSchema
+):
+    if not _has_any_permission(
+        request.auth,
+        "inventory.approve_purchase_request",
+        "inventory.change_purchase_request",
+        "inventory.add_purchase_order",
+    ):
+        raise PermissionError("Нет прав для разбиения заявки")
+    purchase_request = _get_accessible_purchase_request(request, request_id)
+    try:
+        service = InventoryService()
+        batch = service.create_purchase_request_batch(
+            purchase_request,
+            request.auth,
+            data.model_dump(),
+        )
+        return 201, (
+            purchase_request.batches.select_related("supplier", "procurement_group")
+            .prefetch_related("items__request_item__item")
+            .get(id=batch.id)
+        )
+    except ValueError as e:
+        return 400, {"error": str(e)}
+
+
+@router.get("/purchase-requests/{request_id}/pdf")
+def download_purchase_request_pdf(request, request_id: int):
+    from .purchase_request_pdf import generate_purchase_request_pdf
+
+    if not _has_any_permission(
+        request.auth,
+        "inventory.view_purchase_requests",
+        "inventory.view_purchase_orders",
+        "inventory.view_purchase",
+    ):
+        raise PermissionError("Нет прав для скачивания заявки")
+    purchase_request = _get_accessible_purchase_request(request, request_id)
+    body = generate_purchase_request_pdf(purchase_request)
+    InventoryService().log_purchase_request_event(
+        purchase_request,
+        PurchaseRequestAuditLog.ActionChoices.PDF_DOWNLOADED,
+        f"Скачан PDF заявки {purchase_request.request_number}",
+        actor=request.auth,
+    )
+    filename = f"{purchase_request.request_number}.pdf"
+    response = HttpResponse(body, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+@router.get("/purchase-requests/{request_id}/batches/{batch_id}/pdf")
+def download_purchase_request_batch_pdf(request, request_id: int, batch_id: int):
+    from .purchase_request_pdf import generate_purchase_request_pdf
+
+    if not _has_any_permission(
+        request.auth,
+        "inventory.view_purchase_requests",
+        "inventory.view_purchase_orders",
+        "inventory.view_purchase",
+    ):
+        raise PermissionError("Нет прав для скачивания заявки")
+    purchase_request = _get_accessible_purchase_request(request, request_id)
+    batch = get_object_or_404(purchase_request.batches.all(), id=batch_id)
+    body = generate_purchase_request_pdf(purchase_request, batch=batch)
+    InventoryService().log_purchase_request_event(
+        purchase_request,
+        PurchaseRequestAuditLog.ActionChoices.PDF_DOWNLOADED,
+        f"Скачан PDF документа {batch.batch_number}",
+        actor=request.auth,
+        batch=batch,
+    )
+    filename = f"{batch.batch_number}.pdf"
+    response = HttpResponse(body, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+@router.post(
+    "/purchase-requests/{request_id}/batches/{batch_id}/purchase-order",
+    response={201: dict, 400: dict},
+)
+def create_purchase_order_from_batch(request, request_id: int, batch_id: int):
+    if not _has_any_permission(
+        request.auth,
+        "inventory.approve_purchase_request",
+        "inventory.change_purchase_request",
+        "inventory.add_purchase_order",
+    ):
+        raise PermissionError("Нет прав для создания заказа поставщику")
+    purchase_request = _get_accessible_purchase_request(request, request_id)
+    batch = get_object_or_404(
+        PurchaseRequestBatch.objects.select_related(
+            "supplier", "purchase_request__shop", "purchase_order"
+        ).prefetch_related("items__request_item__item"),
+        id=batch_id,
+        purchase_request=purchase_request,
+    )
+    try:
+        service = InventoryService()
+        purchase_order = service.create_purchase_order_from_batch(batch, request.auth)
+        return 201, {
+            "success": True,
+            "order_id": purchase_order.id,
+            "order_number": purchase_order.order_number,
+            "status": purchase_order.status,
+        }
+    except ValueError as e:
+        return 400, {"error": str(e)}
+
+
+@router.post(
+    "/purchase-requests/{request_id}/batches/{batch_id}/receive-full",
+    response={200: dict, 400: dict},
+)
+def receive_purchase_request_batch_full(request, request_id: int, batch_id: int):
+    if not _has_any_permission(
+        request.auth,
+        "inventory.receive_purchase_orders",
+        "inventory.receive_purchase",
+        "inventory.add_movement",
+    ):
+        raise PermissionError("Нет прав для приемки поставки")
+    purchase_request = _get_accessible_purchase_request(request, request_id)
+    batch = get_object_or_404(
+        PurchaseRequestBatch.objects.select_related(
+            "supplier", "purchase_request__shop", "purchase_order"
+        ).prefetch_related("items__request_item__item"),
+        id=batch_id,
+        purchase_request=purchase_request,
+    )
+    try:
+        service = InventoryService()
+        return 200, service.receive_purchase_request_batch_full(batch, request.auth)
+    except ValueError as e:
+        return 400, {"error": str(e)}
+
+
+@router.post(
+    "/purchase-requests/{request_id}/batches/{batch_id}/receive",
+    response={200: dict, 400: dict},
+)
+def receive_purchase_request_batch(
+    request, request_id: int, batch_id: int, data: PurchaseRequestBatchReceiveSchema
+):
+    if not _has_any_permission(
+        request.auth,
+        "inventory.receive_purchase_orders",
+        "inventory.receive_purchase",
+        "inventory.add_movement",
+    ):
+        raise PermissionError("Нет прав для приемки поставки")
+    purchase_request = _get_accessible_purchase_request(request, request_id)
+    batch = get_object_or_404(
+        PurchaseRequestBatch.objects.select_related(
+            "supplier", "purchase_request__shop", "purchase_order"
+        ).prefetch_related("items__request_item__item"),
+        id=batch_id,
+        purchase_request=purchase_request,
+    )
+    try:
+        service = InventoryService()
+        return 200, service.receive_purchase_request_batch(
+            batch,
+            data.model_dump()["items"],
+            request.auth,
+        )
+    except ValueError as e:
+        return 400, {"error": str(e)}
 
 
 @router.get("/purchase-orders", response=list[PurchaseOrderSchema])
@@ -462,7 +939,9 @@ def update_inventory_item(request, item_id: int, data: UpdateInventoryItemInputS
         raise PermissionError("Нет прав для редактирования товаров")
 
     item = get_object_or_404(
-        InventoryItem.objects.select_related("category", "primary_supplier"),
+        InventoryItem.objects.select_related(
+            "category", "primary_supplier", "procurement_group"
+        ),
         id=item_id,
         is_active=True,
     )
@@ -499,6 +978,22 @@ def update_inventory_item(request, item_id: int, data: UpdateInventoryItemInputS
             defaults={"description": "Категория для складской номенклатуры"},
         )
         item.category = category
+
+    if "procurement_group_id" in payload:
+        group_id = payload.get("procurement_group_id")
+        item.procurement_group = (
+            get_object_or_404(InventoryProductGroup, id=group_id, is_active=True)
+            if group_id
+            else None
+        )
+    elif "procurement_group_name" in payload:
+        group_name = (payload.get("procurement_group_name") or "").strip()
+        item.procurement_group = None
+        if group_name:
+            item.procurement_group, _ = InventoryProductGroup.objects.get_or_create(
+                name=group_name,
+                defaults={"description": "Группа закупки складской номенклатуры"},
+            )
 
     if "primary_supplier_id" in payload:
         supplier_id = payload.get("primary_supplier_id")
@@ -584,7 +1079,9 @@ def update_inventory_item(request, item_id: int, data: UpdateInventoryItemInputS
                     )
 
     item = (
-        InventoryItem.objects.select_related("category", "primary_supplier")
+        InventoryItem.objects.select_related(
+            "category", "primary_supplier", "procurement_group"
+        )
         .prefetch_related("stock_balances")
         .get(id=item.id)
     )

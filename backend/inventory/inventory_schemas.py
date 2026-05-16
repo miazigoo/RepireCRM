@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from ninja import Schema
@@ -18,6 +18,13 @@ class SupplierSchema(Schema):
         return float(obj.rating or 0)
 
 
+class InventoryProductGroupSchema(Schema):
+    id: int
+    name: str
+    description: str | None = None
+    is_active: bool
+
+
 class InventoryItemSchema(Schema):
     id: int
     name: str
@@ -25,6 +32,8 @@ class InventoryItemSchema(Schema):
     item_type: str
     category_id: int
     category_name: str | None = None
+    procurement_group_id: int | None = None
+    procurement_group_name: str | None = None
     primary_supplier_id: int | None = None
     primary_supplier_name: str | None = None
     purchase_price: float
@@ -41,6 +50,14 @@ class InventoryItemSchema(Schema):
     @staticmethod
     def resolve_category_name(obj):
         return obj.category.name if obj.category else None
+
+    @staticmethod
+    def resolve_procurement_group_id(obj):
+        return obj.procurement_group_id if obj.procurement_group_id else None
+
+    @staticmethod
+    def resolve_procurement_group_name(obj):
+        return obj.procurement_group.name if obj.procurement_group else None
 
     @staticmethod
     def resolve_primary_supplier_id(obj):
@@ -215,6 +232,302 @@ class PurchaseOrderSchema(Schema):
         return obj.shop.name
 
 
+class PurchaseRequestItemSchema(Schema):
+    id: int
+    item_id: int
+    item_name: str
+    sku: str
+    category_name: str | None = None
+    supplier_id: int | None = None
+    supplier_name: str | None = None
+    procurement_group_id: int | None = None
+    procurement_group_name: str | None = None
+    requested_quantity: int
+    approved_quantity: int
+    received_quantity: int
+    unit_price: float
+    total_price: float
+    notes: str | None = None
+
+    @staticmethod
+    def resolve_item_name(obj):
+        return obj.item.name
+
+    @staticmethod
+    def resolve_sku(obj):
+        return obj.item.sku
+
+    @staticmethod
+    def resolve_category_name(obj):
+        return obj.item.category.name if obj.item.category else None
+
+    @staticmethod
+    def resolve_supplier_id(obj):
+        return obj.supplier_id if obj.supplier_id else None
+
+    @staticmethod
+    def resolve_supplier_name(obj):
+        return obj.supplier.name if obj.supplier else None
+
+    @staticmethod
+    def resolve_procurement_group_id(obj):
+        return obj.procurement_group_id if obj.procurement_group_id else None
+
+    @staticmethod
+    def resolve_procurement_group_name(obj):
+        return obj.procurement_group.name if obj.procurement_group else None
+
+    @staticmethod
+    def resolve_unit_price(obj):
+        return float(obj.unit_price or 0)
+
+    @staticmethod
+    def resolve_total_price(obj):
+        return float(obj.total_price or 0)
+
+
+class PurchaseRequestBatchItemSchema(Schema):
+    id: int
+    request_item_id: int
+    item_id: int
+    item_name: str
+    sku: str
+    quantity: int
+    received_quantity: int
+    remaining_quantity: int
+    unit_price: float
+    total_price: float
+    notes: str | None = None
+
+    @staticmethod
+    def resolve_request_item_id(obj):
+        return obj.request_item_id
+
+    @staticmethod
+    def resolve_item_id(obj):
+        return obj.request_item.item_id
+
+    @staticmethod
+    def resolve_item_name(obj):
+        return obj.request_item.item.name
+
+    @staticmethod
+    def resolve_sku(obj):
+        return obj.request_item.item.sku
+
+    @staticmethod
+    def resolve_received_quantity(obj):
+        purchase_order = getattr(obj.batch, "purchase_order", None)
+        if not purchase_order:
+            return 0
+        for order_item in purchase_order.items.all():
+            if order_item.item_id == obj.request_item.item_id:
+                return min(order_item.received_quantity or 0, obj.quantity)
+        return 0
+
+    @staticmethod
+    def resolve_remaining_quantity(obj):
+        received = PurchaseRequestBatchItemSchema.resolve_received_quantity(obj)
+        return max((obj.quantity or 0) - received, 0)
+
+    @staticmethod
+    def resolve_unit_price(obj):
+        return float(obj.unit_price or 0)
+
+    @staticmethod
+    def resolve_total_price(obj):
+        return float(obj.total_price or 0)
+
+
+class PurchaseRequestBatchSchema(Schema):
+    id: int
+    batch_number: str
+    title: str
+    status: str
+    purchase_order_id: int | None = None
+    purchase_order_number: str | None = None
+    supplier_id: int | None = None
+    supplier_name: str | None = None
+    procurement_group_id: int | None = None
+    procurement_group_name: str | None = None
+    subtotal: float
+    total_amount: float
+    notes: str | None = None
+    created_at: datetime
+    items: list[PurchaseRequestBatchItemSchema]
+
+    @staticmethod
+    def resolve_purchase_order_id(obj):
+        return obj.purchase_order_id if obj.purchase_order_id else None
+
+    @staticmethod
+    def resolve_purchase_order_number(obj):
+        return obj.purchase_order.order_number if obj.purchase_order else None
+
+    @staticmethod
+    def resolve_supplier_id(obj):
+        return obj.supplier_id if obj.supplier_id else None
+
+    @staticmethod
+    def resolve_supplier_name(obj):
+        return obj.supplier.name if obj.supplier else None
+
+    @staticmethod
+    def resolve_procurement_group_id(obj):
+        return obj.procurement_group_id if obj.procurement_group_id else None
+
+    @staticmethod
+    def resolve_procurement_group_name(obj):
+        return obj.procurement_group.name if obj.procurement_group else None
+
+    @staticmethod
+    def resolve_subtotal(obj):
+        return float(obj.subtotal or 0)
+
+    @staticmethod
+    def resolve_total_amount(obj):
+        return float(obj.total_amount or 0)
+
+
+class PurchaseRequestSchema(Schema):
+    id: int
+    request_number: str
+    status: str
+    priority: str
+    due_date: date | None = None
+    subtotal: float
+    total_amount: float
+    notes: str | None = None
+    rejection_reason: str | None = None
+    shop_id: int
+    shop_name: str
+    created_by_id: int
+    created_by_name: str
+    reviewed_by_id: int | None = None
+    reviewed_by_name: str | None = None
+    approved_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+    items_count: int
+    batches_count: int
+    items: list[PurchaseRequestItemSchema]
+    batches: list[PurchaseRequestBatchSchema]
+
+    @staticmethod
+    def resolve_subtotal(obj):
+        return float(obj.subtotal or 0)
+
+    @staticmethod
+    def resolve_total_amount(obj):
+        return float(obj.total_amount or 0)
+
+    @staticmethod
+    def resolve_shop_name(obj):
+        return obj.shop.name
+
+    @staticmethod
+    def resolve_created_by_name(obj):
+        return obj.created_by.get_full_name() or obj.created_by.username
+
+    @staticmethod
+    def resolve_reviewed_by_id(obj):
+        return obj.reviewed_by_id if obj.reviewed_by_id else None
+
+    @staticmethod
+    def resolve_reviewed_by_name(obj):
+        if not obj.reviewed_by:
+            return None
+        return obj.reviewed_by.get_full_name() or obj.reviewed_by.username
+
+    @staticmethod
+    def resolve_items_count(obj):
+        return obj.items_count
+
+    @staticmethod
+    def resolve_batches_count(obj):
+        return obj.batches_count
+
+
+class PurchaseRequestItemInputSchema(Schema):
+    item_id: int
+    quantity: int
+    unit_price: float | None = None
+    supplier_id: int | None = None
+    supplier_name: str | None = None
+    procurement_group_id: int | None = None
+    procurement_group_name: str | None = None
+    notes: str | None = None
+
+
+class PurchaseRequestCreateSchema(Schema):
+    priority: str | None = "normal"
+    due_date: date | None = None
+    notes: str | None = None
+    as_draft: bool | None = False
+    items: list[PurchaseRequestItemInputSchema]
+
+
+class PurchaseRequestItemUpdateSchema(Schema):
+    requested_quantity: int | None = None
+    approved_quantity: int | None = None
+    unit_price: float | None = None
+    supplier_id: int | None = None
+    supplier_name: str | None = None
+    procurement_group_id: int | None = None
+    procurement_group_name: str | None = None
+    notes: str | None = None
+
+
+class PurchaseRequestStatusInputSchema(Schema):
+    status: str
+    reason: str | None = None
+
+
+class PurchaseRequestSplitInputSchema(Schema):
+    mode: str = "supplier"
+    rebuild: bool = True
+
+
+class PurchaseRequestBatchItemInputSchema(Schema):
+    request_item_id: int
+    quantity: int
+    unit_price: float | None = None
+    notes: str | None = None
+
+
+class PurchaseRequestBatchCreateSchema(Schema):
+    supplier_id: int | None = None
+    supplier_name: str | None = None
+    procurement_group_id: int | None = None
+    procurement_group_name: str | None = None
+    title: str | None = None
+    notes: str | None = None
+    items: list[PurchaseRequestBatchItemInputSchema]
+
+
+class PurchaseRequestBatchReceiveItemInputSchema(Schema):
+    batch_item_id: int
+    received_quantity: int
+
+
+class PurchaseRequestBatchReceiveSchema(Schema):
+    items: list[PurchaseRequestBatchReceiveItemInputSchema]
+
+
+class PurchaseRequestTimelineEventSchema(Schema):
+    id: int
+    event_type: str
+    action: str | None = None
+    message: str
+    old_status: str | None = None
+    new_status: str | None = None
+    batch_id: int | None = None
+    batch_number: str | None = None
+    actor_name: str | None = None
+    changes: dict[str, Any] | None = None
+    created_at: datetime
+
+
 class RetailSaleItemSchema(Schema):
     id: int
     item_id: int
@@ -376,6 +689,8 @@ class QuickCreateItemInputSchema(Schema):
     item_type: str
     category_id: int | None = None
     category_name: str | None = None
+    procurement_group_id: int | None = None
+    procurement_group_name: str | None = None
     purchase_price: float
     selling_price: float
     # список штрихкодов
@@ -391,6 +706,8 @@ class UpdateInventoryItemInputSchema(Schema):
     item_type: str | None = None
     category_id: int | None = None
     category_name: str | None = None
+    procurement_group_id: int | None = None
+    procurement_group_name: str | None = None
     primary_supplier_id: int | None = None
     purchase_price: float | None = None
     selling_price: float | None = None

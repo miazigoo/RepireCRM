@@ -79,10 +79,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
       tone: 'accent'
     },
     {
-      title: 'Заказ поставщику',
+      title: 'Заявка поставщику',
       caption: 'Пополнить склад',
       icon: 'local_shipping',
-      route: '/inventory/purchase-orders/new',
+      route: '/inventory/purchase-requests/new',
       tone: 'warning'
     },
     {

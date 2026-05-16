@@ -12,9 +12,14 @@
         Добавить товар
       </a>
 
+      <a mat-stroked-button class="secondary-action" routerLink="/inventory/purchase-requests">
+        <mat-icon>assignment</mat-icon>
+        Заявки
+      </a>
+
       <button mat-stroked-button class="secondary-action" type="button" (click)="createPurchaseOrder()">
         <mat-icon>shopping_cart</mat-icon>
-        Заказ поставщику
+        Заявка поставщику
       </button>
     </div>
   </header>
@@ -237,7 +242,7 @@
                   </button>
                   <button mat-menu-item (click)="createPurchaseOrderFor(item)">
                     <mat-icon>shopping_cart</mat-icon>
-                    <span>Заказать у поставщика</span>
+                    <span>Создать заявку</span>
                   </button>
                   <button mat-menu-item (click)="refreshInventory()">
                     <mat-icon>refresh</mat-icon>
@@ -297,7 +302,7 @@
                   </button>
                   <button mat-menu-item (click)="createPurchaseOrderFor(item)">
                     <mat-icon>shopping_cart</mat-icon>
-                    <span>Заказать у поставщика</span>
+                    <span>Создать заявку</span>
                   </button>
                   <button mat-menu-item (click)="refreshInventory()">
                     <mat-icon>refresh</mat-icon>
@@ -377,7 +382,7 @@
               class="alert-action"
               type="button"
               (click)="createPurchaseOrder()"
-              aria-label="Создать заказ поставщику">
+              aria-label="Создать заявку поставщику">
               <mat-icon>add_shopping_cart</mat-icon>
             </button>
           </article>
@@ -431,7 +436,7 @@
         </a>
         <button mat-stroked-button type="button" (click)="createPurchaseOrder()">
           <mat-icon>shopping_cart</mat-icon>
-          Заказ поставщику
+          Заявка поставщику
         </button>
       </section>
     </aside>

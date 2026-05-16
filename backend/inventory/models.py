@@ -33,6 +33,23 @@ class Category(models.Model):
         return self.name
 
 
+class InventoryProductGroup(models.Model):
+    """Группа закупки товара, независимая от каталожной категории."""
+
+    name = models.CharField("Название", max_length=120, unique=True)
+    description = models.TextField("Описание", blank=True)
+    is_active = models.BooleanField("Активна", default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Группа закупки"
+        verbose_name_plural = "Группы закупки"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
 class Supplier(models.Model):
     """Поставщики"""
 
@@ -95,6 +112,14 @@ class InventoryItem(models.Model):
     item_type = models.CharField("Тип", max_length=20, choices=ItemType.choices)
     category = models.ForeignKey(
         Category, on_delete=models.PROTECT, verbose_name="Категория"
+    )
+    procurement_group = models.ForeignKey(
+        InventoryProductGroup,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="items",
+        verbose_name="Группа закупки",
     )
 
     description = models.TextField("Описание", blank=True)
@@ -415,6 +440,383 @@ class PurchaseOrderItem(models.Model):
     def save(self, *args, **kwargs):
         self.total_price = self.ordered_quantity * self.unit_price
         super().save(*args, **kwargs)
+
+
+class PurchaseRequest(models.Model):
+    """Внутренняя заявка на закупку перед отправкой поставщикам."""
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Черновик"
+        SUBMITTED = "submitted", "Ожидает проверки"
+        APPROVED = "approved", "Согласована"
+        SPLIT = "split", "Разбита"
+        SENT = "sent", "Отправлена поставщику"
+        PARTIALLY_RECEIVED = "partially_received", "Частично получена"
+        RECEIVED = "received", "Закрыта"
+        REJECTED = "rejected", "Отклонена"
+        CANCELLED = "cancelled", "Отменена"
+
+    class Priority(models.TextChoices):
+        LOW = "low", "Низкий"
+        NORMAL = "normal", "Обычный"
+        HIGH = "high", "Высокий"
+        URGENT = "urgent", "Срочный"
+
+    request_number = models.CharField("Номер заявки", max_length=50, unique=True)
+    shop = models.ForeignKey(
+        "shops.Shop", on_delete=models.PROTECT, verbose_name="Магазин"
+    )
+    status = models.CharField(
+        "Статус", max_length=32, choices=Status.choices, default=Status.SUBMITTED
+    )
+    priority = models.CharField(
+        "Приоритет",
+        max_length=16,
+        choices=Priority.choices,
+        default=Priority.NORMAL,
+    )
+    due_date = models.DateField("Желаемый срок", null=True, blank=True)
+
+    subtotal = models.DecimalField(
+        "Подитог", max_digits=15, decimal_places=2, default=Decimal("0")
+    )
+    total_amount = models.DecimalField(
+        "Итого", max_digits=15, decimal_places=2, default=Decimal("0")
+    )
+
+    notes = models.TextField("Комментарий", blank=True)
+    rejection_reason = models.TextField("Причина отклонения", blank=True)
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="created_purchase_requests",
+        verbose_name="Создал",
+    )
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_purchase_requests",
+        verbose_name="Проверил",
+    )
+    approved_at = models.DateTimeField("Дата согласования", null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Заявка на закупку"
+        verbose_name_plural = "Заявки на закупку"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["shop", "status"]),
+            models.Index(fields=["created_at"]),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self.request_number:
+            seq = get_next_value(f"purchase-request-{self.shop.code}")
+            self.request_number = f"PR-{self.shop.code}-{seq:06d}"
+        super().save(*args, **kwargs)
+
+    def recalculate_totals(self):
+        total = self.items.aggregate(total=models.Sum("total_price"))[
+            "total"
+        ] or Decimal("0")
+        self.subtotal = total
+        self.total_amount = total
+        self.save(update_fields=["subtotal", "total_amount", "updated_at"])
+
+    @property
+    def items_count(self):
+        return self.items.count()
+
+    @property
+    def batches_count(self):
+        return self.batches.count()
+
+
+class PurchaseRequestItem(models.Model):
+    """Позиция внутренней заявки на закупку."""
+
+    purchase_request = models.ForeignKey(
+        PurchaseRequest, on_delete=models.CASCADE, related_name="items"
+    )
+    item = models.ForeignKey(InventoryItem, on_delete=models.PROTECT)
+    supplier = models.ForeignKey(
+        Supplier,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Поставщик",
+    )
+    procurement_group = models.ForeignKey(
+        InventoryProductGroup,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Группа закупки",
+    )
+
+    requested_quantity = models.PositiveIntegerField("Запрошено")
+    approved_quantity = models.PositiveIntegerField("Согласовано", default=0)
+    received_quantity = models.PositiveIntegerField("Получено", default=0)
+
+    unit_price = models.DecimalField("Ожидаемая цена", max_digits=10, decimal_places=2)
+    total_price = models.DecimalField("Сумма", max_digits=15, decimal_places=2)
+    notes = models.TextField("Комментарий", blank=True)
+
+    class Meta:
+        verbose_name = "Позиция заявки на закупку"
+        verbose_name_plural = "Позиции заявок на закупку"
+        unique_together = ["purchase_request", "item"]
+        ordering = ["id"]
+
+    def save(self, *args, **kwargs):
+        if not self.approved_quantity:
+            self.approved_quantity = self.requested_quantity
+        quantity = self.approved_quantity or self.requested_quantity or 0
+        self.total_price = Decimal(quantity) * (self.unit_price or Decimal("0"))
+        super().save(*args, **kwargs)
+
+
+class PurchaseRequestBatch(models.Model):
+    """Документ для поставщика, собранный из заявки."""
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Черновик"
+        SENT = "sent", "Отправлен"
+        PARTIALLY_RECEIVED = "partially_received", "Частично получен"
+        RECEIVED = "received", "Получен"
+        CANCELLED = "cancelled", "Отменен"
+
+    purchase_request = models.ForeignKey(
+        PurchaseRequest, on_delete=models.CASCADE, related_name="batches"
+    )
+    purchase_order = models.OneToOneField(
+        PurchaseOrder,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="purchase_request_batch",
+        verbose_name="Созданный заказ поставщику",
+    )
+    batch_number = models.CharField("Номер документа", max_length=70)
+    supplier = models.ForeignKey(
+        Supplier,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Поставщик",
+    )
+    procurement_group = models.ForeignKey(
+        InventoryProductGroup,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Группа закупки",
+    )
+    title = models.CharField("Название", max_length=200, blank=True)
+    status = models.CharField(
+        "Статус", max_length=32, choices=Status.choices, default=Status.DRAFT
+    )
+    subtotal = models.DecimalField(
+        "Подитог", max_digits=15, decimal_places=2, default=Decimal("0")
+    )
+    total_amount = models.DecimalField(
+        "Итого", max_digits=15, decimal_places=2, default=Decimal("0")
+    )
+    notes = models.TextField("Комментарий", blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Документ заявки поставщику"
+        verbose_name_plural = "Документы заявок поставщикам"
+        unique_together = ["purchase_request", "batch_number"]
+        ordering = ["supplier__name", "procurement_group__name", "id"]
+
+    def save(self, *args, **kwargs):
+        if not self.batch_number:
+            existing = self.purchase_request.batches.count() + 1
+            self.batch_number = f"{self.purchase_request.request_number}-{existing:02d}"
+        if not self.title:
+            supplier_name = self.supplier.name if self.supplier else "Без поставщика"
+            group_name = (
+                self.procurement_group.name
+                if self.procurement_group
+                else "Общая группа"
+            )
+            self.title = f"{supplier_name} · {group_name}"
+        super().save(*args, **kwargs)
+
+    def recalculate_totals(self):
+        total = self.items.aggregate(total=models.Sum("total_price"))[
+            "total"
+        ] or Decimal("0")
+        self.subtotal = total
+        self.total_amount = total
+        self.save(update_fields=["subtotal", "total_amount"])
+
+
+class PurchaseRequestBatchItem(models.Model):
+    """Позиция документа поставщику, ссылается на исходную позицию заявки."""
+
+    batch = models.ForeignKey(
+        PurchaseRequestBatch, on_delete=models.CASCADE, related_name="items"
+    )
+    request_item = models.ForeignKey(
+        PurchaseRequestItem, on_delete=models.CASCADE, related_name="batch_items"
+    )
+    quantity = models.PositiveIntegerField("Количество")
+    unit_price = models.DecimalField("Цена", max_digits=10, decimal_places=2)
+    total_price = models.DecimalField("Сумма", max_digits=15, decimal_places=2)
+    notes = models.TextField("Комментарий", blank=True)
+
+    class Meta:
+        verbose_name = "Позиция документа заявки"
+        verbose_name_plural = "Позиции документов заявок"
+        ordering = ["id"]
+
+    def save(self, *args, **kwargs):
+        self.total_price = Decimal(self.quantity or 0) * (
+            self.unit_price or Decimal("0")
+        )
+        super().save(*args, **kwargs)
+
+
+class PurchaseRequestStatusHistory(models.Model):
+    """История переходов статусов внутренней заявки на закупку."""
+
+    purchase_request = models.ForeignKey(
+        PurchaseRequest,
+        on_delete=models.CASCADE,
+        related_name="status_history",
+        verbose_name="Заявка",
+    )
+    old_status = models.CharField(
+        "Старый статус",
+        max_length=32,
+        choices=PurchaseRequest.Status.choices,
+        blank=True,
+    )
+    new_status = models.CharField(
+        "Новый статус",
+        max_length=32,
+        choices=PurchaseRequest.Status.choices,
+    )
+    comment = models.TextField("Комментарий", blank=True)
+    changed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="purchase_request_status_changes",
+        verbose_name="Кто изменил",
+    )
+    changed_at = models.DateTimeField("Дата изменения", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "История статуса заявки"
+        verbose_name_plural = "История статусов заявок"
+        ordering = ["-changed_at"]
+        indexes = [
+            models.Index(fields=["purchase_request", "-changed_at"]),
+            models.Index(fields=["new_status"]),
+        ]
+
+
+class PurchaseRequestBatchStatusHistory(models.Model):
+    """История статусов документа поставщику внутри заявки."""
+
+    batch = models.ForeignKey(
+        PurchaseRequestBatch,
+        on_delete=models.CASCADE,
+        related_name="status_history",
+        verbose_name="Документ поставщику",
+    )
+    old_status = models.CharField(
+        "Старый статус",
+        max_length=32,
+        choices=PurchaseRequestBatch.Status.choices,
+        blank=True,
+    )
+    new_status = models.CharField(
+        "Новый статус",
+        max_length=32,
+        choices=PurchaseRequestBatch.Status.choices,
+    )
+    comment = models.TextField("Комментарий", blank=True)
+    changed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="purchase_request_batch_status_changes",
+        verbose_name="Кто изменил",
+    )
+    changed_at = models.DateTimeField("Дата изменения", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "История статуса документа заявки"
+        verbose_name_plural = "История статусов документов заявок"
+        ordering = ["-changed_at"]
+        indexes = [
+            models.Index(fields=["batch", "-changed_at"]),
+            models.Index(fields=["new_status"]),
+        ]
+
+
+class PurchaseRequestAuditLog(models.Model):
+    """Аудит действий по закупочной заявке и документам поставщика."""
+
+    class ActionChoices(models.TextChoices):
+        CREATED = "created", "Создана"
+        UPDATED = "updated", "Обновлена"
+        STATUS_CHANGED = "status_changed", "Изменен статус"
+        SPLIT = "split", "Разбита"
+        BATCH_CREATED = "batch_created", "Создан документ"
+        ORDER_CREATED = "order_created", "Создан заказ поставщику"
+        RECEIVED = "received", "Принята поставка"
+        PDF_DOWNLOADED = "pdf_downloaded", "Скачан PDF"
+
+    purchase_request = models.ForeignKey(
+        PurchaseRequest,
+        on_delete=models.CASCADE,
+        related_name="audit_logs",
+        verbose_name="Заявка",
+    )
+    batch = models.ForeignKey(
+        PurchaseRequestBatch,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="audit_logs",
+        verbose_name="Документ поставщику",
+    )
+    action = models.CharField("Действие", max_length=40, choices=ActionChoices.choices)
+    actor = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="purchase_request_audit_logs",
+        verbose_name="Пользователь",
+    )
+    message = models.CharField("Описание", max_length=255)
+    changes = models.JSONField("Изменения", default=dict, blank=True)
+    created_at = models.DateTimeField("Дата", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Запись аудита закупочной заявки"
+        verbose_name_plural = "Аудит закупочных заявок"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["purchase_request", "-created_at"]),
+            models.Index(fields=["batch", "-created_at"]),
+            models.Index(fields=["action"]),
+        ]
 
 
 class RetailSale(models.Model):

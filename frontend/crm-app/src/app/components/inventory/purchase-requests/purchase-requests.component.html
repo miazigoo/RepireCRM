@@ -1,0 +1,473 @@
+<div class="purchase-requests-page">
+  <header class="purchase-hero">
+    <div>
+      <span class="eyebrow">Закупки</span>
+      <h1>Заявки поставщикам</h1>
+      <p>Очередь складских потребностей, согласование директором, разбиение по поставщикам и PDF для отправки.</p>
+    </div>
+
+    <div class="hero-actions">
+      <button mat-stroked-button type="button" (click)="loadRequests()">
+        <mat-icon>refresh</mat-icon>
+        Обновить
+      </button>
+      <button mat-flat-button color="primary" type="button" (click)="createRequest()">
+        <mat-icon>add_shopping_cart</mat-icon>
+        Новая заявка
+      </button>
+    </div>
+  </header>
+
+  <section class="purchase-layout">
+    <aside class="request-list-panel">
+      <header>
+        <div>
+          <span class="eyebrow">Очередь</span>
+          <h2>{{ requests.length }} заявок</h2>
+        </div>
+        <mat-spinner *ngIf="loading" diameter="24"></mat-spinner>
+      </header>
+
+      <div class="request-filters">
+        <mat-form-field>
+          <mat-label>Поиск</mat-label>
+          <input
+            matInput
+            [(ngModel)]="filters.search"
+            (keyup.enter)="loadRequests()"
+            placeholder="Номер, товар, артикул">
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Статус</mat-label>
+          <mat-select [(ngModel)]="filters.status" (selectionChange)="loadRequests()">
+            <mat-option *ngFor="let option of statusOptions" [value]="option.value">
+              {{ option.label }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Поставщик</mat-label>
+          <mat-select [(ngModel)]="filters.supplierId" (selectionChange)="loadRequests()">
+            <mat-option [value]="null">Все поставщики</mat-option>
+            <mat-option *ngFor="let supplier of suppliers" [value]="supplier.id">
+              {{ supplier.name }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <div class="date-filter-row">
+          <mat-form-field>
+            <mat-label>Срок от</mat-label>
+            <input matInput type="date" [(ngModel)]="filters.dueFrom" (change)="loadRequests()">
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Срок до</mat-label>
+            <input matInput type="date" [(ngModel)]="filters.dueTo" (change)="loadRequests()">
+          </mat-form-field>
+        </div>
+
+        <div class="filter-actions">
+          <button mat-stroked-button type="button" (click)="loadRequests()">
+            <mat-icon>search</mat-icon>
+            Найти
+          </button>
+          <button mat-button type="button" (click)="resetFilters()">
+            Сбросить
+          </button>
+        </div>
+      </div>
+
+      <button
+        class="request-list-item"
+        type="button"
+        *ngFor="let request of requests; trackBy: trackById"
+        [class.active]="selectedRequest?.id === request.id"
+        (click)="selectRequest(request)">
+        <span class="status-dot" [ngClass]="request.status"></span>
+        <span>
+          <strong>{{ request.request_number }}</strong>
+          <small>{{ request.shop_name }} · {{ request.created_at | date:'dd.MM HH:mm' }}</small>
+        </span>
+        <span class="request-total">{{ formatCurrency(request.total_amount) }}</span>
+      </button>
+
+      <div class="list-empty" *ngIf="!loading && requests.length === 0">
+        <mat-icon>assignment</mat-icon>
+        <strong>Заявок пока нет</strong>
+        <span>Создайте первую потребность склада.</span>
+      </div>
+    </aside>
+
+    <main class="request-detail-panel" *ngIf="selectedRequest; else noSelection">
+      <section class="detail-top">
+        <div>
+          <span class="eyebrow">Карточка заявки</span>
+          <h2>{{ selectedRequest.request_number }}</h2>
+          <p>
+            {{ selectedRequest.shop_name }} · создал {{ selectedRequest.created_by_name }}
+            · {{ selectedRequest.created_at | date:'dd.MM.yyyy HH:mm' }}
+          </p>
+        </div>
+        <div class="detail-badges">
+          <span class="status-chip" [ngClass]="selectedRequest.status">{{ statusLabel(selectedRequest.status) }}</span>
+          <span class="priority-chip" [ngClass]="selectedRequest.priority">{{ priorityLabel(selectedRequest.priority) }}</span>
+        </div>
+      </section>
+
+      <section class="summary-grid">
+        <article>
+          <small>Позиции</small>
+          <strong>{{ selectedRequest.items_count }}</strong>
+          <span>{{ selectedRequest.batches_count }} документов</span>
+        </article>
+        <article>
+          <small>Сумма</small>
+          <strong>{{ formatCurrency(selectedRequest.total_amount) }}</strong>
+          <span>по ожидаемым ценам</span>
+        </article>
+        <article>
+          <small>Желаемый срок</small>
+          <strong>{{ selectedRequest.due_date ? (selectedRequest.due_date | date:'dd.MM.yyyy') : 'Не указан' }}</strong>
+          <span>для закупки</span>
+        </article>
+      </section>
+
+      <section class="actions-panel">
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="approve()"
+          [disabled]="actionLoading || !canReviewSelected()">
+          <mat-icon>verified</mat-icon>
+          Согласовать
+        </button>
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="split('supplier')"
+          [disabled]="actionLoading || !canSplitSelected()">
+          <mat-icon>account_tree</mat-icon>
+          По поставщикам
+        </button>
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="split('supplier_group')"
+          [disabled]="actionLoading || !canSplitSelected()">
+          <mat-icon>category</mat-icon>
+          Поставщик + группа
+        </button>
+        <button mat-flat-button color="primary" type="button" (click)="downloadRequestPdf()">
+          <mat-icon>picture_as_pdf</mat-icon>
+          PDF заявки
+        </button>
+        <button
+          mat-button
+          type="button"
+          (click)="reject()"
+          [disabled]="actionLoading || !canReviewSelected()">
+          <mat-icon>block</mat-icon>
+          Отклонить
+        </button>
+      </section>
+
+      <section class="items-panel">
+        <header>
+          <div>
+            <span class="eyebrow">Состав</span>
+            <h3>Позиции заявки</h3>
+          </div>
+          <span>Поставщик и группа меняются до разбиения</span>
+        </header>
+
+        <article class="request-item-row" *ngFor="let line of selectedRequest.items; trackBy: trackById">
+          <div class="item-name">
+            <strong>{{ line.item_name }}</strong>
+            <small>{{ line.sku }} · {{ line.category_name || 'Без категории' }}</small>
+          </div>
+
+          <div class="item-qty">
+            <small>Кол-во</small>
+            <strong>{{ line.approved_quantity || line.requested_quantity }}</strong>
+          </div>
+
+          <div class="item-price">
+            <small>Цена</small>
+            <strong>{{ formatCurrency(line.unit_price) }}</strong>
+          </div>
+
+          <mat-form-field>
+            <mat-label>Поставщик</mat-label>
+            <mat-select
+              [value]="line.supplier_id || null"
+              [disabled]="actionLoading || !canEditSelectedItems()"
+              (selectionChange)="updateSupplier(line, $event.value)">
+              <mat-option [value]="null">Не указан</mat-option>
+              <mat-option *ngFor="let supplier of suppliers" [value]="supplier.id">
+                {{ supplier.name }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Группа</mat-label>
+            <input
+              matInput
+              [value]="line.procurement_group_name || ''"
+              [readonly]="actionLoading || !canEditSelectedItems()"
+              (blur)="updateGroup(line, $any($event.target).value)"
+              [matAutocomplete]="lineGroupAutocomplete">
+            <mat-autocomplete #lineGroupAutocomplete="matAutocomplete">
+              <mat-option *ngFor="let group of productGroups" [value]="group.name">
+                {{ group.name }}
+              </mat-option>
+            </mat-autocomplete>
+          </mat-form-field>
+        </article>
+      </section>
+
+      <section class="manual-split-panel">
+        <header>
+          <div>
+            <span class="eyebrow">Ручной документ</span>
+            <h3>Собрать поставщику</h3>
+          </div>
+          <span>Можно разделить одну заявку на несколько PDF без автоматической группировки.</span>
+        </header>
+
+        <div class="manual-form-grid">
+          <mat-form-field>
+            <mat-label>Поставщик</mat-label>
+            <mat-select
+              [(ngModel)]="manualBatch.supplierId"
+              [disabled]="actionLoading || !canSplitSelected()">
+              <mat-option [value]="null">Не указан</mat-option>
+              <mat-option *ngFor="let supplier of suppliers" [value]="supplier.id">
+                {{ supplier.name }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Новый поставщик</mat-label>
+            <input
+              matInput
+              [(ngModel)]="manualBatch.supplierName"
+              [disabled]="!!manualBatch.supplierId || actionLoading || !canSplitSelected()"
+              placeholder="Если нет в справочнике">
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Группа закупки</mat-label>
+            <input
+              matInput
+              [(ngModel)]="manualBatch.groupName"
+              [readonly]="actionLoading || !canSplitSelected()"
+              [matAutocomplete]="manualGroupAutocomplete">
+            <mat-autocomplete #manualGroupAutocomplete="matAutocomplete">
+              <mat-option *ngFor="let group of productGroups" [value]="group.name">
+                {{ group.name }}
+              </mat-option>
+            </mat-autocomplete>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Название документа</mat-label>
+            <input
+              matInput
+              [(ngModel)]="manualBatch.title"
+              [readonly]="actionLoading || !canSplitSelected()"
+              placeholder="Например: дисплеи iPhone">
+          </mat-form-field>
+        </div>
+
+        <div class="manual-lines" *ngIf="hasManualRemainder(); else noManualRemainder">
+          <div class="manual-line" *ngFor="let line of selectedRequest.items; trackBy: trackById" [class.disabled]="remainingQuantity(line) === 0">
+            <div>
+              <strong>{{ line.item_name }}</strong>
+              <small>
+                Осталось {{ remainingQuantity(line) }} из {{ line.approved_quantity || line.requested_quantity }}
+                <ng-container *ngIf="batchedQuantity(line) > 0"> · уже в документах {{ batchedQuantity(line) }}</ng-container>
+              </small>
+            </div>
+            <mat-form-field>
+              <mat-label>В документ</mat-label>
+              <input
+                matInput
+                type="number"
+                min="0"
+                [max]="remainingQuantity(line)"
+                [ngModel]="manualQuantities[line.id] || null"
+                (ngModelChange)="setManualQuantity(line, $event)"
+                [disabled]="remainingQuantity(line) === 0 || actionLoading || !canSplitSelected()">
+            </mat-form-field>
+          </div>
+        </div>
+
+        <ng-template #noManualRemainder>
+          <div class="manual-empty">
+            <mat-icon>task_alt</mat-icon>
+            <span>Все позиции уже распределены по документам.</span>
+          </div>
+        </ng-template>
+
+        <mat-form-field class="manual-notes">
+          <mat-label>Комментарий для документа</mat-label>
+          <textarea
+            matInput
+            rows="2"
+            [(ngModel)]="manualBatch.notes"
+            [readonly]="actionLoading || !canSplitSelected()"></textarea>
+        </mat-form-field>
+
+        <footer class="manual-footer">
+          <strong>{{ formatCurrency(manualSelectedTotal()) }}</strong>
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+              (click)="createManualBatch()"
+            [disabled]="actionLoading || !canSplitSelected() || manualSelectedTotal() <= 0">
+            <mat-icon>post_add</mat-icon>
+            Создать документ
+          </button>
+        </footer>
+      </section>
+
+      <section class="batches-panel">
+        <header>
+          <div>
+            <span class="eyebrow">Документы</span>
+            <h3>Разбиение для поставщиков</h3>
+          </div>
+          <span *ngIf="selectedRequest.batches.length === 0">Нажмите разбиение выше</span>
+        </header>
+
+        <article class="batch-card" *ngFor="let batch of selectedRequest.batches; trackBy: trackById">
+          <div class="batch-head">
+            <div>
+              <strong>{{ batch.title }}</strong>
+              <small>
+                {{ batch.batch_number }} · {{ batch.items.length }} позиций · {{ formatCurrency(batch.total_amount) }}
+                <ng-container *ngIf="batch.purchase_order_number">
+                  · заказ {{ batch.purchase_order_number }}
+                </ng-container>
+              </small>
+            </div>
+            <div class="batch-actions">
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="createOrderFromBatch(batch)"
+                [disabled]="actionLoading || !!batch.purchase_order_id">
+                <mat-icon>{{ batch.purchase_order_id ? 'check_circle' : 'inventory' }}</mat-icon>
+                {{ batch.purchase_order_id ? 'Заказ создан' : 'Создать заказ' }}
+              </button>
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="receiveBatchFull(batch)"
+                [disabled]="actionLoading || !batch.purchase_order_id || batch.status === 'received'">
+                <mat-icon>{{ batch.status === 'received' ? 'done_all' : 'inventory_2' }}</mat-icon>
+                {{ batch.status === 'received' ? 'Принято' : 'Принять все' }}
+              </button>
+              <button mat-stroked-button type="button" (click)="downloadBatchPdf(batch)">
+                <mat-icon>picture_as_pdf</mat-icon>
+                PDF
+              </button>
+            </div>
+          </div>
+
+          <div class="batch-lines">
+            <div class="batch-line" *ngFor="let item of batch.items; trackBy: trackById">
+              <div>
+                <span>{{ item.item_name }}</span>
+                <small>
+                  {{ item.quantity }} × {{ formatCurrency(item.unit_price) }}
+                  · принято {{ item.received_quantity || 0 }}
+                  · осталось {{ item.remaining_quantity || 0 }}
+                </small>
+              </div>
+              <mat-form-field *ngIf="batch.purchase_order_id && batch.status !== 'received'">
+                <mat-label>Принять</mat-label>
+                <input
+                  matInput
+                  type="number"
+                  min="0"
+                  [max]="item.remaining_quantity || 0"
+                  [ngModel]="receiveQuantities[item.id] || null"
+                  (ngModelChange)="setReceiveQuantity(item, $event)"
+                  [disabled]="!item.remaining_quantity">
+              </mat-form-field>
+            </div>
+          </div>
+
+          <footer class="batch-receive-footer" *ngIf="batch.purchase_order_id && batch.status !== 'received'">
+            <span>
+              К приемке: <strong>{{ formatCurrency(batchReceiveTotal(batch)) }}</strong>
+            </span>
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              (click)="receiveBatchPartial(batch)"
+              [disabled]="actionLoading || !batchHasRemaining(batch) || batchReceiveTotal(batch) <= 0">
+              <mat-icon>download_done</mat-icon>
+              Принять выбранное
+            </button>
+          </footer>
+
+          <div class="batch-received-empty" *ngIf="batch.purchase_order_id && !batchHasRemaining(batch)">
+            <mat-icon>task_alt</mat-icon>
+            <span>Все позиции документа уже приняты.</span>
+          </div>
+        </article>
+      </section>
+
+      <section class="timeline-panel">
+        <header>
+          <div>
+            <span class="eyebrow">История</span>
+            <h3>Действия по заявке</h3>
+          </div>
+          <mat-spinner *ngIf="timelineLoading" diameter="22"></mat-spinner>
+        </header>
+
+        <div class="timeline-list" *ngIf="timeline.length > 0; else timelineEmpty">
+          <article class="timeline-item" *ngFor="let event of timeline; trackBy: trackByTimeline">
+            <span class="timeline-icon">
+              <mat-icon>{{ eventIcon(event) }}</mat-icon>
+            </span>
+            <div>
+              <strong>{{ event.message }}</strong>
+              <small>
+                {{ event.created_at | date:'dd.MM.yyyy HH:mm' }}
+                <ng-container *ngIf="event.actor_name"> · {{ event.actor_name }}</ng-container>
+                <ng-container *ngIf="event.batch_number"> · {{ event.batch_number }}</ng-container>
+              </small>
+              <span *ngIf="event.new_status">{{ timelineStatusText(event) }}</span>
+            </div>
+          </article>
+        </div>
+
+        <ng-template #timelineEmpty>
+          <div class="timeline-empty" *ngIf="!timelineLoading">
+            <mat-icon>history</mat-icon>
+            <span>История появится после первого действия.</span>
+          </div>
+        </ng-template>
+      </section>
+    </main>
+
+    <ng-template #noSelection>
+      <main class="request-detail-panel empty">
+        <mat-icon>assignment</mat-icon>
+        <h2>Выберите заявку</h2>
+        <p>Слева появятся заявки склада на закупку.</p>
+      </main>
+    </ng-template>
+  </section>
+</div>

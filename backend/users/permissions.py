@@ -123,10 +123,34 @@ PERMISSION_DEFINITIONS: tuple[PermissionDefinition, ...] = (
         "Видеть закупки и заказы поставщикам.",
     ),
     PermissionDefinition(
+        "inventory.view_purchase_requests",
+        "Просматривать заявки на закупку",
+        "inventory",
+        "Видеть внутренние заявки склада на закупку товаров.",
+    ),
+    PermissionDefinition(
         "inventory.add_purchase_order",
         "Создавать заказы поставщикам",
         "inventory",
         "Оформлять новые закупки и заявки поставщикам.",
+    ),
+    PermissionDefinition(
+        "inventory.add_purchase_request",
+        "Создавать заявки на закупку",
+        "inventory",
+        "Фиксировать потребность склада перед согласованием директором.",
+    ),
+    PermissionDefinition(
+        "inventory.change_purchase_request",
+        "Редактировать заявки на закупку",
+        "inventory",
+        "Назначать поставщиков, менять позиции и разбивать заявки.",
+    ),
+    PermissionDefinition(
+        "inventory.approve_purchase_request",
+        "Согласовывать заявки на закупку",
+        "inventory",
+        "Утверждать, отклонять и готовить заявки к отправке поставщикам.",
     ),
     PermissionDefinition(
         "inventory.receive_purchase_orders",
@@ -356,6 +380,8 @@ DEFAULT_ROLE_PERMISSIONS: dict[str, tuple[str, ...] | str] = {
         "inventory.view_item",
         "inventory.view_stock",
         "inventory.view_other_shop_stock",
+        "inventory.view_purchase_requests",
+        "inventory.add_purchase_request",
         "reports.view_dashboard",
         "reports.view_financial",
         "reports.view_analytics",

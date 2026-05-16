@@ -81,7 +81,7 @@ describe('DashboardComponent', () => {
     expect(text).toContain('Операционная воронка');
     expect(text).toContain('42 000 ₽');
     expect(text).toContain('Apple iPhone 15 Pro');
-    expect(text).toContain('Заказ поставщику');
+    expect(text).toContain('Заявка поставщику');
     expect(fixture.nativeElement.querySelectorAll('.metric-icon svg').length).toBe(4);
 
     const targets = fixture.debugElement
@@ -89,7 +89,7 @@ describe('DashboardComponent', () => {
       .map((debugElement) => debugElement.injector.get(RouterLink).urlTree!.toString());
 
     expect(targets).toContain('/orders/new');
-    expect(targets).toContain('/inventory/purchase-orders/new');
+    expect(targets).toContain('/inventory/purchase-requests/new');
     expect(targets).toContain('/orders');
   });
 

@@ -150,3 +150,4 @@ frontend/crm-app/.vscode
 .vscode
 .tmp-shots/
 frontend/crm-app/src/assets/fonts/*.otf
+PROJECT_GAPS_LOCAL.md

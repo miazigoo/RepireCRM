@@ -1,8 +1,9 @@
 <div class="purchase-form-page">
   <div class="page-header">
     <div>
-      <h1>Заказ поставщику</h1>
-      <p>Закупка товаров на выбранный магазин</p>
+      <span class="eyebrow">Закупки</span>
+      <h1>Заявка поставщику</h1>
+      <p>Склад фиксирует потребность, директор проверяет и разбивает документ по поставщикам.</p>
     </div>
     <button mat-button type="button" (click)="cancel()">
       <mat-icon>arrow_back</mat-icon>
@@ -12,51 +13,118 @@
 
   <mat-card class="form-card">
     <mat-card-content>
-      <form [formGroup]="form" (ngSubmit)="save()">
-        <div class="form-grid">
+      <form [formGroup]="form" (ngSubmit)="save(false)">
+        <section class="request-meta">
           <mat-form-field>
-            <mat-label>Поставщик из списка</mat-label>
-            <mat-select formControlName="supplier_id">
-              <mat-option [value]="null">Новый поставщик</mat-option>
-              <mat-option *ngFor="let supplier of suppliers" [value]="supplier.id">
-                {{ supplier.name }}
+            <mat-label>Приоритет</mat-label>
+            <mat-select formControlName="priority" required>
+              <mat-option *ngFor="let priority of priorities" [value]="priority.value">
+                {{ priority.label }}
               </mat-option>
             </mat-select>
           </mat-form-field>
 
           <mat-form-field>
-            <mat-label>Новый поставщик</mat-label>
-            <input matInput formControlName="supplier_name" autocomplete="off">
+            <mat-label>Желаемый срок</mat-label>
+            <input matInput type="date" formControlName="due_date">
           </mat-form-field>
 
-          <mat-form-field>
-            <mat-label>Товар</mat-label>
-            <mat-select formControlName="item_id" required (selectionChange)="onItemSelected($event.value)">
-              <mat-option *ngFor="let item of items" [value]="item.id">
-                {{ item.name }} · {{ item.sku }}
-              </mat-option>
-            </mat-select>
-            <mat-error *ngIf="form.get('item_id')?.hasError('required')">
-              Выберите товар
-            </mat-error>
+          <mat-form-field class="notes-field">
+            <mat-label>Комментарий для директора</mat-label>
+            <textarea matInput formControlName="notes" rows="2"></textarea>
           </mat-form-field>
+        </section>
 
-          <mat-form-field>
-            <mat-label>Количество</mat-label>
-            <input matInput type="number" formControlName="quantity" min="1" required>
-          </mat-form-field>
+        <section class="request-lines" formArrayName="items">
+          <header>
+            <div>
+              <span class="eyebrow">Позиции</span>
+              <h2>Что нужно заказать</h2>
+            </div>
+            <button mat-stroked-button type="button" (click)="addLine()">
+              <mat-icon>add</mat-icon>
+              Добавить позицию
+            </button>
+          </header>
 
-          <mat-form-field>
-            <mat-label>Цена закупки</mat-label>
-            <input matInput type="number" formControlName="unit_price" min="0" required>
-            <span matTextSuffix>₽</span>
-          </mat-form-field>
+          <article
+            class="request-line"
+            *ngFor="let line of lines.controls; let i = index"
+            [formGroupName]="i">
+            <div class="line-index">{{ i + 1 }}</div>
 
-          <mat-form-field class="span-2">
-            <mat-label>Комментарий</mat-label>
-            <textarea matInput formControlName="notes" rows="3"></textarea>
-          </mat-form-field>
-        </div>
+            <mat-form-field class="item-field">
+              <mat-label>Товар</mat-label>
+              <mat-select formControlName="item_id" required (selectionChange)="onItemSelected(i, $event.value)">
+                <mat-option *ngFor="let item of items" [value]="item.id">
+                  {{ item.name }} · {{ item.sku }}
+                </mat-option>
+              </mat-select>
+              <mat-error *ngIf="line.get('item_id')?.hasError('required')">
+                Выберите товар
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field class="quantity-field">
+              <mat-label>Кол-во</mat-label>
+              <input matInput type="number" formControlName="quantity" min="1" required>
+            </mat-form-field>
+
+            <mat-form-field class="price-field">
+              <mat-label>Ожид. цена</mat-label>
+              <input matInput type="number" formControlName="unit_price" min="0" required>
+              <span matTextSuffix>₽</span>
+            </mat-form-field>
+
+            <mat-form-field class="supplier-field">
+              <mat-label>Поставщик</mat-label>
+              <mat-select formControlName="supplier_id" (selectionChange)="onSupplierSelected(i, $event.value)">
+                <mat-option [value]="null">Не указан</mat-option>
+                <mat-option *ngFor="let supplier of suppliers" [value]="supplier.id">
+                  {{ supplier.name }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field class="supplier-name-field">
+              <mat-label>Новый поставщик</mat-label>
+              <input
+                matInput
+                formControlName="supplier_name"
+                autocomplete="off"
+                [readonly]="!!line.get('supplier_id')?.value"
+                (input)="onSupplierNameInput(i)">
+            </mat-form-field>
+
+            <mat-form-field class="group-field">
+              <mat-label>Группа закупки</mat-label>
+              <input
+                matInput
+                formControlName="procurement_group_name"
+                [matAutocomplete]="groupAutocomplete"
+                autocomplete="off">
+              <mat-autocomplete #groupAutocomplete="matAutocomplete">
+                <mat-option *ngFor="let group of productGroups" [value]="group.name">
+                  {{ group.name }}
+                </mat-option>
+              </mat-autocomplete>
+            </mat-form-field>
+
+            <mat-form-field class="line-notes">
+              <mat-label>Комментарий</mat-label>
+              <input matInput formControlName="notes" autocomplete="off">
+            </mat-form-field>
+
+            <button
+              mat-icon-button
+              class="remove-line"
+              type="button"
+              (click)="removeLine(i)"
+              aria-label="Удалить позицию">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </article>
+        </section>
 
         <div class="empty-state" *ngIf="items.length === 0">
           <mat-icon>inventory_2</mat-icon>
@@ -65,14 +133,18 @@
 
         <div class="form-actions">
           <button mat-button type="button" (click)="cancel()">Отмена</button>
+          <button mat-stroked-button type="button" [disabled]="loading || items.length === 0" (click)="save(true)">
+            <mat-icon>drafts</mat-icon>
+            Черновик
+          </button>
           <button
             mat-raised-button
             color="primary"
             type="submit"
             [disabled]="loading || items.length === 0">
             <mat-spinner *ngIf="loading" diameter="18"></mat-spinner>
-            <mat-icon *ngIf="!loading">shopping_cart</mat-icon>
-            <span>{{ loading ? 'Создание' : 'Создать заказ' }}</span>
+            <mat-icon *ngIf="!loading">send</mat-icon>
+            <span>{{ loading ? 'Создание' : 'Отправить директору' }}</span>
           </button>
         </div>
       </form>
