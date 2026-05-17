@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "analytics",
     "client_sync",
     "promotions",
+    "data_import.apps.DataImportConfig",
     "admin_agent.apps.AdminAgentConfig",
 ]
 

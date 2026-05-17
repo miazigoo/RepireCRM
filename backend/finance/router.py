@@ -3,6 +3,7 @@ from html import escape
 from ipaddress import ip_address, ip_network
 
 from django.conf import settings
+from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
@@ -11,7 +12,8 @@ from ninja import Router, Schema
 from inventory.models import RetailSale
 from orders.models import Order
 
-from .models import CashRegister, OnlinePayment, Payment, PaymentMethod
+from .fiscal_receipts import create_or_update_payment_receipt
+from .models import CashRegister, OnlinePayment, Payment, PaymentMethod, PaymentReceipt
 from .online_payments import (
     apply_successful_online_payment,
     create_order_online_payment,
@@ -96,7 +98,42 @@ def _assert_can_access_online_payment(request, payment: OnlinePayment):
         raise PermissionError("Нет доступа к платежу")
 
 
+def _payment_shop(payment: Payment):
+    if payment.order_id:
+        return payment.order.shop
+    if payment.retail_sale_id:
+        return payment.retail_sale.shop
+    if payment.cash_register_id:
+        return payment.cash_register.shop
+    return None
+
+
+def _assert_can_access_payment(request, payment: Payment):
+    shop = _payment_shop(payment)
+    if shop is None or not request.auth.can_access_shop(shop):
+        raise PermissionError("Нет доступа к платежу")
+
+
+def _serialize_receipt(receipt: PaymentReceipt) -> dict:
+    return {
+        "id": receipt.id,
+        "payment_id": receipt.payment_id,
+        "status": receipt.status,
+        "provider": receipt.provider,
+        "provider_receipt_id": receipt.provider_receipt_id,
+        "total_amount": float(receipt.total_amount),
+        "received_amount": float(receipt.received_amount),
+        "currency": receipt.currency,
+        "customer_email": receipt.customer_email,
+        "customer_phone": receipt.customer_phone,
+        "normalized_snapshot": receipt.normalized_snapshot,
+        "provider_payload": receipt.provider_payload,
+        "error_message": receipt.error_message,
+    }
+
+
 @router.post("/order/{order_id}/create", response=dict)
+@transaction.atomic
 def create_payment_for_order(
     request,
     order_id: int,
@@ -117,6 +154,8 @@ def create_payment_for_order(
     cr = None
     if pm.is_cash:
         cr = get_object_or_404(CashRegister, id=data.cash_register_id)
+        if cr.shop_id != order.shop_id:
+            raise PermissionError("Касса относится к другому филиалу")
 
     amount = data.amount
     fee_amount = data.fee_amount
@@ -141,6 +180,7 @@ def create_payment_for_order(
         payment_date=timezone.now(),
         created_by=request.auth,
     )
+    receipt = create_or_update_payment_receipt(p)
 
     order.prepayment = (order.prepayment or 0) + amount
     order.save(update_fields=["prepayment", "updated_at"])
@@ -154,6 +194,8 @@ def create_payment_for_order(
         "payment_id": p.id,
         "payment_number": p.payment_number,
         "net_amount": float(p.net_amount),
+        "receipt_id": receipt.id if receipt else None,
+        "receipt_status": receipt.status if receipt else "not_required",
     }
 
 
@@ -341,6 +383,7 @@ def yookassa_webhook(request, data: dict):
 
 
 @router.post("/sales/{sale_id}/pay", response=dict)
+@transaction.atomic
 def pay_retail_sale(request, sale_id: int, data: CreateSalePaymentRequest):
     if not request.auth.has_permission("finance.add_payment"):
         raise PermissionError("Нет прав для создания платежей")
@@ -354,6 +397,8 @@ def pay_retail_sale(request, sale_id: int, data: CreateSalePaymentRequest):
     cr = None
     if pm.is_cash and data.cash_register_id:
         cr = get_object_or_404(CashRegister, id=data.cash_register_id)
+        if cr.shop_id != sale.shop_id:
+            raise PermissionError("Касса относится к другому филиалу")
     amount = Decimal(str(data.amount if data.amount else sale.total_amount))
     p = Payment.objects.create(
         payment_type=Payment.PaymentType.INCOME,
@@ -365,12 +410,66 @@ def pay_retail_sale(request, sale_id: int, data: CreateSalePaymentRequest):
         order=None,
         purchase_order=None,
         expense=None,
+        retail_sale=sale,
         description=data.description or f"Оплата продажи {sale.sale_number}",
         reference_number=sale.sale_number,
         payment_date=timezone.now(),
         created_by=request.auth,
     )
+    receipt = create_or_update_payment_receipt(p)
     if cr:
         cr.cash_balance = cr.cash_balance + amount
         cr.save(update_fields=["cash_balance"])
-    return {"success": True, "payment_id": p.id, "payment_number": p.payment_number}
+    return {
+        "success": True,
+        "payment_id": p.id,
+        "payment_number": p.payment_number,
+        "receipt_id": receipt.id if receipt else None,
+        "receipt_status": receipt.status if receipt else "not_required",
+    }
+
+
+@router.post("/payments/{payment_id}/receipt/prepare", response=dict)
+def prepare_payment_receipt(request, payment_id: int):
+    """Собрать или пересобрать нормализованный фискальный чек по платежу."""
+    if not _check_perm(request, "finance.add_payment"):
+        raise PermissionError("Нет прав для подготовки чеков")
+
+    payment = get_object_or_404(
+        Payment.objects.select_related(
+            "payment_method",
+            "cash_register__shop",
+            "order__shop__settings",
+            "order__customer",
+            "order__device__model__brand",
+            "retail_sale__shop__settings",
+            "retail_sale__customer",
+        ).prefetch_related(
+            "order__orderservice_set__service",
+            "retail_sale__items__item",
+        ),
+        id=payment_id,
+    )
+    _assert_can_access_payment(request, payment)
+    receipt = create_or_update_payment_receipt(payment)
+    if not receipt:
+        return {"status": "not_required", "payment_id": payment.id}
+    return _serialize_receipt(receipt)
+
+
+@router.get("/payments/{payment_id}/receipt", response=dict)
+def get_payment_receipt(request, payment_id: int):
+    payment = get_object_or_404(
+        Payment.objects.select_related(
+            "payment_method",
+            "cash_register__shop",
+            "order__shop",
+            "retail_sale__shop",
+        ),
+        id=payment_id,
+    )
+    _assert_can_access_payment(request, payment)
+    receipt = getattr(payment, "fiscal_receipt", None)
+    if not receipt:
+        return {"status": "not_prepared", "payment_id": payment.id}
+    return _serialize_receipt(receipt)

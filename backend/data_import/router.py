@@ -1,0 +1,108 @@
+from typing import Any
+
+from django.shortcuts import get_object_or_404
+from ninja import Router, Schema
+from pydantic import Field
+
+from shops.models import Shop
+
+from .models import ImportBatch
+from .services import ImportRecordInput, create_preflight_batch
+
+router = Router(tags=["Импорт данных"])
+
+
+class ImportRecordSchema(Schema):
+    entity_type: str
+    external_id: str
+    payload: dict[str, Any]
+    row_number: int | None = None
+
+
+class ImportPreflightRequest(Schema):
+    source_code: str
+    source_name: str = ""
+    shop_id: int | None = None
+    options: dict[str, Any] = Field(default_factory=dict)
+    records: list[ImportRecordSchema]
+
+
+def _can_import(request) -> bool:
+    return (
+        request.auth.is_superuser
+        or request.auth.is_director
+        or request.auth.has_permission("settings.change_shop")
+    )
+
+
+def _serialize_batch(batch: ImportBatch) -> dict:
+    issues = [
+        {
+            "severity": issue.severity,
+            "entity_type": issue.entity_type,
+            "external_id": issue.external_id,
+            "row_number": issue.row_number,
+            "field_path": issue.field_path,
+            "code": issue.code,
+            "message": issue.message,
+            "payload": issue.payload,
+        }
+        for issue in batch.issues.order_by("severity", "row_number", "id")[:300]
+    ]
+    return {
+        "id": batch.id,
+        "source": {
+            "id": batch.source_id,
+            "code": batch.source.code,
+            "name": batch.source.name,
+        },
+        "shop_id": batch.shop_id,
+        "status": batch.status,
+        "dry_run": batch.dry_run,
+        "counters": batch.counters,
+        "issues": issues,
+    }
+
+
+@router.post("/preflight", response=dict)
+def preflight_import(request, payload: ImportPreflightRequest):
+    """Dry-run проверка перед импортом из другой CRM."""
+    if not _can_import(request):
+        raise PermissionError("Нет прав для подготовки импорта")
+
+    shop = None
+    if payload.shop_id:
+        shop = get_object_or_404(Shop, id=payload.shop_id)
+        if not request.auth.can_access_shop(shop):
+            raise PermissionError("Нет доступа к филиалу")
+
+    batch = create_preflight_batch(
+        source_code=payload.source_code,
+        source_name=payload.source_name or payload.source_code,
+        records=[
+            ImportRecordInput(
+                entity_type=record.entity_type,
+                external_id=record.external_id,
+                payload=record.payload,
+                row_number=record.row_number,
+            )
+            for record in payload.records
+        ],
+        created_by=request.auth,
+        shop=shop,
+        options=payload.options,
+    )
+    return _serialize_batch(batch)
+
+
+@router.get("/batches/{batch_id}", response=dict)
+def get_import_batch(request, batch_id: int):
+    if not _can_import(request):
+        raise PermissionError("Нет прав для просмотра импорта")
+    batch = get_object_or_404(
+        ImportBatch.objects.select_related("source", "shop").prefetch_related("issues"),
+        id=batch_id,
+    )
+    if batch.shop_id and not request.auth.can_access_shop(batch.shop):
+        raise PermissionError("Нет доступа к филиалу")
+    return _serialize_batch(batch)

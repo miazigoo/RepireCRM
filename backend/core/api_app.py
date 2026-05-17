@@ -17,6 +17,7 @@ from API.auth.router import is_token_blacklisted
 from API.auth.router import router as auth_router
 from client_sync.router import router as client_sync_router
 from customers.router import router as customers_router
+from data_import.router import router as data_import_router
 from documents.router import router as documents_router
 from finance.router import router as finance_router
 from inventory.router import router as inventory_router
@@ -157,5 +158,6 @@ api.add_router("", field_visit_router)
 api.add_router("/finance", finance_router)
 api.add_router("/client-sync", client_sync_router)
 api.add_router("/promotions", promotions_router)
+api.add_router("/data-import", data_import_router)
 api.add_router("/admin", admin_router)
 api.add_router("/admin-agent", admin_agent_router)

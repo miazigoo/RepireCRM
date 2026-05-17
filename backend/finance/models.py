@@ -6,6 +6,15 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from sequences import get_next_value
 
+from .fiscal_constants import (
+    FiscalMeasure,
+    FiscalPaymentMode,
+    FiscalPaymentSubject,
+    FiscalPaymentType,
+    FiscalTaxationSystem,
+    FiscalVatCode,
+)
+
 User = get_user_model()
 
 
@@ -17,6 +26,13 @@ class PaymentMethod(models.Model):
     description = models.TextField("Описание", blank=True)
     is_cash = models.BooleanField("Наличные", default=False)
     is_active = models.BooleanField("Активен", default=True)
+    fiscal_payment_type = models.CharField(
+        "Тип оплаты для фискального чека",
+        max_length=20,
+        choices=FiscalPaymentType.choices,
+        default=FiscalPaymentType.ELECTRONIC,
+        help_text="cash/electronic/prepaid/credit/other для ККМ и онлайн-чеков",
+    )
 
     # Комиссии
     fee_percent = models.DecimalField(
@@ -140,6 +156,23 @@ class Payment(models.Model):
         null=True,
         blank=True,
         verbose_name="Расходная операция",
+    )
+    retail_sale = models.ForeignKey(
+        "inventory.RetailSale",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payments",
+        verbose_name="Розничная продажа",
+    )
+
+    # Фискализация
+    fiscal_required = models.BooleanField("Требуется фискальный чек", default=True)
+    fiscal_payment_mode = models.CharField(
+        "Признак способа расчета",
+        max_length=30,
+        choices=FiscalPaymentMode.choices,
+        default=FiscalPaymentMode.FULL_PAYMENT,
     )
 
     # Дополнительная информация
@@ -393,6 +426,10 @@ class OnlinePayment(models.Model):
     return_url = models.URLField("Ссылка возврата", max_length=1000, blank=True)
     test_token = models.UUIDField("Токен тестовой оплаты", default=uuid.uuid4)
     raw_payload = models.JSONField("Данные провайдера", default=dict, blank=True)
+    fiscal_receipt_snapshot = models.JSONField(
+        "Снимок фискального чека", default=dict, blank=True
+    )
+    fiscal_receipt_error = models.TextField("Ошибка подготовки чека", blank=True)
 
     order = models.ForeignKey(
         "orders.Order",
@@ -450,3 +487,122 @@ class OnlinePayment(models.Model):
 
     def __str__(self):
         return f"{self.get_purpose_display()} {self.amount} {self.currency}"
+
+
+class PaymentReceipt(models.Model):
+    """Фискальный чек, подготовленный для ККМ или онлайн-кассы провайдера."""
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Черновик"
+        QUEUED = "queued", "В очереди"
+        SENT = "sent", "Отправлен"
+        REGISTERED = "registered", "Зарегистрирован"
+        FAILED = "failed", "Ошибка"
+        NOT_REQUIRED = "not_required", "Не требуется"
+
+    payment = models.OneToOneField(
+        Payment,
+        on_delete=models.CASCADE,
+        related_name="fiscal_receipt",
+        verbose_name="Платеж",
+    )
+    status = models.CharField(
+        "Статус",
+        max_length=20,
+        choices=Status.choices,
+        default=Status.DRAFT,
+        db_index=True,
+    )
+    provider = models.CharField("Провайдер ККМ", max_length=30, blank=True)
+    provider_receipt_id = models.CharField(
+        "ID чека у провайдера", max_length=120, blank=True, db_index=True
+    )
+    taxation_system = models.CharField(
+        "Система налогообложения",
+        max_length=30,
+        choices=FiscalTaxationSystem.choices,
+        default=FiscalTaxationSystem.USN_INCOME,
+    )
+    payment_type = models.CharField(
+        "Тип оплаты",
+        max_length=20,
+        choices=FiscalPaymentType.choices,
+        default=FiscalPaymentType.ELECTRONIC,
+    )
+    total_amount = models.DecimalField("Сумма чека", max_digits=15, decimal_places=2)
+    received_amount = models.DecimalField(
+        "Получено текущим платежом",
+        max_digits=15,
+        decimal_places=2,
+        default=Decimal("0"),
+    )
+    currency = models.CharField("Валюта", max_length=3, default="RUB")
+    customer_email = models.EmailField("Email покупателя", blank=True)
+    customer_phone = models.CharField("Телефон покупателя", max_length=30, blank=True)
+    normalized_snapshot = models.JSONField(
+        "Нормализованный чек", default=dict, blank=True
+    )
+    provider_payload = models.JSONField("Payload провайдера", default=dict, blank=True)
+    provider_response = models.JSONField("Ответ провайдера", default=dict, blank=True)
+    error_message = models.TextField("Ошибка", blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    sent_at = models.DateTimeField("Дата отправки", null=True, blank=True)
+    registered_at = models.DateTimeField("Дата регистрации", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Фискальный чек"
+        verbose_name_plural = "Фискальные чеки"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "created_at"]),
+            models.Index(fields=["provider", "provider_receipt_id"]),
+        ]
+
+    def __str__(self):
+        return f"{self.payment.payment_number}: {self.total_amount} {self.currency}"
+
+
+class PaymentReceiptItem(models.Model):
+    """Позиция фискального чека."""
+
+    receipt = models.ForeignKey(
+        PaymentReceipt, on_delete=models.CASCADE, related_name="items"
+    )
+    position = models.PositiveIntegerField("Позиция")
+    source_type = models.CharField("Источник", max_length=40, blank=True)
+    source_id = models.PositiveIntegerField("ID источника", null=True, blank=True)
+    name = models.CharField("Наименование", max_length=128)
+    quantity = models.DecimalField("Количество", max_digits=12, decimal_places=3)
+    unit_price = models.DecimalField("Цена", max_digits=15, decimal_places=2)
+    amount = models.DecimalField("Сумма", max_digits=15, decimal_places=2)
+    vat_code = models.CharField(
+        "НДС", max_length=20, choices=FiscalVatCode.choices, default=FiscalVatCode.NONE
+    )
+    payment_subject = models.CharField(
+        "Признак предмета расчета",
+        max_length=30,
+        choices=FiscalPaymentSubject.choices,
+        default=FiscalPaymentSubject.SERVICE,
+    )
+    payment_mode = models.CharField(
+        "Признак способа расчета",
+        max_length=30,
+        choices=FiscalPaymentMode.choices,
+        default=FiscalPaymentMode.FULL_PAYMENT,
+    )
+    measure = models.CharField(
+        "Единица измерения",
+        max_length=30,
+        choices=FiscalMeasure.choices,
+        default=FiscalMeasure.PIECE,
+    )
+    sku = models.CharField("Артикул", max_length=100, blank=True)
+    barcode = models.CharField("Штрихкод", max_length=50, blank=True)
+    metadata = models.JSONField("Метаданные", default=dict, blank=True)
+
+    class Meta:
+        verbose_name = "Позиция фискального чека"
+        verbose_name_plural = "Позиции фискальных чеков"
+        ordering = ["position"]
+        unique_together = ["receipt", "position"]

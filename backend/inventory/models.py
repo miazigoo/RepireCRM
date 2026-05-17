@@ -6,6 +6,8 @@ from django.db import models
 from django.utils import timezone
 from sequences import get_next_value
 
+from finance.fiscal_constants import FiscalMeasure, FiscalPaymentSubject, FiscalVatCode
+
 User = get_user_model()
 
 
@@ -151,6 +153,26 @@ class InventoryItem(models.Model):
 
     # Единицы измерения
     unit = models.CharField("Единица измерения", max_length=20, default="шт")
+    fiscal_subject = models.CharField(
+        "Фискальный предмет расчета",
+        max_length=30,
+        choices=FiscalPaymentSubject.choices,
+        default=FiscalPaymentSubject.COMMODITY,
+    )
+    fiscal_vat_code = models.CharField(
+        "НДС для фискального чека",
+        max_length=20,
+        choices=FiscalVatCode.choices,
+        blank=True,
+        default="",
+        help_text="Если пусто, используется НДС товаров из настроек филиала",
+    )
+    fiscal_measure = models.CharField(
+        "Единица измерения для ККМ",
+        max_length=30,
+        choices=FiscalMeasure.choices,
+        default=FiscalMeasure.PIECE,
+    )
     weight = models.DecimalField(
         "Вес (кг)", max_digits=8, decimal_places=3, null=True, blank=True
     )

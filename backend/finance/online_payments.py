@@ -15,7 +15,12 @@ from shops.subscription_services import (
     notify_subscription_if_needed,
 )
 
-from .models import OnlinePayment, Payment, PaymentMethod
+from .fiscal_receipts import (
+    build_payment_receipt_snapshot,
+    create_or_update_payment_receipt,
+    receipt_snapshot_to_yookassa,
+)
+from .models import OnlinePayment, Payment, PaymentMethod, PaymentReceipt
 
 ALLOWED_METHOD_TYPES = {
     OnlinePayment.PaymentMethodType.ANY,
@@ -98,7 +103,46 @@ def _yookassa_payload(payment: OnlinePayment) -> dict[str, Any]:
     if payment.payment_method_type != OnlinePayment.PaymentMethodType.ANY:
         payload["payment_method_data"] = {"type": payment.payment_method_type}
 
+    if payment.fiscal_receipt_snapshot:
+        payload["receipt"] = receipt_snapshot_to_yookassa(
+            payment.fiscal_receipt_snapshot
+        )
+
     return payload
+
+
+def _shop_fiscal_enabled(order: Order) -> bool:
+    return bool(
+        getattr(getattr(order.shop, "settings", None), "fiscalization_enabled", False)
+    )
+
+
+def _prepare_online_order_receipt(payment: OnlinePayment, order: Order) -> None:
+    if not _shop_fiscal_enabled(order):
+        return
+
+    method = get_or_create_online_payment_method(payment.payment_method_type)
+    draft_local_payment = Payment(
+        payment_number=f"ONLINE-{payment.id}",
+        payment_type=Payment.PaymentType.INCOME,
+        status=Payment.PaymentStatus.PENDING,
+        amount=payment.amount,
+        fee_amount=Decimal("0"),
+        payment_method=method,
+        order=order,
+        description=payment.description,
+        reference_number=str(payment.idempotence_key),
+        external_id=payment.provider_payment_id,
+        payment_date=timezone.now(),
+        created_by=payment.created_by,
+    )
+    snapshot = build_payment_receipt_snapshot(
+        draft_local_payment,
+        require_customer_contact=True,
+    )
+    payment.fiscal_receipt_snapshot = snapshot
+    payment.fiscal_receipt_error = ""
+    payment.save(update_fields=["fiscal_receipt_snapshot", "fiscal_receipt_error"])
 
 
 def create_provider_payment(payment: OnlinePayment) -> OnlinePayment:
@@ -110,6 +154,7 @@ def create_provider_payment(payment: OnlinePayment) -> OnlinePayment:
             "mode": "mock",
             "id": payment.provider_payment_id,
             "status": payment.status,
+            "receipt": payment.fiscal_receipt_snapshot,
         }
         payment.save(
             update_fields=[
@@ -235,6 +280,7 @@ def create_order_online_payment(
         created_by=created_by,
         return_url=return_url,
     )
+    _prepare_online_order_receipt(payment, order)
     return create_provider_payment(payment)
 
 
@@ -304,6 +350,23 @@ def apply_successful_online_payment(payment: OnlinePayment) -> OnlinePayment:
                 processed_at=locked.paid_at,
                 created_by=locked.created_by,
             )
+            receipt = create_or_update_payment_receipt(local_payment)
+            if receipt and locked.fiscal_receipt_snapshot:
+                receipt.provider = locked.provider
+                receipt.status = PaymentReceipt.Status.SENT
+                receipt.normalized_snapshot = locked.fiscal_receipt_snapshot
+                receipt.provider_payload = receipt_snapshot_to_yookassa(
+                    locked.fiscal_receipt_snapshot
+                )
+                receipt.save(
+                    update_fields=[
+                        "provider",
+                        "status",
+                        "normalized_snapshot",
+                        "provider_payload",
+                        "updated_at",
+                    ]
+                )
             locked.local_payment = local_payment
             order.prepayment = (order.prepayment or Decimal("0")) + locked.amount
             order.save(update_fields=["prepayment", "updated_at"])

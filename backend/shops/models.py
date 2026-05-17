@@ -5,6 +5,8 @@ from django.core.validators import MaxValueValidator, MinValueValidator, RegexVa
 from django.db import models
 from django.utils import timezone
 
+from finance.fiscal_constants import FiscalTaxationSystem, FiscalVatCode
+
 
 class Shop(models.Model):
     """Модель магазина/филиала"""
@@ -127,6 +129,27 @@ class ShopSettings(models.Model):
     # Футер чеков/квитанций
     receipt_footer_text = models.CharField(
         "Футер чека/квит.", max_length=200, blank=True
+    )
+
+    # Фискализация / ККМ
+    fiscalization_enabled = models.BooleanField("Фискализация включена", default=False)
+    taxation_system = models.CharField(
+        "Система налогообложения",
+        max_length=30,
+        choices=FiscalTaxationSystem.choices,
+        default=FiscalTaxationSystem.USN_INCOME,
+    )
+    default_goods_vat_code = models.CharField(
+        "НДС товаров по умолчанию",
+        max_length=20,
+        choices=FiscalVatCode.choices,
+        default=FiscalVatCode.NONE,
+    )
+    default_service_vat_code = models.CharField(
+        "НДС услуг по умолчанию",
+        max_length=20,
+        choices=FiscalVatCode.choices,
+        default=FiscalVatCode.NONE,
     )
 
     # Field visit settings

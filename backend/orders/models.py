@@ -7,6 +7,8 @@ from django.db.models import Max
 from django.utils import timezone
 from sequences import get_next_value
 
+from finance.fiscal_constants import FiscalMeasure, FiscalPaymentSubject, FiscalVatCode
+
 
 class Order(models.Model):
     """Модель заказа"""
@@ -474,6 +476,26 @@ class AdditionalService(models.Model):
         validators=[MinValueValidator(Decimal("0.00"))],
     )
     is_active = models.BooleanField("Активна", default=True)
+    fiscal_subject = models.CharField(
+        "Фискальный предмет расчета",
+        max_length=30,
+        choices=FiscalPaymentSubject.choices,
+        default=FiscalPaymentSubject.SERVICE,
+    )
+    fiscal_vat_code = models.CharField(
+        "НДС для фискального чека",
+        max_length=20,
+        choices=FiscalVatCode.choices,
+        blank=True,
+        default="",
+        help_text="Если пусто, используется НДС услуг из настроек филиала",
+    )
+    fiscal_measure = models.CharField(
+        "Единица измерения для ККМ",
+        max_length=30,
+        choices=FiscalMeasure.choices,
+        default=FiscalMeasure.SERVICE,
+    )
 
     # Привязка к магазинам
     shops = models.ManyToManyField(
