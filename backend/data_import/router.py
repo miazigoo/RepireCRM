@@ -95,13 +95,13 @@ def preflight_import(request, payload: ImportPreflightRequest):
     return _serialize_batch(batch)
 
 
-@router.get("/batches/{batch_id}", response=dict)
-def get_import_batch(request, batch_id: int):
+@router.get("/batches/{import_batch_id}", response=dict)
+def get_import_batch(request, import_batch_id: int):
     if not _can_import(request):
         raise PermissionError("Нет прав для просмотра импорта")
     batch = get_object_or_404(
         ImportBatch.objects.select_related("source", "shop").prefetch_related("issues"),
-        id=batch_id,
+        id=import_batch_id,
     )
     if batch.shop_id and not request.auth.can_access_shop(batch.shop):
         raise PermissionError("Нет доступа к филиалу")
