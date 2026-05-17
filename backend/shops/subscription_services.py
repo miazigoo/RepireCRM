@@ -18,27 +18,35 @@ from .models import (
     SubscriptionPlan,
 )
 
-TRIAL_DAYS = 45
+TRIAL_DAYS = 7
 NOTICE_BUCKETS = {30, 20, 10, 0}
 
 
 def ensure_default_subscription_plans() -> None:
     plans = [
-        ("trial", "Бесплатный период 45 дней", "trial", TRIAL_DAYS, 0),
+        ("trial", f"Бесплатный период {TRIAL_DAYS} дней", "trial", TRIAL_DAYS, 0),
         ("monthly", "CRM на месяц", "month", 30, 1490),
         ("half_year", "CRM на полгода", "half_year", 182, 7990),
         ("yearly", "CRM на год", "year", 365, 14900),
     ]
     for code, name, period, days, price in plans:
-        SubscriptionPlan.objects.get_or_create(
-            code=code,
-            defaults={
-                "name": name,
-                "billing_period": period,
-                "duration_days": days,
-                "price": price,
-            },
-        )
+        defaults = {
+            "name": name,
+            "billing_period": period,
+            "duration_days": days,
+            "price": price,
+            "is_active": True,
+        }
+        if code == "trial":
+            SubscriptionPlan.objects.update_or_create(
+                code=code,
+                defaults=defaults,
+            )
+        else:
+            SubscriptionPlan.objects.get_or_create(
+                code=code,
+                defaults=defaults,
+            )
 
 
 def ensure_shop_organization(shop: Shop) -> Organization:

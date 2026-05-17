@@ -94,7 +94,7 @@ class SubscriptionApiTestCase(TestCase):
             "HTTP_X_CURRENT_SHOP": str(shop.id),
         }
 
-    def test_subscription_status_creates_45_day_trial(self):
+    def test_subscription_status_creates_7_day_trial(self):
         response = self.client.get(
             "/api/shops/subscription/status",
             **self.auth_headers(),
@@ -104,7 +104,7 @@ class SubscriptionApiTestCase(TestCase):
         payload = response.json()
         self.assertEqual(payload["status"], "trial")
         self.assertEqual(payload["plan"]["code"], "trial")
-        self.assertEqual(payload["remaining_days"], 45)
+        self.assertEqual(payload["remaining_days"], 7)
         self.assertEqual(payload["remaining_percent"], 100)
         self.assertEqual(payload["color_bucket"], 100)
         self.assertEqual(payload["color_hex"], "#1b8f3a")
@@ -118,10 +118,24 @@ class SubscriptionApiTestCase(TestCase):
         self.assertEqual(response.status_code, 200, response.content)
         plans = {plan["code"]: plan for plan in response.json()}
         self.assertEqual(set(plans), {"trial", "monthly", "half_year", "yearly"})
-        self.assertEqual(plans["trial"]["duration_days"], 45)
+        self.assertEqual(plans["trial"]["duration_days"], 7)
+        self.assertEqual(plans["trial"]["name"], "Бесплатный период 7 дней")
         self.assertEqual(plans["monthly"]["price"], 1490.0)
         self.assertEqual(plans["half_year"]["duration_days"], 182)
         self.assertEqual(plans["yearly"]["duration_days"], 365)
+
+    def test_default_subscription_plans_repair_legacy_trial_duration(self):
+        ensure_default_subscription_plans()
+        trial = SubscriptionPlan.objects.get(code="trial")
+        trial.name = "Бесплатный период 45 дней"
+        trial.duration_days = 45
+        trial.save(update_fields=["name", "duration_days"])
+
+        ensure_default_subscription_plans()
+
+        trial.refresh_from_db()
+        self.assertEqual(trial.name, "Бесплатный период 7 дней")
+        self.assertEqual(trial.duration_days, 7)
 
     def test_organizations_static_route_is_not_treated_as_shop_id(self):
         response = self.client.get(

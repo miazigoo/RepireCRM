@@ -24,7 +24,7 @@ describe('AdminService', () => {
       organization_id: 1,
       organization_name: 'Main',
       status: 'trial',
-      remaining_days: 45,
+      remaining_days: 7,
       remaining_percent: 100,
       color_bucket: 100,
       color_hex: '#1b8f3a',

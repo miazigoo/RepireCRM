@@ -18,16 +18,16 @@ describe('AdminDashboardComponent', () => {
     organization_name: 'Main Repair',
     plan: {
       code: 'trial',
-      name: 'Бесплатный период 45 дней',
+      name: 'Бесплатный период 7 дней',
       billing_period: 'trial',
-      duration_days: 45,
+      duration_days: 7,
       price: 0,
     },
     status: 'trial',
     status_display: 'Пробный период',
     started_at: '2026-05-02T00:00:00Z',
-    expires_at: '2026-06-16T00:00:00Z',
-    remaining_days: 45,
+    expires_at: '2026-05-09T00:00:00Z',
+    remaining_days: 7,
     remaining_percent: 100,
     color_bucket: 100,
     color_hex: '#1b8f3a',
@@ -35,7 +35,7 @@ describe('AdminDashboardComponent', () => {
   } as SubscriptionStatus;
 
   const plans = [
-    { code: 'trial', name: 'Бесплатный период 45 дней', price: 0 },
+    { code: 'trial', name: 'Бесплатный период 7 дней', price: 0 },
     { code: 'monthly', name: 'CRM на месяц', price: 1490 },
     { code: 'yearly', name: 'CRM на год', price: 14900 },
   ] as SubscriptionPlan[];
