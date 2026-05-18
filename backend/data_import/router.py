@@ -1,5 +1,6 @@
 from typing import Any
 
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from ninja import Router, Schema
 from pydantic import Field
@@ -7,7 +8,7 @@ from pydantic import Field
 from shops.models import Shop
 
 from .models import ImportBatch
-from .services import ImportRecordInput, create_preflight_batch
+from .services import ImportRecordInput, create_preflight_batch, import_flow_spec
 
 router = Router(tags=["Импорт данных"])
 
@@ -62,6 +63,31 @@ def _serialize_batch(batch: ImportBatch) -> dict:
         "counters": batch.counters,
         "issues": issues,
     }
+
+
+@router.get("/flow", response=dict)
+def data_import_flow(request):
+    """Порядок миграции и шаблоны payload перед dry-run."""
+    if not _can_import(request):
+        raise PermissionError("Нет прав для подготовки импорта")
+    return import_flow_spec()
+
+
+@router.get("/batches", response=dict)
+def list_import_batches(request, limit: int = 20, offset: int = 0):
+    if not _can_import(request):
+        raise PermissionError("Нет прав для просмотра импорта")
+    limit = max(1, min(limit, 100))
+    offset = max(0, offset)
+    query = ImportBatch.objects.select_related("source", "shop").prefetch_related(
+        "issues"
+    )
+    if not request.auth.is_superuser:
+        accessible_shop_ids = list(request.auth.shops.values_list("id", flat=True))
+        query = query.filter(Q(shop_id__in=accessible_shop_ids) | Q(shop__isnull=True))
+    total = query.count()
+    batches = query.order_by("-created_at")[offset : offset + limit]
+    return {"total": total, "items": [_serialize_batch(batch) for batch in batches]}
 
 
 @router.post("/preflight", response=dict)

@@ -33,6 +33,117 @@ ENTITY_ORDER = {
     "payment": 50,
 }
 
+ENTITY_TEMPLATES = {
+    "customer": {
+        "title": "Клиенты",
+        "required_fields": ["external_id", "phone"],
+        "optional_fields": ["first_name", "last_name", "email", "source", "notes"],
+        "sample": {
+            "external_id": "C-1001",
+            "phone": "+79991234567",
+            "first_name": "Иван",
+            "last_name": "Петров",
+            "email": "client@example.com",
+        },
+    },
+    "device": {
+        "title": "Устройства",
+        "required_fields": ["external_id", "customer_external_id", "model"],
+        "optional_fields": ["brand", "device_type", "serial_number", "imei", "notes"],
+        "sample": {
+            "external_id": "D-1001",
+            "customer_external_id": "C-1001",
+            "brand": "Apple",
+            "model": "iPhone 14",
+            "serial_number": "ABC123",
+        },
+    },
+    "inventory_item": {
+        "title": "Склад",
+        "required_fields": ["external_id", "name", "sku"],
+        "optional_fields": [
+            "category",
+            "supplier",
+            "barcode",
+            "quantity",
+            "purchase_price",
+            "sale_price",
+        ],
+        "sample": {
+            "external_id": "SKU-1001",
+            "name": "Дисплей iPhone 14",
+            "sku": "IPH14-DISP",
+            "quantity": 3,
+            "sale_price": 1299000,
+        },
+    },
+    "order": {
+        "title": "Заказы",
+        "required_fields": [
+            "external_id",
+            "customer_external_id",
+            "shop_code",
+            "created_at",
+        ],
+        "optional_fields": [
+            "device_external_id",
+            "status",
+            "problem_description",
+            "cost_estimate",
+            "prepayment",
+            "manager_external_id",
+            "master_external_id",
+        ],
+        "sample": {
+            "external_id": "O-1001",
+            "customer_external_id": "C-1001",
+            "device_external_id": "D-1001",
+            "shop_code": "MAIN",
+            "created_at": "2026-05-18T10:00:00+03:00",
+            "problem_description": "Не включается",
+        },
+    },
+    "payment": {
+        "title": "Платежи",
+        "required_fields": ["external_id", "amount", "payment_date"],
+        "optional_fields": [
+            "order_external_id",
+            "customer_external_id",
+            "method",
+            "direction",
+            "comment",
+        ],
+        "sample": {
+            "external_id": "P-1001",
+            "order_external_id": "O-1001",
+            "amount": 250000,
+            "payment_date": "2026-05-18T12:30:00+03:00",
+            "method": "cash",
+        },
+    },
+}
+
+
+def import_flow_spec() -> dict[str, Any]:
+    ordered_entities = [
+        entity for entity, _ in sorted(ENTITY_ORDER.items(), key=lambda item: item[1])
+    ]
+    return {
+        "flow": [
+            "Подготовить выгрузку из старой CRM и сохранить оригинальные external_id",
+            "Прогнать /api/data-import/preflight с dry_run=true",
+            "Исправить ошибки обязательных полей, дублей и неизвестных сущностей",
+            "Сверить счетчики клиентов, заказов, склада и платежей с исходной CRM",
+            "Импортировать только после чистого preflight без error-issues",
+            "Повторные прогоны должны идти по ExternalRecordLink, без дублей",
+        ],
+        "entity_order": ordered_entities,
+        "templates": [
+            ENTITY_TEMPLATES[entity] | {"entity_type": entity}
+            for entity in ordered_entities
+        ],
+    }
+
 
 @dataclass(frozen=True)
 class ImportRecordInput:

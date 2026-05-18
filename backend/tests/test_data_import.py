@@ -4,7 +4,11 @@ from django.test import TestCase
 
 from customers.models import Customer
 from data_import.models import ExternalRecordLink, ImportIssue, MigrationSource
-from data_import.services import ImportRecordInput, create_preflight_batch
+from data_import.services import (
+    ImportRecordInput,
+    create_preflight_batch,
+    import_flow_spec,
+)
 from shops.models import Shop
 
 User = get_user_model()
@@ -96,3 +100,17 @@ class DataImportPreflightTestCase(TestCase):
         self.assertTrue(
             ImportIssue.objects.filter(batch=batch, code="already_imported").exists()
         )
+
+    def test_import_flow_spec_documents_order_and_templates(self):
+        spec = import_flow_spec()
+
+        self.assertEqual(
+            spec["entity_order"],
+            ["customer", "device", "inventory_item", "order", "payment"],
+        )
+        templates = {
+            template["entity_type"]: template for template in spec["templates"]
+        }
+        self.assertIn("phone", templates["customer"]["required_fields"])
+        self.assertIn("shop_code", templates["order"]["required_fields"])
+        self.assertEqual(templates["payment"]["sample"]["amount"], 250000)
