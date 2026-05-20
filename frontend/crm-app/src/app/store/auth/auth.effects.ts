@@ -175,6 +175,11 @@ export class AuthEffects {
   );
 
   private navigateAfterLogin(): void {
+    if (typeof window !== 'undefined') {
+      window.location.replace('/dashboard');
+      return;
+    }
+
     void this.router.navigateByUrl('/dashboard', { replaceUrl: true }).catch(error => {
       console.error('Login navigation failed:', error);
     });

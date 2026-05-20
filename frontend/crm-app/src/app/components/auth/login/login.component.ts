@@ -67,6 +67,11 @@ export class LoginComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe(() => {
+        if (typeof window !== 'undefined') {
+          window.location.replace('/dashboard');
+          return;
+        }
+
         void this.router.navigateByUrl('/dashboard', { replaceUrl: true });
       });
   }

@@ -1,5 +1,6 @@
 const AUTH_TOKEN_KEY = 'access_token';
 const CURRENT_SHOP_KEY = 'current_shop_id';
+const AUTH_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 
 type BrowserStorageName = 'localStorage' | 'sessionStorage';
 
@@ -15,6 +16,60 @@ function getBrowserStorage(name: BrowserStorageName): Storage | null {
   } catch {
     return null;
   }
+}
+
+function canUseCookies(): boolean {
+  return typeof document !== 'undefined';
+}
+
+function readCookie(key: string): string | null {
+  if (!canUseCookies()) {
+    return null;
+  }
+
+  const prefix = `${encodeURIComponent(key)}=`;
+  const cookie = document.cookie
+    .split(';')
+    .map(item => item.trim())
+    .find(item => item.startsWith(prefix));
+
+  return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null;
+}
+
+function writeCookie(key: string, value: string): void {
+  if (!canUseCookies()) {
+    return;
+  }
+
+  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:'
+    ? '; Secure'
+    : '';
+
+  document.cookie = [
+    `${encodeURIComponent(key)}=${encodeURIComponent(value)}`,
+    'Path=/',
+    `Max-Age=${AUTH_MAX_AGE_SECONDS}`,
+    'SameSite=Lax',
+    secure
+  ].join('; ');
+}
+
+function removeCookie(key: string): void {
+  if (!canUseCookies()) {
+    return;
+  }
+
+  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:'
+    ? '; Secure'
+    : '';
+
+  document.cookie = [
+    `${encodeURIComponent(key)}=`,
+    'Path=/',
+    'Max-Age=0',
+    'SameSite=Lax',
+    secure
+  ].join('; ');
 }
 
 function readFrom(storage: Storage | null, key: string): string | null {
@@ -58,12 +113,15 @@ function getAuthItem(key: string): string | null {
   return (
     readFrom(getBrowserStorage('localStorage'), key) ||
     readFrom(getBrowserStorage('sessionStorage'), key) ||
+    readCookie(key) ||
     memoryStorage.get(key) ||
     null
   );
 }
 
 function setAuthItem(key: string, value: string): void {
+  writeCookie(key, value);
+
   if (writeTo(getBrowserStorage('localStorage'), key, value)) {
     memoryStorage.set(key, value);
     return;
@@ -80,6 +138,7 @@ function setAuthItem(key: string, value: string): void {
 function removeAuthItem(key: string): void {
   removeFrom(getBrowserStorage('localStorage'), key);
   removeFrom(getBrowserStorage('sessionStorage'), key);
+  removeCookie(key);
   memoryStorage.delete(key);
 }
 
