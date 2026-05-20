@@ -81,7 +81,7 @@ export class TasksService {
   }
 
   getTasks(filters: Record<string, unknown>): Observable<Task[]> {
-    return this.apiService.get<TaskListResponse>('/tasks', filters).pipe(
+    return this.apiService.get<TaskListResponse>('/tasks/', filters).pipe(
       map((response) => Array.isArray(response) ? response : response.items ?? []),
       catchError(() => of([]))
     );

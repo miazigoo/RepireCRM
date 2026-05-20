@@ -23,6 +23,7 @@ type OrderUpdatePayload = Partial<Order> & { status_comment?: string };
 })
 export class OrdersService {
   private endpoint = '/orders';
+  private collectionEndpoint = '/orders/';
 
   constructor(private apiService: ApiService) {}
 
@@ -40,7 +41,7 @@ export class OrdersService {
       Object.entries(rawParams).filter(([, value]) => value !== '' && value !== null && value !== undefined)
     );
 
-    return this.apiService.get<OrderListResponse>(this.endpoint, params).pipe(
+    return this.apiService.get<OrderListResponse>(this.collectionEndpoint, params).pipe(
       map(response => Array.isArray(response)
         ? {
           items: response,

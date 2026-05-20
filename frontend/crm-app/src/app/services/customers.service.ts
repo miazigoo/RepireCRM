@@ -11,6 +11,7 @@ type CustomerListResponse = Customer[] | PaginatedResponse<Customer>;
 })
 export class CustomersService {
   private endpoint = '/customers';
+  private collectionEndpoint = '/customers/';
 
   constructor(private apiService: ApiService) {}
 
@@ -24,7 +25,7 @@ export class CustomersService {
       Object.entries(rawParams).filter(([, value]) => value !== '' && value !== null && value !== undefined)
     );
 
-    return this.apiService.get<CustomerListResponse>(this.endpoint, params).pipe(
+    return this.apiService.get<CustomerListResponse>(this.collectionEndpoint, params).pipe(
       map(response => Array.isArray(response) ? response : response.items)
     );
   }
