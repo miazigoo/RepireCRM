@@ -5,14 +5,15 @@ import {
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
+import { authStorage, setSafeSessionItem } from '../utils/auth-storage';
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
   constructor(private router: Router) {}
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    const token = localStorage.getItem('access_token');
-    const currentShopId = localStorage.getItem('current_shop_id');
+    const token = authStorage.getToken();
+    const currentShopId = authStorage.getCurrentShopId();
     const headers: Record<string, string> = {};
 
     if (token) {
@@ -29,11 +30,11 @@ export class AuthInterceptor implements HttpInterceptor {
 
     return next.handle(authReq).pipe(
       catchError((err: HttpErrorResponse) => {
-        if (err.status === 401) {
+        if (err.status === 401 && !this.isLoginRequest(req)) {
           this.clearPrimarySession();
         }
         if (err.status === 402) {
-          sessionStorage.setItem(
+          setSafeSessionItem(
             'repaircrm.subscriptionBlockMessage',
             this.extractErrorMessage(err),
           );
@@ -45,9 +46,12 @@ export class AuthInterceptor implements HttpInterceptor {
   }
 
   private clearPrimarySession(): void {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('current_shop_id');
+    authStorage.clearAuth();
     this.router.navigate(['/login']);
+  }
+
+  private isLoginRequest(request: HttpRequest<any>): boolean {
+    return request.url.includes('/auth/login');
   }
 
   private extractErrorMessage(error: HttpErrorResponse): string {

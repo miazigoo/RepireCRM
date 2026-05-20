@@ -11,6 +11,7 @@ describe('AuthInterceptor', () => {
 
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
 
     TestBed.configureTestingModule({
       providers: [
@@ -28,6 +29,7 @@ describe('AuthInterceptor', () => {
   afterEach(() => {
     httpTesting.verify();
     localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('can instantiate AuthService while the interceptor is registered', () => {
@@ -61,6 +63,18 @@ describe('AuthInterceptor', () => {
     expect(localStorage.getItem('access_token')).toBeNull();
     expect(localStorage.getItem('current_shop_id')).toBeNull();
     expect(router.navigate).toHaveBeenCalledOnceWith(['/login']);
+  });
+
+  it('does not redirect on a failed login response', () => {
+    const router = TestBed.inject(Router);
+    spyOn(router, 'navigate');
+
+    http.post('/api/auth/login', { username: 'user', password: 'wrong' }).subscribe({ error: () => undefined });
+
+    const request = httpTesting.expectOne('/api/auth/login');
+    request.flush({}, { status: 401, statusText: 'Unauthorized' });
+
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 
   it('shows subscription guidance on 402 responses', () => {

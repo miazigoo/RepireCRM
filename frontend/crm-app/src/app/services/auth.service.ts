@@ -4,6 +4,7 @@ import { ApiService } from './api.service';
 import { User, LoginRequest, LoginResponse, Shop } from '../core/models/models';
 import { Router } from '@angular/router';
 import { jwtDecode } from 'jwt-decode';
+import { authStorage } from '../core/utils/auth-storage';
 
 export interface ChangePasswordRequest {
   old_password: string;
@@ -44,7 +45,7 @@ export class AuthService {
   }
 
   private initializeAuth(): void {
-    const token = localStorage.getItem('access_token');
+    const token = authStorage.getToken();
     if (token && !this.isTokenExpired(token)) {
       this.getCurrentUser().subscribe();
     }
@@ -59,20 +60,19 @@ export class AuthService {
     return this.apiService.post<LoginResponse>('/auth/login', normalizedCredentials)
       .pipe(
         tap(response => {
-          localStorage.setItem('access_token', response.access_token);
+          authStorage.setToken(response.access_token);
           this.currentUserSubject.next(response.user);
 
           if (response.user.current_shop) {
             this.currentShopSubject.next(response.user.current_shop);
-            localStorage.setItem('current_shop_id', response.user.current_shop.id.toString());
+            authStorage.setCurrentShopId(response.user.current_shop.id);
           }
         })
       );
   }
 
   logout(): void {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('current_shop_id');
+    authStorage.clearAuth();
     this.currentUserSubject.next(null);
     this.currentShopSubject.next(null);
     this.router.navigate(['/login']);
@@ -85,7 +85,7 @@ export class AuthService {
           this.currentUserSubject.next(user);
           if (user.current_shop) {
             this.currentShopSubject.next(user.current_shop);
-            localStorage.setItem('current_shop_id', user.current_shop.id.toString());
+            authStorage.setCurrentShopId(user.current_shop.id);
           }
         })
       );
@@ -98,7 +98,7 @@ export class AuthService {
           this.currentUserSubject.next(user);
           if (user.current_shop) {
             this.currentShopSubject.next(user.current_shop);
-            localStorage.setItem('current_shop_id', user.current_shop.id.toString());
+            authStorage.setCurrentShopId(user.current_shop.id);
           }
         })
       );
@@ -136,7 +136,7 @@ export class AuthService {
   }
 
   isAuthenticated(): boolean {
-    const token = localStorage.getItem('access_token');
+    const token = authStorage.getToken();
     return token !== null && !this.isTokenExpired(token);
   }
 

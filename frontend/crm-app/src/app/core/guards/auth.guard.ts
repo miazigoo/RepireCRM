@@ -6,6 +6,7 @@ import { Store } from '@ngrx/store';
 import { AppState } from '../../store/app.state';
 import { selectIsAuthenticated, selectAuthLoading } from '../../store/auth/auth.selectors';
 import * as AuthActions from '../../store/auth/auth.actions';
+import { authStorage } from '../utils/auth-storage';
 
 @Injectable({
   providedIn: 'root'
@@ -17,7 +18,7 @@ export class AuthGuard implements CanActivate {
   ) {}
 
   canActivate(): Observable<boolean> {
-    const token = localStorage.getItem('access_token');
+    const token = authStorage.getToken();
 
     if (!token) {
       this.router.navigate(['/login']);

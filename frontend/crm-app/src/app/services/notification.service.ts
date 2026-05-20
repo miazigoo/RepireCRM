@@ -3,6 +3,7 @@ import { BehaviorSubject, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { ApiService } from './api.service';
+import { authStorage } from '../core/utils/auth-storage';
 
 export interface Notification {
   id: number;
@@ -42,7 +43,7 @@ export class NotificationService {
   }
 
   public refresh(): void {
-    if (!localStorage.getItem('access_token')) {
+    if (!authStorage.getToken()) {
       return;
     }
 
@@ -62,7 +63,7 @@ export class NotificationService {
       return;
     }
 
-    const token = localStorage.getItem('access_token');
+    const token = authStorage.getToken();
     if (!token) {
       return;
     }
