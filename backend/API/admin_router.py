@@ -127,6 +127,17 @@ class AdminUserSchema(Schema):
         return float(obj.product_commission_percent or 0)
 
 
+class AdminUserOptionSchema(Schema):
+    id: int
+    username: str
+    first_name: str
+    last_name: str
+    middle_name: str = ""
+    email: str = ""
+    is_director: bool
+    is_active: bool
+
+
 class UserCreateSchema(Schema):
     username: str
     password: str
@@ -262,6 +273,27 @@ def _get_manageable_users(request):
     ).distinct()
 
 
+def _get_manageable_user_options(request):
+    User = get_user_model()
+    queryset = User.objects.only(
+        "id",
+        "username",
+        "first_name",
+        "last_name",
+        "middle_name",
+        "email",
+        "is_director",
+        "is_active",
+    ).order_by("last_name", "first_name", "username")
+    if _has_global_shop_admin(request):
+        return queryset
+
+    available_shops = request.auth.get_available_shops()
+    return queryset.filter(
+        models.Q(id=request.auth.id) | models.Q(shops__in=available_shops)
+    ).distinct()
+
+
 def _validate_shop_coordinates(
     payload: dict, current_shop: Shop | None = None
 ) -> dict | None:
@@ -302,6 +334,16 @@ def list_users(request, page: int = 1, page_size: int = 20):
     _ensure_admin_permission(request, "users.view_user")
     offset = max(page - 1, 0) * page_size
     return _get_manageable_users(request)[offset : offset + page_size]
+
+
+@router.get("/users/options", response=list[AdminUserOptionSchema])
+def list_user_options(request, active_only: bool = True, limit: int = 200):
+    _ensure_admin_permission(request, "users.view_user")
+    safe_limit = min(max(limit, 1), 500)
+    queryset = _get_manageable_user_options(request)
+    if active_only:
+        queryset = queryset.filter(is_active=True)
+    return queryset[:safe_limit]
 
 
 @router.post("/users", response={201: AdminUserSchema, 400: dict})

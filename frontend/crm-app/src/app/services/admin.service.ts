@@ -250,6 +250,13 @@ export class AdminService {
     return this.apiService.get<User[]>('/admin/users', { page, page_size: pageSize });
   }
 
+  getUserOptions(limit: number = 200): Observable<User[]> {
+    return this.apiService.get<User[]>('/admin/users/options', {
+      limit,
+      active_only: true,
+    });
+  }
+
   getUser(id: number): Observable<User> {
     return this.apiService.get<User>(`/admin/users/${id}`);
   }

@@ -37,7 +37,7 @@ describe('OrdersService', () => {
       expect(result).toEqual(orders);
     });
 
-    expect(apiService.get).toHaveBeenCalledOnceWith('/orders', {
+    expect(apiService.get).toHaveBeenCalledOnceWith('/orders/', {
       page: 2,
       page_size: 10,
       status: 'ready',
@@ -50,7 +50,7 @@ describe('OrdersService', () => {
 
     service.getOrders(1, 100, { search: '', status: '' as any, priority: '' as any }).subscribe();
 
-    expect(apiService.get).toHaveBeenCalledOnceWith('/orders', {
+    expect(apiService.get).toHaveBeenCalledOnceWith('/orders/', {
       page: 1,
       page_size: 100,
     });

@@ -443,7 +443,7 @@ export class TasksDashboardComponent implements OnInit, OnDestroy {
   }
 
   private loadAssignees(): void {
-    this.adminService.getUsers(1, 100).subscribe({
+    this.adminService.getUserOptions(200).subscribe({
       next: (users) => {
         this.users = users;
       },

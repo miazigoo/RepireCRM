@@ -46,8 +46,8 @@ export class AuthService {
 
   private initializeAuth(): void {
     const token = authStorage.getToken();
-    if (token && !this.isTokenExpired(token)) {
-      this.getCurrentUser().subscribe();
+    if (!token || this.isTokenExpired(token)) {
+      authStorage.clearAuth();
     }
   }
 

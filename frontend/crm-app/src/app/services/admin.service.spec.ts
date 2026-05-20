@@ -68,6 +68,30 @@ describe('AdminService', () => {
     expect(apiService.get).toHaveBeenCalledOnceWith('/admin/statistics');
   });
 
+  it('loads lightweight user options for assignment pickers', () => {
+    const users = [
+      {
+        id: 1,
+        username: 'master',
+        first_name: 'Иван',
+        last_name: 'Мастер',
+        email: '',
+        is_director: false,
+        is_active: true,
+      },
+    ];
+    apiService.get.and.returnValue(of(users));
+
+    service.getUserOptions(50).subscribe((result) => {
+      expect(result).toEqual(users as any);
+    });
+
+    expect(apiService.get).toHaveBeenCalledOnceWith('/admin/users/options', {
+      limit: 50,
+      active_only: true,
+    });
+  });
+
   it('loads global system statistics when requested', () => {
     const stats = {
       total_users: 6,

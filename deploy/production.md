@@ -58,6 +58,8 @@ cp /opt/repaircrm/crm/deploy/nginx/repaircrm-sites.conf \
    /etc/nginx/sites-available/repaircrm-sites.conf
 cp /opt/repaircrm/crm/deploy/nginx/repaircrm-performance.conf \
    /etc/nginx/conf.d/repaircrm-performance.conf
+cp /opt/repaircrm/crm/deploy/nginx/repaircrm-log-format.conf \
+   /etc/nginx/conf.d/repaircrm-log-format.conf
 ln -sf /etc/nginx/sites-available/repaircrm-sites.conf \
        /etc/nginx/sites-enabled/repaircrm-sites.conf
 rm -f /etc/nginx/sites-enabled/default

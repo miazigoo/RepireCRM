@@ -31,7 +31,7 @@ describe('CustomersService', () => {
       created_to: '',
     }).subscribe();
 
-    expect(apiService.get).toHaveBeenCalledOnceWith('/customers', {
+    expect(apiService.get).toHaveBeenCalledOnceWith('/customers/', {
       page: 1,
       page_size: 100,
     });

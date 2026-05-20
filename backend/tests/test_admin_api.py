@@ -97,6 +97,7 @@ class AdminApiTestCase(TestCase):
 
         endpoints = (
             "/api/admin/users?page=1&page_size=20",
+            "/api/admin/users/options",
             "/api/admin/roles",
             "/api/admin/shops",
             "/api/admin/permissions",
@@ -108,6 +109,20 @@ class AdminApiTestCase(TestCase):
 
                 self.assertEqual(response.status_code, 200, response.content)
                 self.assertIsInstance(response.json(), list)
+
+    def test_admin_user_options_returns_lightweight_payload(self):
+        response = self.client.get(
+            "/api/admin/users/options?limit=10",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        payload = response.json()
+        usernames = {item["username"] for item in payload}
+        self.assertIn("admin-user", usernames)
+        for item in payload:
+            self.assertNotIn("role", item)
+            self.assertNotIn("shops", item)
 
     def test_admin_shop_coordinates_roundtrip(self):
         response = self.client.post(

@@ -71,6 +71,7 @@ export class MainLayoutComponent implements OnInit {
   sidebarCollapsed = false;
   profileAvatarFailed = false;
   private profileAvatarUrl: string | null = null;
+  private pendingOrdersShopId: number | null = null;
 
   navigationGroups: NavigationGroup[] = [
     {
@@ -175,14 +176,16 @@ export class MainLayoutComponent implements OnInit {
 
     this.currentShop$.subscribe(shop => {
       this.currentShop = shop;
-      this.loadPendingOrdersCount();
+      const shopId = shop?.id ?? null;
+      if (shopId && shopId !== this.pendingOrdersShopId) {
+        this.pendingOrdersShopId = shopId;
+        this.loadPendingOrdersCount();
+      }
     });
 
     this.notificationService.unreadCount$.subscribe(count => {
       this.notificationsCount = count;
     });
-    this.notificationService.refresh();
-    this.loadPendingOrdersCount();
   }
 
   switchShop(shopId: number): void {
