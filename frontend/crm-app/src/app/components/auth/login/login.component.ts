@@ -17,6 +17,7 @@ import {
 } from '../../../store/auth/auth.selectors';
 import * as AuthActions from '../../../store/auth/auth.actions';
 import { Store } from '@ngrx/store';
+import { authStorage, buildAuthRedirectUrl } from '../../../core/utils/auth-storage';
 
 @Component({
   selector: 'app-login',
@@ -67,12 +68,18 @@ export class LoginComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe(() => {
+        const targetUrl = buildAuthRedirectUrl(
+          '/dashboard',
+          authStorage.getToken(),
+          authStorage.getCurrentShopId()
+        );
+
         if (typeof window !== 'undefined') {
-          window.location.replace('/dashboard');
+          window.location.replace(targetUrl);
           return;
         }
 
-        void this.router.navigateByUrl('/dashboard', { replaceUrl: true });
+        void this.router.navigateByUrl(targetUrl, { replaceUrl: true });
       });
   }
 

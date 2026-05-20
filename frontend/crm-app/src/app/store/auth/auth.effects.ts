@@ -6,6 +6,7 @@ import { map, mergeMap, catchError, tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import * as AuthActions from './auth.actions';
+import { buildAuthRedirectUrl } from '../../core/utils/auth-storage';
 
 const AUTH_REQUEST_TIMEOUT_MS = 10000;
 
@@ -93,7 +94,10 @@ export class AuthEffects {
       mergeMap(({ credentials }) =>
         this.authService.login(credentials).pipe(
           timeout({ first: AUTH_REQUEST_TIMEOUT_MS }),
-          tap(() => this.navigateAfterLogin()),
+          tap(response => this.navigateAfterLogin(
+            response.access_token,
+            response.user.current_shop?.id
+          )),
           map(response =>
             AuthActions.loginSuccess({
               user: response.user,
@@ -174,13 +178,15 @@ export class AuthEffects {
     { dispatch: false }
   );
 
-  private navigateAfterLogin(): void {
+  private navigateAfterLogin(token?: string, shopId?: number): void {
+    const targetUrl = buildAuthRedirectUrl('/dashboard', token, shopId);
+
     if (typeof window !== 'undefined') {
-      window.location.replace('/dashboard');
+      window.location.replace(targetUrl);
       return;
     }
 
-    void this.router.navigateByUrl('/dashboard', { replaceUrl: true }).catch(error => {
+    void this.router.navigateByUrl(targetUrl, { replaceUrl: true }).catch(error => {
       console.error('Login navigation failed:', error);
     });
   }

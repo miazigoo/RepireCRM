@@ -1,10 +1,13 @@
 const AUTH_TOKEN_KEY = 'access_token';
 const CURRENT_SHOP_KEY = 'current_shop_id';
 const AUTH_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
+const AUTH_FRAGMENT_TOKEN_KEY = 'repaircrm_auth';
+const AUTH_FRAGMENT_SHOP_KEY = 'repaircrm_shop';
 
 type BrowserStorageName = 'localStorage' | 'sessionStorage';
 
 const memoryStorage = new Map<string, string>();
+let authFragmentConsumed = false;
 
 function getBrowserStorage(name: BrowserStorageName): Storage | null {
   if (typeof window === 'undefined') {
@@ -109,7 +112,53 @@ function removeFrom(storage: Storage | null, key: string): void {
   }
 }
 
+function consumeAuthFragment(): void {
+  if (authFragmentConsumed || typeof window === 'undefined') {
+    return;
+  }
+
+  authFragmentConsumed = true;
+
+  const rawHash = window.location.hash.startsWith('#')
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+
+  if (!rawHash.includes(AUTH_FRAGMENT_TOKEN_KEY)) {
+    return;
+  }
+
+  let params: URLSearchParams;
+
+  try {
+    params = new URLSearchParams(rawHash);
+  } catch {
+    return;
+  }
+
+  const token = params.get(AUTH_FRAGMENT_TOKEN_KEY);
+
+  if (!token) {
+    return;
+  }
+
+  setAuthItem(AUTH_TOKEN_KEY, token);
+
+  const shopId = params.get(AUTH_FRAGMENT_SHOP_KEY);
+  if (shopId) {
+    setAuthItem(CURRENT_SHOP_KEY, shopId);
+  }
+
+  params.delete(AUTH_FRAGMENT_TOKEN_KEY);
+  params.delete(AUTH_FRAGMENT_SHOP_KEY);
+
+  const cleanHash = params.toString();
+  const cleanUrl = `${window.location.pathname}${window.location.search}${cleanHash ? `#${cleanHash}` : ''}`;
+  window.history.replaceState(window.history.state, document.title, cleanUrl);
+}
+
 function getAuthItem(key: string): string | null {
+  consumeAuthFragment();
+
   return (
     readFrom(getBrowserStorage('localStorage'), key) ||
     readFrom(getBrowserStorage('sessionStorage'), key) ||
@@ -148,6 +197,25 @@ export function setSafeSessionItem(key: string, value: string): void {
   }
 
   memoryStorage.set(`session:${key}`, value);
+}
+
+export function buildAuthRedirectUrl(
+  path = '/dashboard',
+  token?: string | null,
+  shopId?: string | number | null
+): string {
+  const params = new URLSearchParams();
+
+  if (token) {
+    params.set(AUTH_FRAGMENT_TOKEN_KEY, token);
+  }
+
+  if (shopId !== null && shopId !== undefined && shopId !== '') {
+    params.set(AUTH_FRAGMENT_SHOP_KEY, String(shopId));
+  }
+
+  const fragment = params.toString();
+  return fragment ? `${path}#${fragment}` : path;
 }
 
 export const authStorage = {
