@@ -101,7 +101,7 @@ if [ "$DEPLOY_BACKUP_BEFORE_DEPLOY" = "true" ]; then
   fi
 fi
 
-compose up -d --build --remove-orphans
+compose up -d --build --force-recreate --remove-orphans
 compose ps
 
 compose exec -T backend python manage.py check
