@@ -56,6 +56,8 @@ docker compose --env-file .env.production -p repaircrm-client up -d --build
 ```bash
 cp /opt/repaircrm/crm/deploy/nginx/repaircrm-sites.conf \
    /etc/nginx/sites-available/repaircrm-sites.conf
+cp /opt/repaircrm/crm/deploy/nginx/repaircrm-performance.conf \
+   /etc/nginx/conf.d/repaircrm-performance.conf
 ln -sf /etc/nginx/sites-available/repaircrm-sites.conf \
        /etc/nginx/sites-enabled/repaircrm-sites.conf
 rm -f /etc/nginx/sites-enabled/default
@@ -105,6 +107,12 @@ Certbot автоматически:
 - добавит `ssl_certificate` / `ssl_certificate_key` в nginx-блоки;
 - вставит HTTP → HTTPS redirect;
 - зарегистрирует systemd-timer для автопродления.
+
+После выпуска сертификатов включить HTTP/2 в HTTPS server-блоках:
+
+```nginx
+http2 on;
+```
 
 ### Проверка автопродления
 
