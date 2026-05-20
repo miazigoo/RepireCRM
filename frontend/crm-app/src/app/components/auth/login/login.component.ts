@@ -1,16 +1,20 @@
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
-import { Observable } from 'rxjs';
+import { filter, Observable } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AppState } from '../../../store/app.state';
-import { selectAuthLoading, selectAuthError } from '../../../store/auth/auth.selectors';
+import {
+  selectAuthError,
+  selectAuthLoading,
+  selectIsAuthenticated
+} from '../../../store/auth/auth.selectors';
 import * as AuthActions from '../../../store/auth/auth.actions';
 import { Store } from '@ngrx/store';
 
@@ -40,7 +44,8 @@ export class LoginComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private store: Store<AppState>
+    private store: Store<AppState>,
+    private router: Router
   ) {
     this.loginForm = this.fb.group({
       username: ['', Validators.required],
@@ -55,6 +60,15 @@ export class LoginComponent implements OnInit {
     this.loginForm.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.store.dispatch(AuthActions.clearAuthError()));
+
+    this.store.select(selectIsAuthenticated)
+      .pipe(
+        filter(Boolean),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(() => {
+        void this.router.navigateByUrl('/dashboard', { replaceUrl: true });
+      });
   }
 
   onSubmit(): void {

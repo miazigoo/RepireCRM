@@ -93,6 +93,7 @@ export class AuthEffects {
       mergeMap(({ credentials }) =>
         this.authService.login(credentials).pipe(
           timeout({ first: AUTH_REQUEST_TIMEOUT_MS }),
+          tap(() => this.navigateAfterLogin()),
           map(response =>
             AuthActions.loginSuccess({
               user: response.user,
@@ -109,15 +110,6 @@ export class AuthEffects {
         )
       )
     )
-  );
-
-  loginSuccess$ = createEffect(
-    () =>
-      this.actions$.pipe(
-        ofType(AuthActions.loginSuccess),
-        tap(() => this.router.navigate(['/dashboard']))
-      ),
-    { dispatch: false }
   );
 
   getCurrentUser$ = createEffect(() =>
@@ -181,4 +173,10 @@ export class AuthEffects {
       ),
     { dispatch: false }
   );
+
+  private navigateAfterLogin(): void {
+    void this.router.navigateByUrl('/dashboard', { replaceUrl: true }).catch(error => {
+      console.error('Login navigation failed:', error);
+    });
+  }
 }
