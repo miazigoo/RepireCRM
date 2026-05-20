@@ -8,6 +8,12 @@ class LoginSchema(Schema):
     username: str
     password: str
 
+    @model_validator(mode="after")
+    def strip_surrounding_whitespace(self) -> "LoginSchema":
+        self.username = self.username.strip()
+        self.password = self.password.strip()
+        return self
+
 
 class TokenSchema(Schema):
     access_token: str

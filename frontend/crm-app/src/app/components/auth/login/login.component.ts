@@ -58,10 +58,18 @@ export class LoginComponent implements OnInit {
   }
 
   onSubmit(): void {
+    const credentials = {
+      username: String(this.loginForm.get('username')?.value ?? '').trim(),
+      password: String(this.loginForm.get('password')?.value ?? '').trim()
+    };
+    this.loginForm.patchValue(credentials, { emitEvent: false });
+
     if (this.loginForm.valid) {
       this.store.dispatch(AuthActions.login({
-        credentials: this.loginForm.value
+        credentials
       }));
+    } else {
+      this.loginForm.markAllAsTouched();
     }
   }
 }

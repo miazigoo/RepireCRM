@@ -257,6 +257,17 @@ class AuthenticationTests(TestCase):
         self.assertIsNotNone(user_data["current_shop"])
         self.assertEqual(user_data["current_shop"]["code"], "TEST")
 
+    def test_login_strips_surrounding_whitespace(self):
+        """Случайные пробелы при копипасте логина/пароля не должны ломать вход."""
+        response = self.client.post(
+            "/api/auth/login",
+            data=json.dumps({"username": " testuser ", "password": " testpass123 "}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()["user"]["username"], "testuser")
+
     def test_get_current_user_includes_related_fields(self):
         """GET /auth/me должен возвращать user с role и current_shop"""
         payload = {

@@ -51,7 +51,12 @@ export class AuthService {
   }
 
   login(credentials: LoginRequest): Observable<LoginResponse> {
-    return this.apiService.post<LoginResponse>('/auth/login', credentials)
+    const normalizedCredentials: LoginRequest = {
+      username: credentials.username.trim(),
+      password: credentials.password.trim()
+    };
+
+    return this.apiService.post<LoginResponse>('/auth/login', normalizedCredentials)
       .pipe(
         tap(response => {
           localStorage.setItem('access_token', response.access_token);
