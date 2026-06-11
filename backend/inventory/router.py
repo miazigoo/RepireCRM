@@ -195,6 +195,13 @@ def create_stock_movement(request, data: dict):
     if not request.auth.has_permission("inventory.add_movement"):
         raise PermissionError("Нет прав для создания движений")
 
+    balance = get_object_or_404(StockBalance, id=data["stock_balance_id"])
+    current_shop = getattr(request, "current_shop", None)
+    if current_shop and balance.shop_id != current_shop.id:
+        raise PermissionError("Нет доступа к остатку в другом филиале")
+    if not request.auth.can_access_shop(balance.shop):
+        raise PermissionError("Нет доступа к остатку в этом филиале")
+
     service = InventoryService()
     movement = service.create_movement(
         stock_balance_id=data["stock_balance_id"],
@@ -731,6 +738,12 @@ def receive_purchase_order(request, order_id: int, data: dict = Body(...)):
         raise PermissionError("Нет прав для приемки заказов")
 
     purchase_order = get_object_or_404(PurchaseOrder, id=order_id)
+
+    if not request.auth.can_access_shop(purchase_order.shop):
+        raise PermissionError("Нет доступа к заказу поставщику в другом филиале")
+    current_shop = getattr(request, "current_shop", None)
+    if current_shop and purchase_order.shop_id != current_shop.id:
+        raise PermissionError("Нет доступа к заказу поставщику в другом филиале")
 
     service = InventoryService()
     result = service.receive_purchase_order(
