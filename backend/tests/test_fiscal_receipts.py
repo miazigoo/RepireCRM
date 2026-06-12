@@ -176,3 +176,79 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+    def test_order_overpayment_records_failed_receipt_instead_of_losing_payment(self):
+        """
+        When a customer pays more than the order total the fiscal-receipt
+        builder raises ValueError because payments_total > lines_total.
+        The exception must NOT propagate out of create_or_update_payment_receipt
+        and must NOT roll back the Payment row.  Instead a FAILED receipt is
+        saved so the problem can be investigated and the payment is preserved.
+        """
+        order = self.create_order()  # cost_estimate = 5 000
+        overpayment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("6000"),  # 1 000 over order total
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        receipt = create_or_update_payment_receipt(overpayment)
+
+        # Payment must still exist in the database.
+        self.assertTrue(Payment.objects.filter(id=overpayment.id).exists())
+        # A FAILED receipt must be recorded (not None, not DRAFT).
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, "failed")
+        self.assertIn("не сходится", receipt.error_message)
+
+    def test_retail_sale_amount_mismatch_records_failed_receipt_not_payment_loss(self):
+        """
+        create_or_update_payment_receipt must not raise when the submitted
+        payment amount differs from the sale total; the payment row must
+        survive and a FAILED receipt must be created.
+        """
+        category = Category.objects.create(name="Мелкое")
+        item = InventoryItem.objects.create(
+            name="Кабель",
+            sku="CBL-1",
+            item_type=InventoryItem.ItemType.COMPONENT,
+            category=category,
+            purchase_price=Decimal("100"),
+            selling_price=Decimal("500"),
+            created_by=self.user,
+        )
+        sale = RetailSale.objects.create(
+            shop=self.shop,
+            cashier=self.user,
+            customer=self.customer,
+            subtotal=Decimal("500"),
+            total_amount=Decimal("500"),
+        )
+        RetailSaleItem.objects.create(
+            sale=sale,
+            item=item,
+            quantity=1,
+            unit_price=Decimal("500"),
+            total_price=Decimal("500"),
+        )
+        # Payment is intentionally 0.50 short (e.g. rounding error in client code).
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("499.50"),
+            payment_method=self.cash,
+            retail_sale=sale,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        self.assertTrue(Payment.objects.filter(id=payment.id).exists())
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, "failed")
+        self.assertIn("розничной продажи", receipt.error_message)
