@@ -176,3 +176,77 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+    def test_order_overpayment_saves_failed_receipt_and_does_not_raise(self):
+        """ValueError from amount mismatch must not escape create_or_update_payment_receipt.
+
+        Trigger: staff records a payment of 6 000 RUB for a 5 000 RUB order.
+        build_payment_receipt_snapshot raises because payments_total (6000) !=
+        fiscal lines total (5000).  Without the fix the exception propagates
+        through @transaction.atomic and silently loses the Payment row.
+        """
+        order = self.create_order()
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("6000"),
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        self.assertIsNotNone(receipt)
+        from finance.models import PaymentReceipt
+
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertTrue(receipt.error_message)
+        # Payment row must still exist (no rollback)
+        self.assertTrue(Payment.objects.filter(id=payment.id).exists())
+
+    def test_retail_sale_amount_mismatch_saves_failed_receipt_and_does_not_raise(self):
+        """Payment amount != sale total should not propagate out of create_or_update."""
+        category = Category.objects.create(name="Прочее")
+        item = InventoryItem.objects.create(
+            name="Чехол",
+            sku="CASE-1",
+            item_type=InventoryItem.ItemType.COMPONENT,
+            category=category,
+            purchase_price=Decimal("500"),
+            selling_price=Decimal("1200"),
+            created_by=self.user,
+        )
+        sale = RetailSale.objects.create(
+            shop=self.shop,
+            cashier=self.user,
+            customer=self.customer,
+            subtotal=Decimal("1200"),
+            total_amount=Decimal("1200"),
+        )
+        RetailSaleItem.objects.create(
+            sale=sale,
+            item=item,
+            quantity=1,
+            unit_price=Decimal("1200"),
+            total_price=Decimal("1200"),
+        )
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("1500"),  # overpayment → mismatch
+            payment_method=self.cash,
+            retail_sale=sale,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        from finance.models import PaymentReceipt
+
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertTrue(receipt.error_message)
+        self.assertTrue(Payment.objects.filter(id=payment.id).exists())
