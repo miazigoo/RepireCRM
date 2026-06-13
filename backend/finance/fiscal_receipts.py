@@ -413,7 +413,25 @@ def create_or_update_payment_receipt(payment: Payment) -> PaymentReceipt | None:
     if not shop or not _shop_fiscal_enabled(shop):
         return None
 
-    snapshot = build_payment_receipt_snapshot(payment)
+    try:
+        snapshot = build_payment_receipt_snapshot(payment)
+    except ValueError as exc:
+        # Amount mismatch or other data inconsistency — persist a FAILED receipt so
+        # the issue is surfaced for manual review.  The exception must NOT escape this
+        # function: callers run inside @transaction.atomic, and a propagating
+        # ValueError would roll back the outer transaction (e.g. Payment creation),
+        # causing silent payment data loss.
+        receipt, _ = PaymentReceipt.objects.update_or_create(
+            payment=payment,
+            defaults={
+                "status": PaymentReceipt.Status.FAILED,
+                "error_message": str(exc)[:500],
+                "total_amount": money(payment.amount),
+                "received_amount": money(payment.amount),
+            },
+        )
+        return receipt
+
     receipt, _ = PaymentReceipt.objects.update_or_create(
         payment=payment,
         defaults={
