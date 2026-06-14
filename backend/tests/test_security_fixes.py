@@ -6,7 +6,7 @@ from datetime import timedelta
 import jwt
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from customers.models import Customer, CustomerShopHistory
@@ -126,6 +126,111 @@ class ShopAccessSecurityTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
         self.assertFalse(Customer.objects.filter(id=self.customer2.id).exists())
+
+
+@override_settings(YOOKASSA_MOCK=False)
+class YooKassaWebhookIPTests(TestCase):
+    """Проверяет, что IP-проверку вебхука YooKassa нельзя обойти подделкой XFF."""
+
+    def _make_request(self, meta: dict):
+        """Создаёт объект-заглушку запроса с нужными META-полями."""
+
+        class FakeMeta(dict):
+            pass
+
+        class FakeRequest:
+            META = FakeMeta(meta)
+
+        return FakeRequest()
+
+    def _check_ip(self, meta: dict) -> bool:
+        from finance.router import _is_yookassa_ip
+
+        return _is_yookassa_ip(self._make_request(meta))
+
+    def test_valid_yookassa_ip_via_x_real_ip(self):
+        """Запрос с реальным IP YooKassa в X-Real-IP должен быть разрешён."""
+        self.assertTrue(
+            self._check_ip({"HTTP_X_REAL_IP": "185.71.76.1", "REMOTE_ADDR": ""})
+        )
+
+    def test_invalid_ip_via_x_real_ip_is_rejected(self):
+        """X-Real-IP не из диапазона YooKassa должен быть отклонён."""
+        self.assertFalse(
+            self._check_ip({"HTTP_X_REAL_IP": "1.2.3.4", "REMOTE_ADDR": ""})
+        )
+
+    def test_spoofed_xff_first_entry_is_ignored(self):
+        """Первый элемент XFF (клиент-контролируемый) не должен давать доступ."""
+        # Nginx добавляет реальный IP (1.2.3.4) в конец, клиент контролирует начало
+        self.assertFalse(
+            self._check_ip(
+                {
+                    "HTTP_X_FORWARDED_FOR": "185.71.76.1, 1.2.3.4",
+                    "REMOTE_ADDR": "",
+                }
+            )
+        )
+
+    def test_rightmost_xff_entry_is_trusted(self):
+        """Последний элемент XFF (добавлен нашим nginx) должен использоваться."""
+        # Реальный IP YooKassa — последний элемент, добавлен нашим nginx
+        self.assertTrue(
+            self._check_ip(
+                {
+                    "HTTP_X_FORWARDED_FOR": "1.2.3.4, 185.71.76.1",
+                    "REMOTE_ADDR": "",
+                }
+            )
+        )
+
+    def test_x_real_ip_takes_precedence_over_xff(self):
+        """X-Real-IP имеет приоритет над X-Forwarded-For."""
+        # X-Real-IP содержит не-YooKassa IP, XFF — YooKassa
+        self.assertFalse(
+            self._check_ip(
+                {
+                    "HTTP_X_REAL_IP": "1.2.3.4",
+                    "HTTP_X_FORWARDED_FOR": "185.71.76.1",
+                    "REMOTE_ADDR": "",
+                }
+            )
+        )
+
+    def test_ipv6_yookassa_range_accepted(self):
+        """IPv6-адрес из диапазона YooKassa 2a02:5180::/32 должен быть принят."""
+        self.assertTrue(
+            self._check_ip(
+                {"HTTP_X_REAL_IP": "2a02:5180::1", "REMOTE_ADDR": ""}
+            )
+        )
+
+    def test_single_xff_entry_trusted(self):
+        """Единственный элемент XFF (без спуфинга) должен работать."""
+        self.assertTrue(
+            self._check_ip(
+                {
+                    "HTTP_X_FORWARDED_FOR": "185.71.76.1",
+                    "REMOTE_ADDR": "",
+                }
+            )
+        )
+
+    def test_no_headers_falls_back_to_remote_addr(self):
+        """При отсутствии XFF и X-Real-IP должен использоваться REMOTE_ADDR."""
+        self.assertTrue(
+            self._check_ip({"REMOTE_ADDR": "185.71.76.1"})
+        )
+        self.assertFalse(
+            self._check_ip({"REMOTE_ADDR": "1.2.3.4"})
+        )
+
+    @override_settings(YOOKASSA_MOCK=True)
+    def test_mock_mode_always_allows(self):
+        """В режиме мока любой IP должен быть пропущен."""
+        self.assertTrue(
+            self._check_ip({"HTTP_X_REAL_IP": "1.2.3.4", "REMOTE_ADDR": ""})
+        )
 
 
 class FinanceSecurityTests(TestCase):
