@@ -341,13 +341,29 @@ _YOOKASSA_IP_RANGES = [
 
 
 def _is_yookassa_ip(request) -> bool:
-    """Return True if the request originates from a YooKassa notification IP."""
+    """Return True if the request originates from a YooKassa notification IP.
+
+    Uses X-Real-IP (set by our nginx to $remote_addr, not client-controllable).
+    Falls back to the rightmost entry in X-Forwarded-For, which is appended by
+    our trusted reverse proxy and cannot be spoofed by the client. The leftmost
+    entry is always client-supplied and MUST NOT be trusted.
+    """
     if settings.YOOKASSA_MOCK:
         return True
-    forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
-    raw_ip = (
-        forwarded.split(",")[0].strip() if forwarded else None
-    ) or request.META.get("REMOTE_ADDR", "")
+
+    # X-Real-IP is set to $remote_addr by our nginx — it reflects the
+    # IP of the TCP connection to nginx, which the client cannot forge.
+    real_ip = request.META.get("HTTP_X_REAL_IP", "").strip()
+    if real_ip:
+        raw_ip = real_ip
+    else:
+        # If X-Real-IP is unavailable, take the rightmost entry from
+        # X-Forwarded-For. Our nginx appends $remote_addr at the end, so the
+        # last entry is the actual client IP; earlier entries are untrustworthy.
+        forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
+        entries = [e.strip() for e in forwarded.split(",") if e.strip()]
+        raw_ip = entries[-1] if entries else request.META.get("REMOTE_ADDR", "")
+
     try:
         addr = ip_address(raw_ip)
     except ValueError:
