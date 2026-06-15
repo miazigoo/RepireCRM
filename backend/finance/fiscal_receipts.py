@@ -413,7 +413,34 @@ def create_or_update_payment_receipt(payment: Payment) -> PaymentReceipt | None:
     if not shop or not _shop_fiscal_enabled(shop):
         return None
 
-    snapshot = build_payment_receipt_snapshot(payment)
+    try:
+        snapshot = build_payment_receipt_snapshot(payment)
+    except ValueError as exc:
+        # Receipt building failed (e.g. overpayment, amount mismatch).
+        # Record the failure so it can be investigated and retried, but do NOT
+        # let the exception propagate — that would roll back the payment itself
+        # via the outer @transaction.atomic and silently lose the money record.
+        try:
+            payment_type = _payment_type(payment)
+        except Exception:
+            payment_type = FiscalPaymentType.ELECTRONIC
+        receipt, _ = PaymentReceipt.objects.update_or_create(
+            payment=payment,
+            defaults={
+                "status": PaymentReceipt.Status.FAILED,
+                "taxation_system": _shop_taxation_system(shop),
+                "payment_type": payment_type,
+                "total_amount": money(payment.amount),
+                "received_amount": money(payment.amount),
+                "currency": shop.currency or "RUB",
+                "customer_email": "",
+                "customer_phone": "",
+                "normalized_snapshot": {},
+                "error_message": str(exc),
+            },
+        )
+        return receipt
+
     receipt, _ = PaymentReceipt.objects.update_or_create(
         payment=payment,
         defaults={
