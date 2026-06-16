@@ -413,7 +413,24 @@ def create_or_update_payment_receipt(payment: Payment) -> PaymentReceipt | None:
     if not shop or not _shop_fiscal_enabled(shop):
         return None
 
-    snapshot = build_payment_receipt_snapshot(payment)
+    try:
+        snapshot = build_payment_receipt_snapshot(payment)
+    except ValueError as exc:
+        # A ValueError here (e.g. amount mismatch, receipt not required) must NOT
+        # propagate into the caller's @transaction.atomic and roll back the Payment
+        # row. Record the failure so operators can investigate, then return the
+        # saved receipt rather than raising.
+        receipt, _ = PaymentReceipt.objects.update_or_create(
+            payment=payment,
+            defaults={
+                "status": PaymentReceipt.Status.FAILED,
+                "total_amount": payment.amount,
+                "received_amount": payment.amount,
+                "error_message": str(exc),
+            },
+        )
+        return receipt
+
     receipt, _ = PaymentReceipt.objects.update_or_create(
         payment=payment,
         defaults={

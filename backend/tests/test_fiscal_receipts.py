@@ -176,3 +176,59 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+    def test_value_error_from_snapshot_saves_failed_receipt_not_raises(self):
+        """When build_payment_receipt_snapshot raises ValueError the Payment must
+        not be rolled back.  A FAILED receipt is saved instead."""
+        from unittest.mock import patch
+
+        order = self.create_order()
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("5000"),
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        with patch(
+            "finance.fiscal_receipts.build_payment_receipt_snapshot",
+            side_effect=ValueError("Сумма фискального чека не сходится с оплатами"),
+        ):
+            receipt = create_or_update_payment_receipt(payment)
+
+        # Payment row still exists — not rolled back
+        self.assertTrue(Payment.objects.filter(id=payment.id).exists())
+        # Failed receipt saved with error message
+        self.assertIsNotNone(receipt)
+        from finance.models import PaymentReceipt
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertIn("не сходится", receipt.error_message)
+
+    def test_fiscal_not_required_error_saves_failed_receipt_not_raises(self):
+        """A payment where fiscal receipt is not required must not crash callers."""
+        from unittest.mock import patch
+
+        order = self.create_order()
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("5000"),
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        with patch(
+            "finance.fiscal_receipts.build_payment_receipt_snapshot",
+            side_effect=ValueError("Фискальный чек для этого платежа не требуется"),
+        ):
+            receipt = create_or_update_payment_receipt(payment)
+
+        self.assertTrue(Payment.objects.filter(id=payment.id).exists())
+        self.assertIsNotNone(receipt)
+        from finance.models import PaymentReceipt
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
