@@ -176,3 +176,126 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+
+class FiscalReceiptValueErrorRegressionTests(TestCase):
+    """Regression: ValueError in build_payment_receipt_snapshot must NOT roll back payment."""
+
+    def setUp(self):
+        self.shop = Shop.objects.create(name="Main", code="MAIN2", currency="RUB")
+        self.organization = Organization.objects.create(name="Org2")
+        ShopSettings.objects.create(
+            shop=self.shop,
+            organization=self.organization,
+            fiscalization_enabled=True,
+            default_goods_vat_code=FiscalVatCode.VAT22,
+            default_service_vat_code=FiscalVatCode.NONE,
+        )
+        self.user = User.objects.create_user(
+            username="cashier2",
+            password="pass12345",
+            current_shop=self.shop,
+        )
+        self.user.shops.add(self.shop)
+        self.card = PaymentMethod.objects.create(
+            name="Карта2",
+            code="card2",
+            is_cash=False,
+            fiscal_payment_type=FiscalPaymentType.ELECTRONIC,
+        )
+        self.customer = Customer.objects.create(
+            first_name="Test",
+            last_name="User",
+            phone="+79991112233",
+            email="",
+        )
+        brand = DeviceBrand.objects.create(name="Samsung")
+        device_type = DeviceType.objects.create(name="Планшет")
+        model = DeviceModel.objects.create(
+            brand=brand, device_type=device_type, name="Galaxy Tab"
+        )
+        self.device = Device.objects.create(model=model)
+
+    def test_valueerror_saves_failed_receipt_and_does_not_raise(self):
+        """
+        When build_payment_receipt_snapshot raises ValueError (e.g. customer has
+        no email/phone for fiscal contact), create_or_update_payment_receipt must
+        save a FAILED receipt record and return it — NOT propagate the exception.
+        This prevents the ValueError from rolling back the outer atomic transaction
+        that already committed the Payment row.
+        """
+        order = Order.objects.create(
+            shop=self.shop,
+            customer=self.customer,
+            device=self.device,
+            problem_description="broken",
+            cost_estimate=Decimal("3000"),
+            prepayment=Decimal("0"),
+            created_by=self.user,
+        )
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("3000"),
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        # The customer has no email — build_payment_receipt_snapshot raises ValueError
+        # ("Для онлайн-чека нужен email или телефон клиента" is not guaranteed to fire
+        # here since phone exists, but overpayment scenario does trigger ValueError).
+        # Force the failure by setting amount > order total to trigger amount mismatch.
+        order.cost_estimate = Decimal("1000")
+        order.save(update_fields=["cost_estimate"])
+
+        from finance.fiscal_receipts import build_payment_receipt_snapshot
+
+        # Verify build_payment_receipt_snapshot actually raises ValueError with this data
+        with self.assertRaises(ValueError):
+            build_payment_receipt_snapshot(payment)
+
+        # Now confirm create_or_update_payment_receipt does NOT raise ValueError
+        receipt = create_or_update_payment_receipt(payment)
+
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, "failed")
+        self.assertIn("сходится", receipt.error_message.lower())
+
+    def test_failed_receipt_does_not_prevent_payment_persistence(self):
+        """
+        Full regression: payment saved inside @transaction.atomic must survive
+        even when the fiscal snapshot raises ValueError.
+        """
+        from decimal import Decimal as D
+
+        order = Order.objects.create(
+            shop=self.shop,
+            customer=self.customer,
+            device=self.device,
+            problem_description="cracked screen",
+            cost_estimate=D("500"),
+            prepayment=D("0"),
+            created_by=self.user,
+        )
+        from finance.models import Payment as P
+
+        payment = P.objects.create(
+            payment_type=P.PaymentType.INCOME,
+            status=P.PaymentStatus.COMPLETED,
+            amount=D("9999"),
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+        payment_id = payment.id
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        # Payment must still exist — the ValueError must NOT roll it back
+        self.assertTrue(P.objects.filter(id=payment_id).exists())
+        # A FAILED receipt must have been recorded
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, "failed")
