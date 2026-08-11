@@ -655,3 +655,131 @@ class InventoryApiTestCase(TestCase):
         self.assertEqual(response.status_code, 400, response.content)
         self.assertIn("уже добавлен", response.json()["error"])
         self.assertFalse(PurchaseRequest.objects.exists())
+
+
+class InventoryCrossShopSecurityTests(TestCase):
+    """Regression tests for IDOR on stock-movement and purchase-order receive."""
+
+    def setUp(self):
+        self.shop = Shop.objects.create(
+            name="My Shop",
+            code="MINE01",
+            timezone="Europe/Moscow",
+            currency="RUB",
+        )
+        self.other_shop = Shop.objects.create(
+            name="Other Shop",
+            code="OTHER1",
+            timezone="Europe/Moscow",
+            currency="RUB",
+        )
+        role = Role.objects.create(name="WarehouseSec", code="warehouse_sec")
+        for codename in (
+            "inventory.add_movement",
+            "inventory.receive_purchase_orders",
+            "inventory.receive_purchase",
+        ):
+            permission, _ = Permission.objects.get_or_create(
+                codename=codename,
+                defaults={
+                    "name": codename,
+                    "category": Permission.PermissionCategory.INVENTORY,
+                },
+            )
+            role.permissions.add(permission)
+        self.user = User.objects.create_user(
+            username="sec-user",
+            password="pass12345",
+            first_name="Sec",
+            last_name="User",
+            role=role,
+            current_shop=self.shop,
+        )
+        self.user.shops.add(self.shop)
+
+        self.supplier = Supplier.objects.create(name="Тест Поставщик", is_active=True)
+        self.category = Category.objects.create(name="TestCat")
+        self.item = InventoryItem.objects.create(
+            name="Test Item",
+            sku="TEST-IDOR",
+            item_type="component",
+            category=self.category,
+            purchase_price=100,
+            selling_price=200,
+            created_by=self.user,
+        )
+
+    def auth_headers(self):
+        payload = {
+            "user_id": self.user.id,
+            "username": self.user.username,
+            "exp": timezone.now() + timedelta(days=1),
+            "iat": timezone.now(),
+        }
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+        return {
+            "HTTP_AUTHORIZATION": f"Bearer {token}",
+            "HTTP_X_CURRENT_SHOP": str(self.shop.id),
+        }
+
+    def test_stock_movement_blocked_for_other_shop_balance(self):
+        """A user scoped to shop A must not be able to mutate shop B's stock balance."""
+        other_balance = StockBalance.objects.get(
+            item=self.item, shop=self.other_shop
+        )
+
+        response = self.client.post(
+            "/api/inventory/stock-movement",
+            data=json.dumps(
+                {
+                    "stock_balance_id": other_balance.id,
+                    "movement_type": "manual_in",
+                    "quantity_change": 50,
+                    "notes": "IDOR attempt",
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+
+        self.assertIn(
+            response.status_code,
+            (403, 422),
+            f"Expected 403/422 but got {response.status_code}: {response.content}",
+        )
+        other_balance.refresh_from_db()
+        self.assertEqual(other_balance.quantity, 0, "Balance must not change")
+
+    def test_receive_purchase_order_blocked_for_other_shop_order(self):
+        """A user scoped to shop A must not be able to receive a purchase order belonging to shop B."""
+        other_order = PurchaseOrder.objects.create(
+            shop=self.other_shop,
+            supplier=self.supplier,
+            status=PurchaseOrder.OrderStatus.SENT,
+            created_by=self.user,
+        )
+        PurchaseOrderItem.objects.create(
+            purchase_order=other_order,
+            item=self.item,
+            ordered_quantity=10,
+            unit_price=100,
+        )
+
+        response = self.client.post(
+            f"/api/inventory/purchase-orders/{other_order.id}/receive",
+            data=json.dumps({"items": [{"item_id": self.item.id, "quantity_received": 5}]}),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+
+        self.assertIn(
+            response.status_code,
+            (403, 422),
+            f"Expected 403/422 but got {response.status_code}: {response.content}",
+        )
+        other_order.refresh_from_db()
+        self.assertNotEqual(
+            other_order.status,
+            PurchaseOrder.OrderStatus.RECEIVED,
+            "Order status must not change",
+        )
