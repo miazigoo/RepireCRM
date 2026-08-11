@@ -1,4 +1,5 @@
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -12,7 +13,7 @@ from finance.fiscal_receipts import (
     receipt_snapshot_to_tbank,
     receipt_snapshot_to_yookassa,
 )
-from finance.models import Payment, PaymentMethod
+from finance.models import Payment, PaymentMethod, PaymentReceipt
 from inventory.models import Category, InventoryItem, RetailSale, RetailSaleItem
 from orders.models import AdditionalService, Order, OrderService
 from shops.models import Organization, Shop, ShopSettings
@@ -176,3 +177,95 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+
+class FiscalReceiptValueErrorRegressionTests(TestCase):
+    """Regression: ValueError in build_payment_receipt_snapshot must not roll back the Payment."""
+
+    def setUp(self):
+        self.shop = Shop.objects.create(name="FRTest", code="FRTEST", currency="RUB")
+        self.organization = Organization.objects.create(name="FR Org")
+        ShopSettings.objects.create(
+            shop=self.shop,
+            organization=self.organization,
+            fiscalization_enabled=True,
+            default_goods_vat_code=FiscalVatCode.VAT22,
+            default_service_vat_code=FiscalVatCode.NONE,
+        )
+        self.user = User.objects.create_user(
+            username="fr-cashier",
+            password="pass12345",
+            current_shop=self.shop,
+        )
+        self.user.shops.add(self.shop)
+        self.customer = Customer.objects.create(
+            first_name="Test",
+            last_name="Customer",
+            phone="+79990000001",
+        )
+        brand = DeviceBrand.objects.create(name="Samsung")
+        device_type = DeviceType.objects.create(name="Планшет")
+        model = DeviceModel.objects.create(
+            brand=brand, device_type=device_type, name="Galaxy Tab"
+        )
+        self.device = Device.objects.create(model=model)
+        self.card = PaymentMethod.objects.create(
+            name="Карта FR",
+            code="card_fr",
+            is_cash=False,
+            fiscal_payment_type=FiscalPaymentType.ELECTRONIC,
+        )
+
+    def _create_order_payment(self, amount=Decimal("3000")):
+        order = Order.objects.create(
+            shop=self.shop,
+            customer=self.customer,
+            device=self.device,
+            problem_description="Разбит экран",
+            cost_estimate=amount,
+            created_by=self.user,
+        )
+        return Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=amount,
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+    def test_valueerror_in_snapshot_saves_failed_receipt_not_rolls_back_payment(self):
+        """ValueError from build_payment_receipt_snapshot must not roll back the Payment row."""
+        payment = self._create_order_payment()
+        payment_id = payment.id
+
+        with patch(
+            "finance.fiscal_receipts.build_payment_receipt_snapshot",
+            side_effect=ValueError("Сумма строк не сходится"),
+        ):
+            receipt = create_or_update_payment_receipt(payment)
+
+        self.assertTrue(
+            Payment.objects.filter(id=payment_id).exists(),
+            "Payment must survive a ValueError in fiscal receipt building",
+        )
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertIn("сходится", receipt.error_message)
+
+    def test_failed_receipt_is_idempotent_on_retry(self):
+        """Calling create_or_update_payment_receipt again on a FAILED receipt updates it."""
+        payment = self._create_order_payment()
+
+        with patch(
+            "finance.fiscal_receipts.build_payment_receipt_snapshot",
+            side_effect=ValueError("Ошибка первой попытки"),
+        ):
+            first = create_or_update_payment_receipt(payment)
+
+        self.assertEqual(first.status, PaymentReceipt.Status.FAILED)
+
+        second = create_or_update_payment_receipt(payment)
+        self.assertEqual(second.id, first.id, "Must update, not create a duplicate")
+        self.assertEqual(second.status, PaymentReceipt.Status.DRAFT)
