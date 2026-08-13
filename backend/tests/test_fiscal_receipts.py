@@ -176,3 +176,89 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+
+class FiscalReceiptValueErrorRegressionTests(TestCase):
+    """Regression tests: ValueError from build_payment_receipt_snapshot must NOT roll back
+    the outer transaction — instead a FAILED PaymentReceipt row should be saved."""
+
+    def setUp(self):
+        self.shop = Shop.objects.create(name="Fiscal Shop", code="FSC", currency="RUB")
+        self.organization = Organization.objects.create(name="Fiscal Org")
+        ShopSettings.objects.create(
+            shop=self.shop,
+            organization=self.organization,
+            fiscalization_enabled=True,
+            default_goods_vat_code=FiscalVatCode.VAT22,
+            default_service_vat_code=FiscalVatCode.NONE,
+        )
+        self.user = User.objects.create_user(
+            username="fiscal-cashier",
+            password="pass12345",
+            current_shop=self.shop,
+        )
+        self.user.shops.add(self.shop)
+        self.cash = PaymentMethod.objects.create(
+            name="Наличные ФР",
+            code="cash_fr",
+            is_cash=True,
+            fiscal_payment_type=FiscalPaymentType.CASH,
+        )
+        customer = Customer.objects.create(
+            first_name="Test",
+            last_name="Client",
+            phone="+71111111111",
+        )
+        brand = DeviceBrand.objects.create(name="Samsung")
+        device_type = DeviceType.objects.create(name="Планшет")
+        model = DeviceModel.objects.create(
+            brand=brand, device_type=device_type, name="Galaxy Tab"
+        )
+        device = Device.objects.create(model=model)
+        self.order = Order.objects.create(
+            shop=self.shop,
+            customer=customer,
+            device=device,
+            problem_description="Тест",
+            cost_estimate=Decimal("1000"),
+            created_by=self.user,
+        )
+
+    def test_value_error_saves_failed_receipt_and_does_not_raise(self):
+        """EXPENSE payment triggers ValueError inside build_payment_receipt_snapshot.
+        create_or_update_payment_receipt must catch it and save a FAILED receipt."""
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.EXPENSE,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("500"),
+            payment_method=self.cash,
+            order=self.order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+        receipt = create_or_update_payment_receipt(payment)
+
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, "failed")
+        self.assertIn("чек", receipt.error_message.lower())
+        self.assertEqual(receipt.total_amount, Decimal("500.00"))
+        self.assertTrue(Payment.objects.filter(id=payment.id).exists())
+
+    def test_failed_receipt_does_not_block_subsequent_payment_lookup(self):
+        """A second call to create_or_update_payment_receipt updates the existing FAILED row."""
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.EXPENSE,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("200"),
+            payment_method=self.cash,
+            order=self.order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+        receipt_first = create_or_update_payment_receipt(payment)
+        receipt_second = create_or_update_payment_receipt(payment)
+
+        from finance.models import PaymentReceipt
+
+        self.assertEqual(PaymentReceipt.objects.filter(payment=payment).count(), 1)
+        self.assertEqual(receipt_first.id, receipt_second.id)
