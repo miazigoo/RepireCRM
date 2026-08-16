@@ -176,3 +176,112 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+
+class FiscalReceiptValueErrorRegressionTests(TestCase):
+    """Regression test: ValueError in build_payment_receipt_snapshot must not roll
+    back the Payment row and must not propagate through @transaction.atomic."""
+
+    def setUp(self):
+        self.shop = Shop.objects.create(name="Main", code="MAIN2", currency="RUB")
+        self.organization = Organization.objects.create(name="Main Org 2")
+        self.settings = ShopSettings.objects.create(
+            shop=self.shop,
+            organization=self.organization,
+            fiscalization_enabled=True,
+        )
+        self.user = User.objects.create_user(
+            username="cashier2",
+            password="pass12345",
+            current_shop=self.shop,
+        )
+        self.user.shops.add(self.shop)
+        self.cash = PaymentMethod.objects.create(
+            name="Наличные2",
+            code="cash2",
+            is_cash=True,
+            fiscal_payment_type=FiscalPaymentType.CASH,
+        )
+        category = Category.objects.create(name="Parts2")
+        self.item = InventoryItem.objects.create(
+            name="Screen",
+            sku="SCR-1",
+            item_type=InventoryItem.ItemType.COMPONENT,
+            category=category,
+            purchase_price=1000,
+            selling_price=3000,
+            created_by=self.user,
+        )
+
+    def test_mismatched_retail_sale_amount_saves_failed_receipt_not_raises(self):
+        """A retail-sale payment whose amount != sale total triggers ValueError
+        in build_payment_receipt_snapshot.  The fix must catch it, save a FAILED
+        PaymentReceipt, and return — NOT raise and NOT roll back the Payment row."""
+        sale = RetailSale.objects.create(
+            shop=self.shop,
+            cashier=self.user,
+            subtotal=Decimal("3000"),
+            total_amount=Decimal("3000"),
+        )
+        RetailSaleItem.objects.create(
+            sale=sale,
+            item=self.item,
+            quantity=1,
+            unit_price=Decimal("3000"),
+            total_price=Decimal("3000"),
+        )
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("2500"),
+            payment_method=self.cash,
+            retail_sale=sale,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        # Payment row must still exist (not rolled back)
+        self.assertTrue(Payment.objects.filter(id=payment.id).exists())
+        # A FAILED receipt must have been saved
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, "failed")
+        self.assertIn("фискальный чек", receipt.error_message.lower())
+
+    def test_failed_receipt_does_not_overwrite_working_receipt_with_correct_data(self):
+        """A subsequent call with correct data after a failed attempt must
+        overwrite the FAILED receipt with a DRAFT receipt."""
+        sale = RetailSale.objects.create(
+            shop=self.shop,
+            cashier=self.user,
+            subtotal=Decimal("3000"),
+            total_amount=Decimal("3000"),
+        )
+        RetailSaleItem.objects.create(
+            sale=sale,
+            item=self.item,
+            quantity=1,
+            unit_price=Decimal("3000"),
+            total_price=Decimal("3000"),
+        )
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("2500"),
+            payment_method=self.cash,
+            retail_sale=sale,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+        # First call — mismatched amount, creates a FAILED receipt
+        create_or_update_payment_receipt(payment)
+
+        # Fix the amount to match
+        payment.amount = Decimal("3000")
+        payment.save(update_fields=["amount"])
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        self.assertEqual(receipt.status, "draft")
+        self.assertEqual(receipt.total_amount, Decimal("3000.00"))

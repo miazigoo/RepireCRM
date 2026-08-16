@@ -655,3 +655,111 @@ class InventoryApiTestCase(TestCase):
         self.assertEqual(response.status_code, 400, response.content)
         self.assertIn("уже добавлен", response.json()["error"])
         self.assertFalse(PurchaseRequest.objects.exists())
+
+
+class InventoryCrossShopSecurityTests(TestCase):
+    """Regression tests for IDOR vulnerabilities in inventory endpoints."""
+
+    def setUp(self):
+        self.shop1 = Shop.objects.create(name="Shop 1", code="SH01")
+        self.shop2 = Shop.objects.create(name="Shop 2", code="SH02")
+
+        role = Role.objects.create(name="Warehouse", code=Role.RoleType.MANAGER)
+        for codename in (
+            "inventory.add_movement",
+            "inventory.receive_purchase_orders",
+        ):
+            permission, _ = Permission.objects.get_or_create(
+                codename=codename,
+                defaults={
+                    "name": codename,
+                    "category": Permission.PermissionCategory.INVENTORY,
+                },
+            )
+            role.permissions.add(permission)
+
+        self.user1 = User.objects.create_user(
+            username="wh-user-1",
+            password="pass12345",
+            role=role,
+            current_shop=self.shop1,
+        )
+        self.user1.shops.add(self.shop1)
+
+        category = Category.objects.create(name="Parts")
+        self.item = InventoryItem.objects.create(
+            name="Battery",
+            sku="BAT-X",
+            item_type="component",
+            category=category,
+            purchase_price=500,
+            selling_price=1000,
+            created_by=self.user1,
+        )
+        # StockBalance for shop2 is auto-created by the post_save signal
+        self.balance_shop2 = StockBalance.objects.get(shop=self.shop2, item=self.item)
+
+        supplier = Supplier.objects.create(name="Test Supplier")
+        self.po_shop2 = PurchaseOrder.objects.create(
+            supplier=supplier,
+            shop=self.shop2,
+            created_by=self.user1,
+        )
+        PurchaseOrderItem.objects.create(
+            purchase_order=self.po_shop2,
+            item=self.item,
+            ordered_quantity=5,
+            unit_price=500,
+        )
+
+    def _auth_headers(self, shop):
+        payload = {
+            "user_id": self.user1.id,
+            "username": self.user1.username,
+            "exp": timezone.now() + timedelta(days=1),
+            "iat": timezone.now(),
+        }
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+        return {
+            "HTTP_AUTHORIZATION": f"Bearer {token}",
+            "HTTP_X_CURRENT_SHOP": str(shop.id),
+        }
+
+    def test_stock_movement_blocked_for_other_shop_balance(self):
+        """POST /stock-movement must reject stock_balance_id belonging to another shop."""
+        response = self.client.post(
+            "/api/inventory/stock-movement",
+            data=json.dumps(
+                {
+                    "stock_balance_id": self.balance_shop2.id,
+                    "movement_type": "receipt",
+                    "quantity_change": 10,
+                }
+            ),
+            content_type="application/json",
+            **self._auth_headers(self.shop1),
+        )
+        self.assertEqual(response.status_code, 403, response.content)
+        self.balance_shop2.refresh_from_db()
+        self.assertEqual(self.balance_shop2.quantity, 0)
+
+    def test_receive_purchase_order_blocked_for_other_shop(self):
+        """POST /purchase-orders/{id}/receive must reject POs belonging to another shop."""
+        response = self.client.post(
+            f"/api/inventory/purchase-orders/{self.po_shop2.id}/receive",
+            data=json.dumps(
+                {
+                    "items": [
+                        {
+                            "item_id": self.item.id,
+                            "received_quantity": 5,
+                        }
+                    ]
+                }
+            ),
+            content_type="application/json",
+            **self._auth_headers(self.shop1),
+        )
+        self.assertEqual(response.status_code, 403, response.content)
+        self.po_shop2.refresh_from_db()
+        self.assertNotEqual(self.po_shop2.status, PurchaseOrder.OrderStatus.RECEIVED)
