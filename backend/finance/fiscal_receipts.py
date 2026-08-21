@@ -413,7 +413,20 @@ def create_or_update_payment_receipt(payment: Payment) -> PaymentReceipt | None:
     if not shop or not _shop_fiscal_enabled(shop):
         return None
 
-    snapshot = build_payment_receipt_snapshot(payment)
+    try:
+        snapshot = build_payment_receipt_snapshot(payment)
+    except ValueError as exc:
+        receipt, _ = PaymentReceipt.objects.update_or_create(
+            payment=payment,
+            defaults={
+                "status": PaymentReceipt.Status.FAILED,
+                "error_message": str(exc),
+                "total_amount": money(payment.amount),
+                "received_amount": money(payment.amount),
+            },
+        )
+        return receipt
+
     receipt, _ = PaymentReceipt.objects.update_or_create(
         payment=payment,
         defaults={
