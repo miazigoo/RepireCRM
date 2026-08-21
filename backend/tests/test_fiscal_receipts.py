@@ -176,3 +176,85 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+
+class FiscalReceiptValueErrorRegressionTests(TestCase):
+    """Regression tests: create_or_update_payment_receipt must not propagate ValueError."""
+
+    def setUp(self):
+        from finance.models import PaymentReceipt  # noqa: F401
+
+        self.shop = Shop.objects.create(name="Main", code="MAIN2", currency="RUB")
+        organization = Organization.objects.create(name="Org2")
+        ShopSettings.objects.create(
+            shop=self.shop,
+            organization=organization,
+            fiscalization_enabled=True,
+            default_goods_vat_code=FiscalVatCode.VAT22,
+            default_service_vat_code=FiscalVatCode.NONE,
+        )
+        self.user = User.objects.create_user(
+            username="cashier2",
+            password="pass12345",
+            current_shop=self.shop,
+        )
+        self.user.shops.add(self.shop)
+        self.card = PaymentMethod.objects.create(
+            name="Карта2",
+            code="card2",
+            is_cash=False,
+            fiscal_payment_type=FiscalPaymentType.ELECTRONIC,
+        )
+        self.customer = Customer.objects.create(
+            first_name="Test",
+            last_name="User",
+            phone="+79990000001",
+        )
+        category = Category.objects.create(name="Parts2")
+        self.item = InventoryItem.objects.create(
+            name="Battery",
+            sku="BAT-2",
+            item_type=InventoryItem.ItemType.COMPONENT,
+            category=category,
+            purchase_price=Decimal("500"),
+            selling_price=Decimal("1000"),
+            created_by=self.user,
+        )
+
+    def test_mismatched_retail_sale_amount_produces_failed_receipt_not_exception(self):
+        """When payment amount != sale total, ValueError must be caught and a FAILED
+        receipt saved instead of propagating through the transaction and losing the payment."""
+        from finance.models import PaymentReceipt
+
+        sale = RetailSale.objects.create(
+            shop=self.shop,
+            cashier=self.user,
+            customer=self.customer,
+            subtotal=Decimal("1000"),
+            total_amount=Decimal("1000"),
+        )
+        RetailSaleItem.objects.create(
+            sale=sale,
+            item=self.item,
+            quantity=1,
+            unit_price=Decimal("1000"),
+            total_price=Decimal("1000"),
+        )
+        # Intentionally wrong amount → build_payment_receipt_snapshot raises ValueError
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("500"),
+            payment_method=self.card,
+            retail_sale=sale,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertIn("фискальный чек", receipt.error_message.lower())
+        # Payment row must still exist (no data loss)
+        self.assertTrue(Payment.objects.filter(id=payment.id).exists())
