@@ -1,5 +1,6 @@
 import json
 from datetime import timedelta
+from decimal import Decimal
 
 import jwt
 from django.conf import settings
@@ -655,3 +656,89 @@ class InventoryApiTestCase(TestCase):
         self.assertEqual(response.status_code, 400, response.content)
         self.assertIn("уже добавлен", response.json()["error"])
         self.assertFalse(PurchaseRequest.objects.exists())
+
+
+class InventoryCrossShopSecurityTests(TestCase):
+    """Regression tests for IDOR bugs in stock-movement and purchase-order receive endpoints."""
+
+    def setUp(self):
+        self.shop_a = Shop.objects.create(name="Shop A", code="SHOPA", currency="RUB")
+        self.shop_b = Shop.objects.create(name="Shop B", code="SHOPB", currency="RUB")
+
+        role = Role.objects.create(name="WarehouseRole", code=Role.RoleType.MANAGER)
+        for codename in (
+            "inventory.add_movement",
+            "inventory.receive_purchase_orders",
+        ):
+            perm, _ = Permission.objects.get_or_create(
+                codename=codename,
+                defaults={
+                    "name": codename,
+                    "category": Permission.PermissionCategory.INVENTORY,
+                },
+            )
+            role.permissions.add(perm)
+
+        self.user = User.objects.create_user(
+            username="shop-a-user",
+            password="pass12345",
+            role=role,
+            current_shop=self.shop_a,
+        )
+        self.user.shops.add(self.shop_a)
+
+        category = Category.objects.create(name="Parts")
+        self.item = InventoryItem.objects.create(
+            name="Test Part",
+            category=category,
+            purchase_price=Decimal("100"),
+            retail_price=Decimal("150"),
+        )
+        # StockBalance auto-created for all shops by signal; grab shop_b's balance
+        self.balance_b = StockBalance.objects.get(item=self.item, shop=self.shop_b)
+
+        self.supplier = Supplier.objects.create(name="Test Supplier")
+        self.po_b = PurchaseOrder.objects.create(
+            shop=self.shop_b,
+            supplier=self.supplier,
+            created_by=self.user,
+        )
+
+    def auth_headers(self):
+        payload = {
+            "user_id": self.user.id,
+            "username": self.user.username,
+            "exp": timezone.now() + timedelta(days=1),
+            "iat": timezone.now(),
+        }
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+        return {
+            "HTTP_AUTHORIZATION": f"Bearer {token}",
+            "HTTP_X_CURRENT_SHOP": str(self.shop_a.id),
+        }
+
+    def test_stock_movement_blocked_for_foreign_shop_balance(self):
+        """User scoped to shop_a must not create movements against shop_b's StockBalance."""
+        response = self.client.post(
+            "/api/inventory/stock-movement",
+            json.dumps(
+                {
+                    "stock_balance_id": self.balance_b.id,
+                    "movement_type": "in",
+                    "quantity_change": 10,
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+        self.assertEqual(response.status_code, 403, response.content)
+
+    def test_receive_purchase_order_blocked_for_foreign_shop_order(self):
+        """User scoped to shop_a must not receive a PurchaseOrder belonging to shop_b."""
+        response = self.client.post(
+            f"/api/inventory/purchase-orders/{self.po_b.id}/receive",
+            json.dumps({"items": []}),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+        self.assertEqual(response.status_code, 403, response.content)
