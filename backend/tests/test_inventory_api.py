@@ -692,7 +692,7 @@ class InventoryCrossShopSecurityTests(TestCase):
             name="Test Part",
             category=category,
             purchase_price=Decimal("100"),
-            retail_price=Decimal("150"),
+            selling_price=Decimal("150"),
         )
         # StockBalance auto-created for all shops by signal; grab shop_b's balance
         self.balance_b = StockBalance.objects.get(item=self.item, shop=self.shop_b)

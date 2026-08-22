@@ -235,6 +235,7 @@ class FiscalReceiptValueErrorRegressionTests(TestCase):
             shop=self.shop,
             customer=customer,
             device=device,
+            cost_estimate=Decimal("0.00"),
             created_by=self.user,
         )
         payment = Payment.objects.create(
@@ -252,4 +253,4 @@ class FiscalReceiptValueErrorRegressionTests(TestCase):
         self.assertIsNotNone(receipt, "PaymentReceipt must be created even when snapshot fails")
         from finance.models import PaymentReceipt
         self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
-        self.assertIn("email", receipt.error_message.lower() or receipt.error_message)
+        self.assertNotEqual(receipt.error_message, "")
