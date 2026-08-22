@@ -176,3 +176,81 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+
+class FiscalReceiptValueErrorRegressionTests(TestCase):
+    """
+    Regression: ValueError raised by build_payment_receipt_snapshot must NOT roll back the
+    surrounding @transaction.atomic and must NOT silently drop the payment record.
+    Instead a FAILED PaymentReceipt should be persisted.
+    """
+
+    def setUp(self):
+        self.shop = Shop.objects.create(name="TestShop", code="TST", currency="RUB")
+        self.organization = Organization.objects.create(name="Test Org")
+        ShopSettings.objects.create(
+            shop=self.shop,
+            organization=self.organization,
+            fiscalization_enabled=True,
+            default_goods_vat_code=FiscalVatCode.VAT22,
+            default_service_vat_code=FiscalVatCode.NONE,
+        )
+        self.user = User.objects.create_user(
+            username="fiscal-tester",
+            password="pass12345",
+            current_shop=self.shop,
+        )
+        self.user.shops.add(self.shop)
+        self.cash = PaymentMethod.objects.create(
+            name="Наличные2",
+            code="cash2",
+            is_cash=True,
+            fiscal_payment_type=FiscalPaymentType.CASH,
+        )
+
+    def test_payment_with_no_customer_contact_creates_failed_receipt(self):
+        """
+        Trigger: payment linked to order whose customer has no email/phone.
+        build_payment_receipt_snapshot raises ValueError("Для онлайн-чека нужен email или телефон клиента").
+        The outer @transaction.atomic must NOT roll back; a FAILED PaymentReceipt is persisted.
+        """
+        from customers.models import Customer
+        from device.models import Device, DeviceBrand, DeviceModel, DeviceType
+        from orders.models import Order
+
+        brand = DeviceBrand.objects.create(name="Brand")
+        dtype = DeviceType.objects.create(name="Type")
+        dmodel = DeviceModel.objects.create(name="Model", brand=brand, device_type=dtype)
+        device = Device.objects.create(
+            model=dmodel,
+            serial_number="SN001",
+        )
+        customer = Customer.objects.create(
+            first_name="Test",
+            last_name="User",
+            phone="",
+            email="",
+        )
+        order = Order.objects.create(
+            shop=self.shop,
+            customer=customer,
+            device=device,
+            cost_estimate=Decimal("0.00"),
+            created_by=self.user,
+        )
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("1000"),
+            payment_method=self.cash,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        self.assertIsNotNone(receipt, "PaymentReceipt must be created even when snapshot fails")
+        from finance.models import PaymentReceipt
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertNotEqual(receipt.error_message, "")
