@@ -176,3 +176,84 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+
+class FiscalReceiptValueErrorRegressionTests(TestCase):
+    """Regression: ValueError in build_payment_receipt_snapshot must not roll back the Payment."""
+
+    def setUp(self):
+        self.shop = Shop.objects.create(name="Fiscal Shop", code="FSC01", currency="RUB")
+        self.organization = Organization.objects.create(name="Fiscal Org")
+        self.settings = ShopSettings.objects.create(
+            shop=self.shop,
+            organization=self.organization,
+            fiscalization_enabled=True,
+            default_goods_vat_code=FiscalVatCode.VAT22,
+            default_service_vat_code=FiscalVatCode.NONE,
+        )
+        self.user = User.objects.create_user(
+            username="fiscal-cashier",
+            password="pass12345",
+            current_shop=self.shop,
+        )
+        self.user.shops.add(self.shop)
+        self.card = PaymentMethod.objects.create(
+            name="Карта Fiscal",
+            code="card-fsc",
+            is_cash=False,
+            fiscal_payment_type=FiscalPaymentType.ELECTRONIC,
+        )
+        self.customer = Customer.objects.create(
+            first_name="Test",
+            last_name="Buyer",
+            phone="+79990000001",
+        )
+
+    def test_amount_mismatch_on_retail_sale_saves_failed_receipt_not_raises(self):
+        """When payment amount != sale total, create_or_update_payment_receipt must save
+        a FAILED receipt instead of propagating ValueError through @transaction.atomic."""
+        category = Category.objects.create(name="Fiscal Cat")
+        item = InventoryItem.objects.create(
+            name="Test Item",
+            sku="FSC-001",
+            item_type=InventoryItem.ItemType.COMPONENT,
+            category=category,
+            purchase_price=Decimal("1000"),
+            selling_price=Decimal("2500"),
+            created_by=self.user,
+        )
+        sale = RetailSale.objects.create(
+            shop=self.shop,
+            cashier=self.user,
+            customer=self.customer,
+            subtotal=Decimal("2500"),
+            total_amount=Decimal("2500"),
+        )
+        from inventory.models import RetailSaleItem
+
+        RetailSaleItem.objects.create(
+            sale=sale,
+            item=item,
+            quantity=1,
+            unit_price=Decimal("2500"),
+            total_price=Decimal("2500"),
+        )
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("1500"),
+            payment_method=self.card,
+            retail_sale=sale,
+            payment_date=timezone.now(),
+            created_by=self.user,
+            fiscal_required=True,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        self.assertIsNotNone(receipt)
+        from finance.models import PaymentReceipt
+
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertIn("фискальный чек должен совпадать", receipt.error_message)
+        self.assertTrue(Payment.objects.filter(id=payment.id).exists())
