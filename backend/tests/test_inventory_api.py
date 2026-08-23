@@ -655,3 +655,111 @@ class InventoryApiTestCase(TestCase):
         self.assertEqual(response.status_code, 400, response.content)
         self.assertIn("уже добавлен", response.json()["error"])
         self.assertFalse(PurchaseRequest.objects.exists())
+
+
+class InventoryCrossShopSecurityTests(TestCase):
+    """Regression tests: shop-scope checks on stock-movement and purchase-order receipt."""
+
+    def setUp(self):
+        self.own_shop = Shop.objects.create(
+            name="Own Shop", code="OWN01", timezone="Europe/Moscow", currency="RUB"
+        )
+        self.other_shop = Shop.objects.create(
+            name="Other Shop", code="OTH01", timezone="Europe/Moscow", currency="RUB"
+        )
+        role = Role.objects.create(name="Warehouse", code=Role.RoleType.MANAGER)
+        for codename in (
+            "inventory.add_movement",
+            "inventory.receive_purchase_orders",
+        ):
+            permission, _ = Permission.objects.get_or_create(
+                codename=codename,
+                defaults={
+                    "name": codename,
+                    "category": Permission.PermissionCategory.INVENTORY,
+                },
+            )
+            role.permissions.add(permission)
+        self.user = User.objects.create_user(
+            username="wh-security-user",
+            password="pass12345",
+            first_name="Wh",
+            last_name="User",
+            role=role,
+            current_shop=self.own_shop,
+        )
+        self.user.shops.add(self.own_shop)
+
+    def auth_headers(self, shop=None):
+        target_shop = shop or self.own_shop
+        payload = {
+            "user_id": self.user.id,
+            "username": self.user.username,
+            "exp": timezone.now() + timedelta(days=1),
+            "iat": timezone.now(),
+        }
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+        return {
+            "HTTP_AUTHORIZATION": f"Bearer {token}",
+            "HTTP_X_CURRENT_SHOP": str(target_shop.id),
+        }
+
+    def _make_item(self):
+        category = Category.objects.create(name="Security Test Cat")
+        return InventoryItem.objects.create(
+            name="Test Part",
+            sku="SEC-001",
+            item_type=InventoryItem.ItemType.COMPONENT,
+            category=category,
+            purchase_price=100,
+            selling_price=200,
+            created_by=self.user,
+        )
+
+    def test_stock_movement_blocked_for_other_shop_balance(self):
+        """IDOR fix: user scoped to own_shop cannot mutate stock in other_shop."""
+        item = self._make_item()
+        other_balance = StockBalance.objects.get(item=item, shop=self.other_shop)
+
+        response = self.client.post(
+            "/api/inventory/stock-movement",
+            data=json.dumps(
+                {
+                    "stock_balance_id": other_balance.id,
+                    "movement_type": "adjustment",
+                    "quantity_change": 999,
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 403, response.content)
+        other_balance.refresh_from_db()
+        self.assertEqual(other_balance.quantity, 0)
+
+    def test_receive_purchase_order_blocked_for_other_shop(self):
+        """IDOR fix: user scoped to own_shop cannot receive a purchase order from other_shop."""
+        item = self._make_item()
+        supplier = Supplier.objects.create(name="Supplier A")
+        purchase_order = PurchaseOrder.objects.create(
+            supplier=supplier,
+            shop=self.other_shop,
+            created_by=self.user,
+            total_amount=0,
+        )
+        PurchaseOrderItem.objects.create(
+            purchase_order=purchase_order,
+            item=item,
+            ordered_quantity=5,
+            unit_price=100,
+        )
+
+        response = self.client.post(
+            f"/api/inventory/purchase-orders/{purchase_order.id}/receive",
+            data=json.dumps({"items": [{"item_id": item.id, "quantity": 5}]}),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 403, response.content)
