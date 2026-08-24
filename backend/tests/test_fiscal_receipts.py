@@ -176,3 +176,76 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+
+class FiscalReceiptValueErrorRegressionTests(TestCase):
+    """Regression test: ValueError from build_payment_receipt_snapshot must NOT
+    abort the enclosing transaction or lose the Payment row."""
+
+    def setUp(self):
+        self.shop = Shop.objects.create(name="FiscalShop", code="FISC", currency="RUB")
+        self.organization = Organization.objects.create(name="FiscalOrg")
+        from finance.fiscal_constants import FiscalVatCode
+
+        ShopSettings.objects.create(
+            shop=self.shop,
+            organization=self.organization,
+            fiscalization_enabled=True,
+            default_goods_vat_code=FiscalVatCode.VAT22,
+            default_service_vat_code=FiscalVatCode.NONE,
+        )
+        self.user = User.objects.create_user(
+            username="fiscal-cashier",
+            password="pass12345",
+            current_shop=self.shop,
+        )
+        self.user.shops.add(self.shop)
+        self.card = PaymentMethod.objects.create(
+            name="Карта",
+            code="card_fiscal",
+            is_cash=False,
+            fiscal_payment_type=FiscalPaymentType.ELECTRONIC,
+        )
+        self.customer = Customer.objects.create(
+            first_name="Test",
+            last_name="Client",
+            phone="",
+            email="",
+        )
+        brand = DeviceBrand.objects.create(name="Samsung")
+        device_type = DeviceType.objects.create(name="Tablet")
+        model = DeviceModel.objects.create(
+            brand=brand, device_type=device_type, name="Galaxy"
+        )
+        self.device = Device.objects.create(model=model)
+
+    def test_value_error_in_snapshot_saves_failed_receipt_not_raises(self):
+        """When build_payment_receipt_snapshot raises ValueError the function
+        must return a FAILED PaymentReceipt instead of propagating the exception
+        (which would roll back the enclosing transaction and lose the Payment row)."""
+        order = Order.objects.create(
+            shop=self.shop,
+            customer=self.customer,
+            device=self.device,
+            problem_description="Broken",
+            cost_estimate=Decimal("1000"),
+            created_by=self.user,
+        )
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("9999"),
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        self.assertIsNotNone(receipt)
+        from finance.models import PaymentReceipt
+
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertTrue(receipt.error_message)
+        self.assertTrue(Payment.objects.filter(id=payment.id).exists())
