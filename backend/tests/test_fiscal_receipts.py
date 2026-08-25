@@ -1,4 +1,5 @@
 from decimal import Decimal
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -12,7 +13,7 @@ from finance.fiscal_receipts import (
     receipt_snapshot_to_tbank,
     receipt_snapshot_to_yookassa,
 )
-from finance.models import Payment, PaymentMethod
+from finance.models import Payment, PaymentMethod, PaymentReceipt
 from inventory.models import Category, InventoryItem, RetailSale, RetailSaleItem
 from orders.models import AdditionalService, Order, OrderService
 from shops.models import Organization, Shop, ShopSettings
@@ -176,3 +177,74 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+
+class FiscalReceiptValueErrorRegressionTests(TestCase):
+    """Regression test: ValueError in build_payment_receipt_snapshot must NOT roll back the Payment."""
+
+    def setUp(self):
+        self.shop = Shop.objects.create(name="Fiscal Shop", code="FISC", currency="RUB")
+        self.organization = Organization.objects.create(name="Fiscal Org")
+        ShopSettings.objects.create(
+            shop=self.shop,
+            organization=self.organization,
+            fiscalization_enabled=True,
+        )
+        self.user = User.objects.create_user(
+            username="fiscal-cashier",
+            password="pass12345",
+            current_shop=self.shop,
+        )
+        self.user.shops.add(self.shop)
+        self.payment_method = PaymentMethod.objects.create(
+            name="Карта",
+            code="card-fiscal",
+            is_cash=False,
+            fiscal_payment_type=FiscalPaymentType.ELECTRONIC,
+        )
+        customer = Customer.objects.create(
+            first_name="Test", last_name="User", phone="+79001234567"
+        )
+        brand = DeviceBrand.objects.create(name="Samsung")
+        device_type = DeviceType.objects.create(name="Телефон")
+        model = DeviceModel.objects.create(
+            brand=brand, device_type=device_type, name="Galaxy S25"
+        )
+        device = Device.objects.create(model=model)
+        self.order = Order.objects.create(
+            shop=self.shop,
+            customer=customer,
+            device=device,
+            problem_description="Разбит экран",
+            cost_estimate=Decimal("3000"),
+            created_by=self.user,
+        )
+
+    def test_payment_not_rolled_back_when_snapshot_raises_value_error(self):
+        """
+        If build_payment_receipt_snapshot raises ValueError, create_or_update_payment_receipt
+        must save a FAILED receipt and must NOT roll back the Payment row.
+        """
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("3000"),
+            payment_method=self.payment_method,
+            order=self.order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        with mock.patch(
+            "finance.fiscal_receipts.build_payment_receipt_snapshot",
+            side_effect=ValueError("Сумма фискального чека не сходится с оплатами"),
+        ):
+            receipt = create_or_update_payment_receipt(payment)
+
+        self.assertTrue(
+            Payment.objects.filter(id=payment.id).exists(),
+            "Payment was rolled back — data loss bug is present",
+        )
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertIn("сходится", receipt.error_message)
