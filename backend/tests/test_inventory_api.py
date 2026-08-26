@@ -619,6 +619,35 @@ class InventoryApiTestCase(TestCase):
         )
         self.assertEqual(reopen_rejected_response.status_code, 400)
 
+    def test_stock_movement_endpoint_accepts_json_body(self):
+        """POST /api/inventory/stock-movement must accept JSON body (not 422)"""
+        category = Category.objects.create(name="Электроника")
+        item = InventoryItem.objects.create(
+            name="Зарядка",
+            sku="CHG-01",
+            item_type="accessory",
+            category=category,
+            purchase_price=200,
+            selling_price=500,
+            created_by=self.user,
+        )
+        balance, _ = StockBalance.objects.get_or_create(shop=self.shop, item=item)
+
+        response = self.client.post(
+            "/api/inventory/stock-movement",
+            data=json.dumps(
+                {
+                    "stock_balance_id": balance.id,
+                    "movement_type": "IN",
+                    "quantity_change": 5,
+                    "notes": "Приемка",
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+        self.assertNotEqual(response.status_code, 422, response.content)
+
     def test_purchase_request_rejects_duplicate_items_without_partial_save(self):
         category = Category.objects.create(name="Комплектующие")
         item = InventoryItem.objects.create(
@@ -655,3 +684,97 @@ class InventoryApiTestCase(TestCase):
         self.assertEqual(response.status_code, 400, response.content)
         self.assertIn("уже добавлен", response.json()["error"])
         self.assertFalse(PurchaseRequest.objects.exists())
+
+
+class InventoryCrossShopSecurityTests(TestCase):
+    """IDOR guards: stock movement and purchase order receive must be shop-scoped."""
+
+    def setUp(self):
+        self.shop_a = Shop.objects.create(name="Shop A", code="SHA", currency="RUB")
+        self.shop_b = Shop.objects.create(name="Shop B", code="SHB", currency="RUB")
+
+        role = Role.objects.create(name="Warehouse", code=Role.RoleType.MANAGER)
+        for codename in (
+            "inventory.add_movement",
+            "inventory.receive_purchase_orders",
+            "inventory.receive_purchase",
+        ):
+            perm, _ = Permission.objects.get_or_create(
+                codename=codename,
+                defaults={
+                    "name": codename,
+                    "category": Permission.PermissionCategory.INVENTORY,
+                },
+            )
+            role.permissions.add(perm)
+
+        self.user = User.objects.create_user(
+            username="wh-sec-user",
+            password="pass12345",
+            first_name="WH",
+            last_name="Sec",
+            role=role,
+            current_shop=self.shop_a,
+        )
+        self.user.shops.add(self.shop_a)
+
+        category = Category.objects.create(name="Parts")
+        self.item = InventoryItem.objects.create(
+            name="Дисплей",
+            sku="LCD-SEC",
+            item_type="component",
+            category=category,
+            purchase_price=1000,
+            selling_price=2000,
+            created_by=self.user,
+        )
+        self.balance_b, _ = StockBalance.objects.get_or_create(
+            shop=self.shop_b, item=self.item
+        )
+        supplier = Supplier.objects.create(name="Supplier Sec")
+        self.po_b = PurchaseOrder.objects.create(
+            supplier=supplier,
+            shop=self.shop_b,
+            created_by=self.user,
+        )
+
+    def _auth_headers(self):
+        payload = {
+            "user_id": self.user.id,
+            "username": self.user.username,
+            "exp": timezone.now() + timedelta(days=1),
+            "iat": timezone.now(),
+        }
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+        return {
+            "HTTP_AUTHORIZATION": f"Bearer {token}",
+            "HTTP_X_CURRENT_SHOP": str(self.shop_a.id),
+        }
+
+    def test_stock_movement_cross_shop_is_rejected(self):
+        """User in shop_a cannot create a stock movement for shop_b's StockBalance."""
+        response = self.client.post(
+            "/api/inventory/stock-movement",
+            data=json.dumps(
+                {
+                    "stock_balance_id": self.balance_b.id,
+                    "movement_type": "IN",
+                    "quantity_change": 10,
+                    "notes": "IDOR attempt",
+                }
+            ),
+            content_type="application/json",
+            **self._auth_headers(),
+        )
+        self.assertIn(response.status_code, (403, 401), response.content)
+        self.assertEqual(StockMovement.objects.count(), 0)
+
+    def test_purchase_order_receive_cross_shop_is_rejected(self):
+        """User in shop_a cannot receive a PurchaseOrder that belongs to shop_b."""
+        response = self.client.post(
+            f"/api/inventory/purchase-orders/{self.po_b.id}/receive",
+            data=json.dumps({"items": []}),
+            content_type="application/json",
+            **self._auth_headers(),
+        )
+        self.assertIn(response.status_code, (403, 401), response.content)
