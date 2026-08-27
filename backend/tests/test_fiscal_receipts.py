@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.test import TestCase
 from django.utils import timezone
 
@@ -12,7 +13,7 @@ from finance.fiscal_receipts import (
     receipt_snapshot_to_tbank,
     receipt_snapshot_to_yookassa,
 )
-from finance.models import Payment, PaymentMethod
+from finance.models import Payment, PaymentMethod, PaymentReceipt
 from inventory.models import Category, InventoryItem, RetailSale, RetailSaleItem
 from orders.models import AdditionalService, Order, OrderService
 from shops.models import Organization, Shop, ShopSettings
@@ -176,3 +177,56 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+    def test_mismatched_retail_payment_saves_failed_receipt_without_rolling_back_payment(
+        self,
+    ):
+        """Regression: ValueError from build_payment_receipt_snapshot must not propagate
+        through @transaction.atomic and roll back the Payment row created by the caller."""
+        category = Category.objects.create(name="Запчасти")
+        item = InventoryItem.objects.create(
+            name="Чехол",
+            sku="CASE-1",
+            item_type=InventoryItem.ItemType.COMPONENT,
+            category=category,
+            purchase_price=Decimal("500"),
+            selling_price=Decimal("1000"),
+            created_by=self.user,
+        )
+        sale = RetailSale.objects.create(
+            shop=self.shop,
+            cashier=self.user,
+            customer=self.customer,
+            subtotal=Decimal("1000"),
+            total_amount=Decimal("1000"),
+        )
+        RetailSaleItem.objects.create(
+            sale=sale,
+            item=item,
+            quantity=1,
+            unit_price=Decimal("1000"),
+            total_price=Decimal("1000"),
+        )
+
+        # Simulate the router's @transaction.atomic wrapping the payment creation +
+        # receipt call. Before the fix, the ValueError from build_payment_receipt_snapshot
+        # propagated out and rolled back this entire block, losing the Payment row.
+        with transaction.atomic():
+            payment = Payment.objects.create(
+                payment_type=Payment.PaymentType.INCOME,
+                status=Payment.PaymentStatus.COMPLETED,
+                amount=Decimal("1200"),  # mismatch: sale total is 1000
+                payment_method=self.cash,
+                retail_sale=sale,
+                payment_date=timezone.now(),
+                created_by=self.user,
+            )
+            receipt = create_or_update_payment_receipt(payment)
+
+        self.assertTrue(
+            Payment.objects.filter(id=payment.id).exists(),
+            "Payment must survive even when receipt snapshot raises ValueError",
+        )
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertIn("фискальный", receipt.error_message)
