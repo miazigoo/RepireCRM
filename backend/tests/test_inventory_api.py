@@ -655,3 +655,127 @@ class InventoryApiTestCase(TestCase):
         self.assertEqual(response.status_code, 400, response.content)
         self.assertIn("уже добавлен", response.json()["error"])
         self.assertFalse(PurchaseRequest.objects.exists())
+
+
+class InventoryCrossShopSecurityTests(TestCase):
+    """Regression tests for IDOR bugs in stock-movement and purchase-order receipt endpoints."""
+
+    def setUp(self):
+        self.shop_a = Shop.objects.create(
+            name="Shop A", code="SHA", timezone="Europe/Moscow", currency="RUB"
+        )
+        self.shop_b = Shop.objects.create(
+            name="Shop B", code="SHB", timezone="Europe/Moscow", currency="RUB"
+        )
+        role = Role.objects.create(name="Warehouse B", code=Role.RoleType.MANAGER)
+        for codename in (
+            "inventory.add_movement",
+            "inventory.receive_purchase_orders",
+            "inventory.receive_purchase",
+        ):
+            perm, _ = Permission.objects.get_or_create(
+                codename=codename,
+                defaults={
+                    "name": codename,
+                    "category": Permission.PermissionCategory.INVENTORY,
+                },
+            )
+            role.permissions.add(perm)
+        self.user_b = User.objects.create_user(
+            username="user-shop-b",
+            password="pass12345",
+            role=role,
+            current_shop=self.shop_b,
+        )
+        self.user_b.shops.add(self.shop_b)
+
+        category = Category.objects.create(name="Parts")
+        self.item = InventoryItem.objects.create(
+            name="Battery",
+            sku="BAT-X",
+            item_type="component",
+            category=category,
+            purchase_price=500,
+            selling_price=1000,
+            created_by=self.user_b,
+        )
+        self.balance_a = StockBalance.objects.get_or_create(
+            shop=self.shop_a, item=self.item
+        )[0]
+
+    def _auth_headers(self, shop):
+        payload = {
+            "user_id": self.user_b.id,
+            "username": self.user_b.username,
+            "exp": timezone.now() + timedelta(days=1),
+            "iat": timezone.now(),
+        }
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+        return {
+            "HTTP_AUTHORIZATION": f"Bearer {token}",
+            "HTTP_X_CURRENT_SHOP": str(shop.id),
+        }
+
+    def test_stock_movement_blocks_cross_shop_balance(self):
+        """User scoped to Shop B must not be able to move stock in Shop A's balance."""
+        response = self.client.post(
+            "/api/inventory/stock-movement",
+            data=json.dumps(
+                {
+                    "stock_balance_id": self.balance_a.id,
+                    "movement_type": "adjustment",
+                    "quantity_change": 10,
+                }
+            ),
+            content_type="application/json",
+            **self._auth_headers(self.shop_b),
+        )
+        self.assertEqual(
+            response.status_code,
+            403,
+            f"Expected 403, got {response.status_code}: {response.content}",
+        )
+        self.assertEqual(StockMovement.objects.count(), 0)
+
+    def test_stock_movement_endpoint_accepts_json_body(self):
+        """stock-movement endpoint must parse JSON body (Body(...) annotation required)."""
+        balance_b = StockBalance.objects.get_or_create(
+            shop=self.shop_b, item=self.item
+        )[0]
+        response = self.client.post(
+            "/api/inventory/stock-movement",
+            data=json.dumps(
+                {
+                    "stock_balance_id": balance_b.id,
+                    "movement_type": "adjustment",
+                    "quantity_change": 5,
+                }
+            ),
+            content_type="application/json",
+            **self._auth_headers(self.shop_b),
+        )
+        self.assertNotEqual(
+            response.status_code,
+            422,
+            "Endpoint must not return 422 (missing Body(...) annotation)",
+        )
+
+    def test_receive_purchase_order_blocks_cross_shop_order(self):
+        """User scoped to Shop B must not be able to receive a PO belonging to Shop A."""
+        supplier = Supplier.objects.create(name="Test Supplier")
+        po = PurchaseOrder.objects.create(
+            shop=self.shop_a,
+            supplier=supplier,
+            created_by=self.user_b,
+        )
+        response = self.client.post(
+            f"/api/inventory/purchase-orders/{po.id}/receive",
+            data=json.dumps({"items": []}),
+            content_type="application/json",
+            **self._auth_headers(self.shop_b),
+        )
+        self.assertEqual(
+            response.status_code,
+            403,
+            f"Expected 403, got {response.status_code}: {response.content}",
+        )
