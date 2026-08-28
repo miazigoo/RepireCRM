@@ -176,3 +176,51 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+    def test_retail_sale_amount_mismatch_saves_failed_receipt_not_raises(self):
+        """Regression: ValueError from build_payment_receipt_snapshot must not
+        propagate through @transaction.atomic and roll back the Payment row."""
+        category = Category.objects.create(name="Чехлы")
+        item = InventoryItem.objects.create(
+            name="Чехол",
+            sku="CASE-1",
+            item_type=InventoryItem.ItemType.COMPONENT,
+            category=category,
+            purchase_price=Decimal("300"),
+            selling_price=Decimal("900"),
+            created_by=self.user,
+        )
+        sale = RetailSale.objects.create(
+            shop=self.shop,
+            cashier=self.user,
+            customer=self.customer,
+            subtotal=Decimal("900"),
+            total_amount=Decimal("900"),
+        )
+        RetailSaleItem.objects.create(
+            sale=sale,
+            item=item,
+            quantity=1,
+            unit_price=Decimal("900"),
+            total_price=Decimal("900"),
+        )
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("800"),  # mismatch — triggers ValueError
+            payment_method=self.cash,
+            retail_sale=sale,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        # Must return a FAILED receipt, not raise an exception
+        self.assertIsNotNone(receipt)
+        from finance.models import PaymentReceipt
+
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertIn("фискальный", receipt.error_message)
+        # Payment row must still exist (not rolled back)
+        self.assertTrue(Payment.objects.filter(id=payment.id).exists())
