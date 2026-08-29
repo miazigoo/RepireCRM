@@ -176,3 +176,53 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+    def test_amount_mismatch_saves_failed_receipt_instead_of_raising(self):
+        """ValueError from build_payment_receipt_snapshot must not propagate.
+
+        If it does, the @transaction.atomic wrapper in pay_retail_sale /
+        create_payment_for_order rolls back the Payment row — money changes
+        hands but no DB record survives.
+        """
+        category = Category.objects.create(name="Запчасти v2")
+        item = InventoryItem.objects.create(
+            name="Экран",
+            sku="SCRN-1",
+            item_type=InventoryItem.ItemType.COMPONENT,
+            category=category,
+            purchase_price=Decimal("3000"),
+            selling_price=Decimal("7000"),
+            created_by=self.user,
+        )
+        sale = RetailSale.objects.create(
+            shop=self.shop,
+            cashier=self.user,
+            customer=self.customer,
+            subtotal=Decimal("7000"),
+            total_amount=Decimal("7000"),
+        )
+        RetailSaleItem.objects.create(
+            sale=sale,
+            item=item,
+            quantity=1,
+            unit_price=Decimal("7000"),
+            total_price=Decimal("7000"),
+        )
+        # Payment amount deliberately mismatches sale total — triggers ValueError
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("5000"),
+            payment_method=self.cash,
+            retail_sale=sale,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, "failed")
+        self.assertIn("фискальный", receipt.error_message.lower())
+        # The Payment row must survive — no transaction rollback from ValueError
+        self.assertTrue(Payment.objects.filter(id=payment.id).exists())
