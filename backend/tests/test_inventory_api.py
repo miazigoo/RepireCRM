@@ -655,3 +655,131 @@ class InventoryApiTestCase(TestCase):
         self.assertEqual(response.status_code, 400, response.content)
         self.assertIn("уже добавлен", response.json()["error"])
         self.assertFalse(PurchaseRequest.objects.exists())
+
+
+class InventoryCrossShopSecurityTests(TestCase):
+    """Verify IDOR protections on stock-movement and purchase-order receive."""
+
+    def setUp(self):
+        import jwt
+        from django.conf import settings
+        from django.utils import timezone
+        from datetime import timedelta
+
+        self._jwt = jwt
+        self._settings = settings
+        self._timezone = timezone
+        self._timedelta = timedelta
+
+        self.shop_a = Shop.objects.create(name="Shop A", code="SHPA", currency="RUB")
+        self.shop_b = Shop.objects.create(name="Shop B", code="SHPB", currency="RUB")
+
+        role = Role.objects.create(name="WarehouseB", code="warehouseb")
+        for codename in (
+            "inventory.add_movement",
+            "inventory.receive_purchase_orders",
+        ):
+            perm, _ = Permission.objects.get_or_create(
+                codename=codename,
+                defaults={
+                    "name": codename,
+                    "category": Permission.PermissionCategory.INVENTORY,
+                },
+            )
+            role.permissions.add(perm)
+
+        self.user_b = User.objects.create_user(
+            username="user-shop-b",
+            password="pass12345",
+            role=role,
+            current_shop=self.shop_b,
+        )
+        self.user_b.shops.add(self.shop_b)
+
+        category = Category.objects.create(name="Parts")
+        self.item = InventoryItem.objects.create(
+            name="Battery",
+            sku="BAT-X",
+            item_type="component",
+            category=category,
+            purchase_price=100,
+            selling_price=200,
+            created_by=self.user_b,
+        )
+        self.balance_a, _ = StockBalance.objects.get_or_create(
+            shop=self.shop_a, item=self.item
+        )
+        self.balance_a.quantity = 10
+        self.balance_a.save()
+
+        supplier = Supplier.objects.create(name="Supplier X")
+        self.po_a = PurchaseOrder.objects.create(
+            shop=self.shop_a,
+            supplier=supplier,
+            created_by=self.user_b,
+        )
+
+    def _auth_headers_b(self):
+        payload = {
+            "user_id": self.user_b.id,
+            "username": self.user_b.username,
+            "exp": self._timezone.now() + self._timedelta(days=1),
+            "iat": self._timezone.now(),
+        }
+        token = self._jwt.encode(payload, self._settings.SECRET_KEY, algorithm="HS256")
+        return {
+            "HTTP_AUTHORIZATION": f"Bearer {token}",
+            "HTTP_X_CURRENT_SHOP": str(self.shop_b.id),
+        }
+
+    def test_stock_movement_blocked_for_other_shop_balance(self):
+        """User from shop B cannot manipulate stock balance that belongs to shop A."""
+        response = self.client.post(
+            "/api/inventory/stock-movement",
+            data=json.dumps(
+                {
+                    "stock_balance_id": self.balance_a.id,
+                    "movement_type": "adjustment",
+                    "quantity_change": -10,
+                    "notes": "IDOR attempt",
+                }
+            ),
+            content_type="application/json",
+            **self._auth_headers_b(),
+        )
+        self.assertEqual(response.status_code, 403, response.content)
+        self.balance_a.refresh_from_db()
+        self.assertEqual(self.balance_a.quantity, 10)
+
+    def test_stock_movement_endpoint_accepts_json_body(self):
+        """Endpoint must not return 422 when called with a valid JSON body."""
+        balance_b, _ = StockBalance.objects.get_or_create(
+            shop=self.shop_b, item=self.item
+        )
+        balance_b.quantity = 5
+        balance_b.save()
+
+        response = self.client.post(
+            "/api/inventory/stock-movement",
+            data=json.dumps(
+                {
+                    "stock_balance_id": balance_b.id,
+                    "movement_type": "adjustment",
+                    "quantity_change": 1,
+                    "notes": "legitimate",
+                }
+            ),
+            content_type="application/json",
+            **self._auth_headers_b(),
+        )
+        self.assertNotEqual(response.status_code, 422, response.content)
+
+    def test_purchase_order_receive_blocked_for_other_shop(self):
+        """User from shop B cannot receive a purchase order that belongs to shop A."""
+        response = self.client.post(
+            f"/api/inventory/purchase-orders/{self.po_a.id}/receive",
+            data=json.dumps({"items": []}),
+            content_type="application/json",
+            **self._auth_headers_b(),
+        )
+        self.assertEqual(response.status_code, 403, response.content)
