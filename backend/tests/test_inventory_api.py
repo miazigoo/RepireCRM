@@ -655,3 +655,150 @@ class InventoryApiTestCase(TestCase):
         self.assertEqual(response.status_code, 400, response.content)
         self.assertIn("уже добавлен", response.json()["error"])
         self.assertFalse(PurchaseRequest.objects.exists())
+
+
+class InventoryCrossShopSecurityTests(TestCase):
+    """Regression tests for IDOR vulnerabilities in inventory endpoints."""
+
+    def setUp(self):
+        self.attacker_shop = Shop.objects.create(
+            name="Attacker Shop", code="ATK01", timezone="Europe/Moscow", currency="RUB"
+        )
+        self.victim_shop = Shop.objects.create(
+            name="Victim Shop", code="VIC01", timezone="Europe/Moscow", currency="RUB"
+        )
+        role = Role.objects.create(name="Attacker Role", code="attacker")
+        for codename in (
+            "inventory.add_movement",
+            "inventory.receive_purchase_orders",
+        ):
+            perm, _ = Permission.objects.get_or_create(
+                codename=codename,
+                defaults={
+                    "name": codename,
+                    "category": Permission.PermissionCategory.INVENTORY,
+                },
+            )
+            role.permissions.add(perm)
+        self.attacker = User.objects.create_user(
+            username="attacker",
+            password="pass12345",
+            role=role,
+            current_shop=self.attacker_shop,
+        )
+        self.attacker.shops.add(self.attacker_shop)
+
+    def _auth_headers(self):
+        import jwt
+        from django.conf import settings
+        from django.utils import timezone
+        from datetime import timedelta
+
+        payload = {
+            "user_id": self.attacker.id,
+            "username": self.attacker.username,
+            "exp": timezone.now() + timedelta(days=1),
+            "iat": timezone.now(),
+        }
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+        return {
+            "HTTP_AUTHORIZATION": f"Bearer {token}",
+            "HTTP_X_CURRENT_SHOP": str(self.attacker_shop.id),
+        }
+
+    def test_stock_movement_rejects_cross_shop_balance(self):
+        """Attacker cannot manipulate stock in a victim shop via IDOR."""
+        import json
+
+        category = Category.objects.create(name="Комплектующие")
+        item = InventoryItem.objects.create(
+            name="Дисплей",
+            sku="LCD-CROSS",
+            item_type="component",
+            category=category,
+            purchase_price=3000,
+            selling_price=6000,
+            created_by=self.attacker,
+        )
+        victim_balance, _ = StockBalance.objects.get_or_create(
+            shop=self.victim_shop, item=item
+        )
+        victim_balance.quantity = 50
+        victim_balance.save()
+
+        response = self.client.post(
+            "/api/inventory/stock-movement",
+            data=json.dumps(
+                {
+                    "stock_balance_id": victim_balance.id,
+                    "movement_type": "write_off",
+                    "quantity_change": -50,
+                    "notes": "cross-shop theft",
+                }
+            ),
+            content_type="application/json",
+            **self._auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 403, response.content)
+        victim_balance.refresh_from_db()
+        self.assertEqual(victim_balance.quantity, 50)
+
+    def test_receive_purchase_order_rejects_cross_shop_order(self):
+        """Attacker cannot receive purchase orders belonging to another shop."""
+        import json
+
+        victim_supplier = Supplier.objects.create(name="Жертва Поставщик")
+        victim_order = PurchaseOrder.objects.create(
+            shop=self.victim_shop,
+            supplier=victim_supplier,
+            status=PurchaseOrder.OrderStatus.SENT,
+            created_by=self.attacker,
+        )
+
+        response = self.client.post(
+            f"/api/inventory/purchase-orders/{victim_order.id}/receive",
+            data=json.dumps({"items": []}),
+            content_type="application/json",
+            **self._auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 403, response.content)
+
+    def test_stock_movement_endpoint_accepts_json_body(self):
+        """Stock movement endpoint must parse JSON body (Body(...) annotation present)."""
+        import json
+
+        category = Category.objects.create(name="Тест")
+        item = InventoryItem.objects.create(
+            name="Тестовый товар",
+            sku="TEST-BODY",
+            item_type="component",
+            category=category,
+            purchase_price=100,
+            selling_price=200,
+            created_by=self.attacker,
+        )
+        own_balance, _ = StockBalance.objects.get_or_create(
+            shop=self.attacker_shop, item=item
+        )
+        own_balance.quantity = 10
+        own_balance.save()
+
+        response = self.client.post(
+            "/api/inventory/stock-movement",
+            data=json.dumps(
+                {
+                    "stock_balance_id": own_balance.id,
+                    "movement_type": "adjustment",
+                    "quantity_change": 5,
+                    "notes": "restock",
+                }
+            ),
+            content_type="application/json",
+            **self._auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        own_balance.refresh_from_db()
+        self.assertEqual(own_balance.quantity, 15)
