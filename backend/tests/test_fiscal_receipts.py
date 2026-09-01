@@ -12,7 +12,7 @@ from finance.fiscal_receipts import (
     receipt_snapshot_to_tbank,
     receipt_snapshot_to_yookassa,
 )
-from finance.models import Payment, PaymentMethod
+from finance.models import Payment, PaymentMethod, PaymentReceipt
 from inventory.models import Category, InventoryItem, RetailSale, RetailSaleItem
 from orders.models import AdditionalService, Order, OrderService
 from shops.models import Organization, Shop, ShopSettings
@@ -176,3 +176,50 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+    def test_retail_sale_amount_mismatch_records_failed_receipt_not_exception(self):
+        """
+        Regression: when fiscal snapshot raises ValueError (e.g. amount mismatch for a
+        retail sale payment), create_or_update_payment_receipt must NOT propagate the
+        exception. Instead it must save a FAILED PaymentReceipt so the payment row is
+        preserved and the caller receives a valid (failed) receipt object.
+        """
+        category = Category.objects.create(name="Тест")
+        item = InventoryItem.objects.create(
+            name="Тестовый товар",
+            sku="TEST-MISMATCH",
+            item_type=InventoryItem.ItemType.COMPONENT,
+            category=category,
+            purchase_price=Decimal("500"),
+            selling_price=Decimal("1000"),
+            created_by=self.user,
+        )
+        sale = RetailSale.objects.create(
+            shop=self.shop,
+            cashier=self.user,
+            subtotal=Decimal("1000"),
+            total_amount=Decimal("1000"),
+        )
+        RetailSaleItem.objects.create(
+            sale=sale,
+            item=item,
+            quantity=1,
+            unit_price=Decimal("1000"),
+            total_price=Decimal("1000"),
+        )
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("900"),
+            payment_method=self.cash,
+            retail_sale=sale,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertIn("фискальный", receipt.error_message.lower())
+        self.assertEqual(Payment.objects.filter(id=payment.id).count(), 1)
