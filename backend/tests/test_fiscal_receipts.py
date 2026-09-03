@@ -176,3 +176,53 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+    def test_receipt_snapshot_failure_saves_failed_receipt_instead_of_raising(self):
+        """ValueError from build_payment_receipt_snapshot must not propagate up.
+
+        If it does, it rolls back the enclosing @transaction.atomic block and the
+        Payment row is lost even though money changed hands.
+        """
+        category = Category.objects.create(name="Запчасти2")
+        item = InventoryItem.objects.create(
+            name="Экран",
+            sku="SCR-1",
+            item_type=InventoryItem.ItemType.COMPONENT,
+            category=category,
+            purchase_price=Decimal("2000"),
+            selling_price=Decimal("5000"),
+            created_by=self.user,
+        )
+        sale = RetailSale.objects.create(
+            shop=self.shop,
+            cashier=self.user,
+            customer=self.customer,
+            subtotal=Decimal("5000"),
+            total_amount=Decimal("5000"),
+        )
+        RetailSaleItem.objects.create(
+            sale=sale,
+            item=item,
+            quantity=1,
+            unit_price=Decimal("5000"),
+            total_price=Decimal("5000"),
+        )
+        # Amount mismatches total_amount of the sale → build_payment_receipt_snapshot
+        # raises ValueError inside fiscalization logic.
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("9999"),  # intentional mismatch
+            payment_method=self.cash,
+            retail_sale=sale,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        # Must NOT raise; must return a FAILED receipt instead
+        receipt = create_or_update_payment_receipt(payment)
+        self.assertIsNotNone(receipt)
+        from finance.models import PaymentReceipt
+
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertGreater(len(receipt.error_message), 0)
