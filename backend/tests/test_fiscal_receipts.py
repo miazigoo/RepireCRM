@@ -176,3 +176,27 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+    def test_amount_mismatch_saves_failed_receipt_instead_of_rolling_back_payment(self):
+        """ValueError from build_payment_receipt_snapshot must NOT propagate through
+        @transaction.atomic and roll back the enclosing transaction. Instead a FAILED
+        receipt row must be written so the Payment row is preserved."""
+        order = self.create_order(prepayment=Decimal("1000"))
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("9999"),
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        from finance.fiscal_receipts import create_or_update_payment_receipt as fn
+
+        receipt = fn(payment)
+
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, receipt.Status.FAILED)
+        self.assertTrue(receipt.error_message)
+        self.assertTrue(Payment.objects.filter(id=payment.id).exists())
