@@ -176,3 +176,51 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+    def test_value_error_in_snapshot_saves_failed_receipt_and_preserves_payment(self):
+        """ValueError from build_payment_receipt_snapshot must NOT roll back Payment."""
+        order = self.create_order()
+        # Payment amount does not match order cost_estimate → triggers the
+        # "сумма фискального чека не сходится с оплатами" ValueError path.
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("9999"),
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        # Payment row must still exist — not rolled back.
+        from finance.models import Payment as PaymentModel
+
+        self.assertTrue(PaymentModel.objects.filter(id=payment.id).exists())
+        # A FAILED receipt must have been persisted with the error recorded.
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, "failed")
+        self.assertTrue(receipt.error_message)
+
+    def test_value_error_idempotent_second_call_updates_failed_receipt(self):
+        """Calling create_or_update_payment_receipt twice for the same failing payment
+        must update the existing FAILED receipt rather than create a duplicate."""
+        order = self.create_order()
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("9999"),
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        receipt_first = create_or_update_payment_receipt(payment)
+        receipt_second = create_or_update_payment_receipt(payment)
+
+        from finance.models import PaymentReceipt
+
+        self.assertEqual(PaymentReceipt.objects.filter(payment=payment).count(), 1)
+        self.assertEqual(receipt_first.id, receipt_second.id)
