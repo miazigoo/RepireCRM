@@ -176,3 +176,59 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+    def test_fiscal_receipt_value_error_saves_failed_receipt_and_preserves_payment(
+        self,
+    ):
+        """
+        Regression: ValueError from build_payment_receipt_snapshot must NOT propagate
+        through create_or_update_payment_receipt and roll back the Payment row.
+        The function should instead record a FAILED receipt and return it, leaving
+        the Payment intact.
+        """
+        order = self.create_order()
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("0"),
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+            fiscal_required=True,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        self.assertIsNotNone(receipt)
+        from finance.models import PaymentReceipt
+
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertTrue(receipt.error_message)
+        Payment.objects.get(id=payment.id)
+
+    def test_fiscal_receipt_overpayment_value_error_saves_failed_receipt(self):
+        """
+        Regression: overpayment triggers ValueError in _build_order_components.
+        Payment row must survive; receipt must be FAILED with an error message.
+        """
+        order = self.create_order()
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("99999"),
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+            fiscal_required=True,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        self.assertIsNotNone(receipt)
+        from finance.models import PaymentReceipt
+
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertTrue(receipt.error_message)
+        Payment.objects.get(id=payment.id)

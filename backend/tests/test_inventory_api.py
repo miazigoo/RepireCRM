@@ -655,3 +655,121 @@ class InventoryApiTestCase(TestCase):
         self.assertEqual(response.status_code, 400, response.content)
         self.assertIn("уже добавлен", response.json()["error"])
         self.assertFalse(PurchaseRequest.objects.exists())
+
+
+class InventoryCrossShopSecurityTests(TestCase):
+    """Regression tests for cross-shop IDOR vulnerabilities in inventory endpoints."""
+
+    def setUp(self):
+        self.shop_a = Shop.objects.create(
+            name="Shop A", code="SHPA", timezone="Europe/Moscow", currency="RUB"
+        )
+        self.shop_b = Shop.objects.create(
+            name="Shop B", code="SHPB", timezone="Europe/Moscow", currency="RUB"
+        )
+
+        role = Role.objects.create(name="Warehouse", code=Role.RoleType.MANAGER)
+        for codename in (
+            "inventory.add_movement",
+            "inventory.receive_purchase_orders",
+        ):
+            perm, _ = Permission.objects.get_or_create(
+                codename=codename,
+                defaults={
+                    "name": codename,
+                    "category": Permission.PermissionCategory.INVENTORY,
+                },
+            )
+            role.permissions.add(perm)
+
+        self.user_a = User.objects.create_user(
+            username="user-a",
+            password="pass12345",
+            first_name="User",
+            last_name="A",
+            role=role,
+            current_shop=self.shop_a,
+        )
+        self.user_a.shops.add(self.shop_a)
+
+    def _auth_headers(self, shop):
+        payload = {
+            "user_id": self.user_a.id,
+            "username": self.user_a.username,
+            "exp": timezone.now() + timedelta(days=1),
+            "iat": timezone.now(),
+        }
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+        return {
+            "HTTP_AUTHORIZATION": f"Bearer {token}",
+            "HTTP_X_CURRENT_SHOP": str(shop.id),
+        }
+
+    def test_stock_movement_blocked_for_balance_in_other_shop(self):
+        """User scoped to shop_a cannot create movements against shop_b stock."""
+        category = Category.objects.create(name="Тест")
+        item = InventoryItem.objects.create(
+            name="Тестовый товар",
+            sku="TST-001",
+            item_type="component",
+            category=category,
+            purchase_price=100,
+            selling_price=200,
+            created_by=self.user_a,
+        )
+        balance_b, _ = StockBalance.objects.get_or_create(
+            shop=self.shop_b, item=item
+        )
+
+        response = self.client.post(
+            "/api/inventory/stock-movement",
+            data=json.dumps(
+                {
+                    "stock_balance_id": balance_b.id,
+                    "movement_type": "adjustment",
+                    "quantity_change": 99,
+                }
+            ),
+            content_type="application/json",
+            **self._auth_headers(self.shop_a),
+        )
+
+        self.assertEqual(response.status_code, 403, response.content)
+        balance_b.refresh_from_db()
+        self.assertEqual(balance_b.quantity, 0)
+
+    def test_receive_purchase_order_blocked_for_order_in_other_shop(self):
+        """User scoped to shop_a cannot receive a purchase order belonging to shop_b."""
+        supplier = Supplier.objects.create(name="Поставщик")
+        category = Category.objects.create(name="Дисплеи")
+        item = InventoryItem.objects.create(
+            name="Дисплей",
+            sku="DSP-001",
+            item_type="component",
+            category=category,
+            purchase_price=3000,
+            selling_price=6000,
+            created_by=self.user_a,
+        )
+        order_b = PurchaseOrder.objects.create(
+            shop=self.shop_b,
+            supplier=supplier,
+            created_by=self.user_a,
+        )
+        PurchaseOrderItem.objects.create(
+            purchase_order=order_b,
+            item=item,
+            ordered_quantity=1,
+            unit_price=3000,
+        )
+
+        response = self.client.post(
+            f"/api/inventory/purchase-orders/{order_b.id}/receive",
+            data=json.dumps(
+                {"items": [{"item_id": item.id, "quantity": 1, "unit_price": 3000}]}
+            ),
+            content_type="application/json",
+            **self._auth_headers(self.shop_a),
+        )
+
+        self.assertEqual(response.status_code, 403, response.content)
