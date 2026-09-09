@@ -176,3 +176,49 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+    def test_amount_mismatch_saves_failed_receipt_instead_of_rolling_back(self):
+        """Regression: ValueError from build_payment_receipt_snapshot must not propagate
+        through @transaction.atomic and erase the Payment row."""
+        order = self.create_order()
+        # Amount deliberately mismatches cost_estimate (5000) to trigger ValueError
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("9999"),
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        from finance.models import PaymentReceipt
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertTrue(receipt.error_message)
+        # Payment row must still exist — no data loss
+        self.assertTrue(Payment.objects.filter(id=payment.id).exists())
+
+    def test_amount_mismatch_is_idempotent(self):
+        """Calling create_or_update_payment_receipt twice with mismatching amount
+        must update the existing FAILED receipt rather than creating a second one."""
+        order = self.create_order()
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("9999"),
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        from finance.models import PaymentReceipt
+
+        create_or_update_payment_receipt(payment)
+        create_or_update_payment_receipt(payment)
+
+        self.assertEqual(PaymentReceipt.objects.filter(payment=payment).count(), 1)

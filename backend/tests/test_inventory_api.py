@@ -655,3 +655,103 @@ class InventoryApiTestCase(TestCase):
         self.assertEqual(response.status_code, 400, response.content)
         self.assertIn("уже добавлен", response.json()["error"])
         self.assertFalse(PurchaseRequest.objects.exists())
+
+
+class InventoryCrossShopSecurityTests(TestCase):
+    """Regression tests for IDOR vulnerabilities in inventory endpoints."""
+
+    def setUp(self):
+        self.shop_a = Shop.objects.create(name="Shop A", code="SHPA", currency="RUB")
+        self.shop_b = Shop.objects.create(name="Shop B", code="SHPB", currency="RUB")
+
+        role = Role.objects.create(name="Warehouse B", code=Role.RoleType.MANAGER)
+        for codename in (
+            "inventory.add_movement",
+            "inventory.receive_purchase_orders",
+            "inventory.view_item",
+            "inventory.view_stock",
+        ):
+            perm, _ = Permission.objects.get_or_create(
+                codename=codename,
+                defaults={
+                    "name": codename,
+                    "category": Permission.PermissionCategory.INVENTORY,
+                },
+            )
+            role.permissions.add(perm)
+
+        self.user_b = User.objects.create_user(
+            username="user-shop-b",
+            password="pass12345",
+            role=role,
+            current_shop=self.shop_b,
+        )
+        self.user_b.shops.add(self.shop_b)
+
+        category = Category.objects.create(name="Parts")
+        self.item = InventoryItem.objects.create(
+            name="Battery",
+            sku="BAT-X",
+            item_type=InventoryItem.ItemType.COMPONENT,
+            category=category,
+            purchase_price=500,
+            selling_price=1000,
+            created_by=self.user_b,
+        )
+        # StockBalance for shop_a is auto-created by signal; fetch it
+        self.balance_a = StockBalance.objects.get(shop=self.shop_a, item=self.item)
+
+        supplier = Supplier.objects.create(name="Sup")
+        self.po_a = PurchaseOrder.objects.create(
+            shop=self.shop_a,
+            supplier=supplier,
+            status=PurchaseOrder.OrderStatus.CONFIRMED,
+            created_by=self.user_b,
+        )
+        PurchaseOrderItem.objects.create(
+            purchase_order=self.po_a,
+            item=self.item,
+            ordered_quantity=5,
+            unit_price=500,
+        )
+
+    def auth_headers_for_shop_b(self):
+        payload = {
+            "user_id": self.user_b.id,
+            "username": self.user_b.username,
+            "exp": timezone.now() + timedelta(days=1),
+            "iat": timezone.now(),
+        }
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+        return {
+            "HTTP_AUTHORIZATION": f"Bearer {token}",
+            "HTTP_X_CURRENT_SHOP": str(self.shop_b.id),
+        }
+
+    def test_stock_movement_blocked_for_other_shop_balance(self):
+        """User scoped to shop B must not be able to adjust stock balance of shop A."""
+        response = self.client.post(
+            "/api/inventory/stock-movement",
+            data=json.dumps(
+                {
+                    "stock_balance_id": self.balance_a.id,
+                    "movement_type": "adjustment",
+                    "quantity_change": 999,
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers_for_shop_b(),
+        )
+        self.assertEqual(response.status_code, 403, response.content)
+        self.balance_a.refresh_from_db()
+        self.assertEqual(self.balance_a.quantity, 0)
+
+    def test_purchase_order_receive_blocked_for_other_shop(self):
+        """User scoped to shop B must not be able to receive a purchase order of shop A."""
+        response = self.client.post(
+            f"/api/inventory/purchase-orders/{self.po_a.id}/receive",
+            data=json.dumps({"items": []}),
+            content_type="application/json",
+            **self.auth_headers_for_shop_b(),
+        )
+        self.assertEqual(response.status_code, 403, response.content)
