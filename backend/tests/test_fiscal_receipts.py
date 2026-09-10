@@ -176,3 +176,28 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+    def test_overpayment_creates_failed_receipt_without_data_loss(self):
+        """ValueError от build_payment_receipt_snapshot НЕ должен откатывать Payment"""
+        from django.db import transaction
+
+        from finance.models import PaymentReceipt
+
+        order = self.create_order()
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("9999"),
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        with transaction.atomic():
+            receipt = create_or_update_payment_receipt(payment)
+
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertTrue(receipt.error_message)
+        self.assertTrue(Payment.objects.filter(id=payment.id).exists())
