@@ -655,3 +655,104 @@ class InventoryApiTestCase(TestCase):
         self.assertEqual(response.status_code, 400, response.content)
         self.assertIn("уже добавлен", response.json()["error"])
         self.assertFalse(PurchaseRequest.objects.exists())
+
+
+class InventoryCrossShopSecurityTests(TestCase):
+    """Regression tests: IDOR guards on stock-movement and purchase-order receive."""
+
+    def setUp(self):
+        perm_codenames = [
+            "inventory.add_movement",
+            "inventory.receive_purchase_orders",
+            "inventory.view_stock",
+        ]
+        role = Role.objects.create(name="AttackerRole", code="attacker_role")
+        for codename in perm_codenames:
+            perm, _ = Permission.objects.get_or_create(
+                codename=codename,
+                defaults={
+                    "name": codename,
+                    "category": Permission.PermissionCategory.INVENTORY,
+                },
+            )
+            role.permissions.add(perm)
+
+        self.attacker_shop = Shop.objects.create(
+            name="Attacker Shop", code="ATK01", currency="RUB"
+        )
+        self.victim_shop = Shop.objects.create(
+            name="Victim Shop", code="VIC01", currency="RUB"
+        )
+        self.attacker = User.objects.create_user(
+            username="attacker",
+            password="pass12345",
+            role=role,
+            current_shop=self.attacker_shop,
+        )
+        self.attacker.shops.add(self.attacker_shop)
+
+        category = Category.objects.create(name="Parts")
+        self.item = InventoryItem.objects.create(
+            name="Battery",
+            sku="BAT-001",
+            item_type="component",
+            category=category,
+            purchase_price=100,
+            selling_price=200,
+            created_by=self.attacker,
+        )
+        self.victim_balance = StockBalance.objects.get(
+            item=self.item, shop=self.victim_shop
+        )
+        self.supplier = Supplier.objects.create(name="TestSupplier")
+        self.victim_order = PurchaseOrder.objects.create(
+            shop=self.victim_shop,
+            supplier=self.supplier,
+            created_by=self.attacker,
+        )
+
+    def _auth_headers(self):
+        import jwt
+        from django.conf import settings
+        from django.utils import timezone
+        from datetime import timedelta
+
+        payload = {
+            "user_id": self.attacker.id,
+            "username": self.attacker.username,
+            "exp": timezone.now() + timedelta(days=1),
+            "iat": timezone.now(),
+        }
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+        return {
+            "HTTP_AUTHORIZATION": f"Bearer {token}",
+            "HTTP_X_CURRENT_SHOP": str(self.attacker_shop.id),
+        }
+
+    def test_stock_movement_rejects_foreign_shop_balance(self):
+        """IDOR guard: attacker cannot write stock in victim shop via stock-movement."""
+        response = self.client.post(
+            "/api/inventory/stock-movement",
+            data=json.dumps(
+                {
+                    "stock_balance_id": self.victim_balance.id,
+                    "movement_type": "adjustment",
+                    "quantity_change": 999,
+                }
+            ),
+            content_type="application/json",
+            **self._auth_headers(),
+        )
+        self.assertEqual(response.status_code, 403, response.content)
+        self.victim_balance.refresh_from_db()
+        self.assertEqual(self.victim_balance.quantity, 0)
+
+    def test_receive_purchase_order_rejects_foreign_shop_order(self):
+        """IDOR guard: attacker cannot receive a purchase order from victim shop."""
+        response = self.client.post(
+            f"/api/inventory/purchase-orders/{self.victim_order.id}/receive",
+            data=json.dumps({"items": []}),
+            content_type="application/json",
+            **self._auth_headers(),
+        )
+        self.assertEqual(response.status_code, 403, response.content)

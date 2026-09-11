@@ -176,3 +176,27 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+    def test_receipt_value_error_does_not_roll_back_payment(self):
+        """Regression: ValueError in build_payment_receipt_snapshot must not roll back Payment."""
+        order = self.create_order()
+        order.cost_estimate = Decimal("100.00")
+        order.save()
+
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("999.00"),
+            payment_method=self.cash,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        self.assertIsNotNone(receipt)
+        from finance.models import PaymentReceipt
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertTrue(receipt.error_message)
+        self.assertTrue(Payment.objects.filter(id=payment.id).exists())
