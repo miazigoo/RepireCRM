@@ -176,3 +176,25 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+    def test_value_error_in_snapshot_saves_failed_receipt_instead_of_rolling_back(self):
+        """Regression: ValueError from build_payment_receipt_snapshot must not roll back
+        the enclosing transaction — the Payment row must survive and a FAILED receipt
+        must be persisted instead."""
+        order = self.create_order()
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("0"),
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, "failed")
+        self.assertTrue(receipt.error_message)
+        self.assertTrue(Payment.objects.filter(pk=payment.pk).exists())
