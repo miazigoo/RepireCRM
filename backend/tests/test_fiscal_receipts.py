@@ -176,3 +176,35 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+    def test_amount_mismatch_saves_failed_receipt_and_preserves_payment(self):
+        """Regression: ValueError from build_payment_receipt_snapshot must not
+        propagate through @transaction.atomic and roll back the Payment row."""
+        order = self.create_order()
+        service = AdditionalService.objects.create(
+            name="Диагностика",
+            category=AdditionalService.ServiceCategory.OTHER,
+            price=Decimal("500"),
+        )
+        OrderService.objects.create(order=order, service=service, price=Decimal("500"))
+        # Payment amount deliberately mismatches order total to trigger ValueError
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("9999"),
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        # Receipt must be saved as FAILED (not an unhandled exception)
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, "failed")
+        self.assertTrue(receipt.error_message)
+        # Payment row must still exist
+        from finance.models import Payment as PaymentModel
+
+        self.assertTrue(PaymentModel.objects.filter(id=payment.id).exists())
