@@ -655,3 +655,107 @@ class InventoryApiTestCase(TestCase):
         self.assertEqual(response.status_code, 400, response.content)
         self.assertIn("уже добавлен", response.json()["error"])
         self.assertFalse(PurchaseRequest.objects.exists())
+
+
+class InventoryCrossShopSecurityTests(TestCase):
+    """Regression tests for IDOR vulnerabilities in inventory endpoints."""
+
+    def _auth_headers(self, user, shop):
+        payload = {
+            "user_id": user.id,
+            "username": user.username,
+            "exp": timezone.now() + timedelta(days=1),
+            "iat": timezone.now(),
+        }
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+        return {
+            "HTTP_AUTHORIZATION": f"Bearer {token}",
+            "HTTP_X_CURRENT_SHOP": str(shop.id),
+        }
+
+    def setUp(self):
+        # One shared role — Role.code is unique, so both users must share it
+        role, _ = Role.objects.get_or_create(
+            code=Role.RoleType.MANAGER,
+            defaults={"name": "Cross-Shop Security Test Role"},
+        )
+        for codename in (
+            "inventory.add_movement",
+            "inventory.receive_purchase_orders",
+        ):
+            perm, _ = Permission.objects.get_or_create(
+                codename=codename,
+                defaults={
+                    "name": codename,
+                    "category": Permission.PermissionCategory.INVENTORY,
+                },
+            )
+            role.permissions.add(perm)
+
+        self.shop_a = Shop.objects.create(name="Shop A", code="SHOPA", currency="RUB")
+        self.shop_b = Shop.objects.create(name="Shop B", code="SHOPB", currency="RUB")
+
+        self.user_a = User.objects.create_user(
+            username="user_a_xshop",
+            password="pass12345",
+            role=role,
+            current_shop=self.shop_a,
+        )
+        self.user_a.shops.add(self.shop_a)
+
+        self.user_b = User.objects.create_user(
+            username="user_b_xshop",
+            password="pass12345",
+            role=role,
+            current_shop=self.shop_b,
+        )
+        self.user_b.shops.add(self.shop_b)
+        category = Category.objects.create(name="Parts")
+        self.item = InventoryItem.objects.create(
+            name="Battery",
+            sku="BAT-X1",
+            item_type=InventoryItem.ItemType.COMPONENT,
+            category=category,
+            purchase_price=500,
+            selling_price=1000,
+            created_by=self.user_a,
+        )
+        # StockBalance for shop_b is auto-created by signal when InventoryItem is saved
+        self.balance_b = StockBalance.objects.get(shop=self.shop_b, item=self.item)
+
+    def test_stock_movement_cannot_target_other_shop_balance(self):
+        """user_a authenticated to shop_a must not be able to move stock in shop_b."""
+        response = self.client.post(
+            "/api/inventory/stock-movement",
+            data=json.dumps(
+                {
+                    "stock_balance_id": self.balance_b.id,
+                    "movement_type": "in",
+                    "quantity_change": 10,
+                }
+            ),
+            content_type="application/json",
+            **self._auth_headers(self.user_a, self.shop_a),
+        )
+        self.assertEqual(response.status_code, 403, response.content)
+        self.balance_b.refresh_from_db()
+        self.assertEqual(self.balance_b.quantity, 0)
+
+    def test_receive_purchase_order_cannot_target_other_shop(self):
+        """user_a authenticated to shop_a must not be able to receive a shop_b PO."""
+        supplier = Supplier.objects.create(name="Supplier X", is_active=True)
+        order = PurchaseOrder.objects.create(
+            supplier=supplier,
+            shop=self.shop_b,
+            status=PurchaseOrder.OrderStatus.SENT,
+            created_by=self.user_b,
+        )
+        response = self.client.post(
+            f"/api/inventory/purchase-orders/{order.id}/receive",
+            data=json.dumps({"items": []}),
+            content_type="application/json",
+            **self._auth_headers(self.user_a, self.shop_a),
+        )
+        self.assertEqual(response.status_code, 403, response.content)
+        order.refresh_from_db()
+        self.assertEqual(order.status, PurchaseOrder.OrderStatus.SENT)
