@@ -655,3 +655,128 @@ class InventoryApiTestCase(TestCase):
         self.assertEqual(response.status_code, 400, response.content)
         self.assertIn("уже добавлен", response.json()["error"])
         self.assertFalse(PurchaseRequest.objects.exists())
+
+
+class InventoryCrossShopSecurityTests(TestCase):
+    """Regression tests for IDOR vulnerabilities in inventory endpoints."""
+
+    def setUp(self):
+        self.shop_a = Shop.objects.create(name="Shop A", code="SHPA")
+        self.shop_b = Shop.objects.create(name="Shop B", code="SHPB")
+
+        role = Role.objects.get_or_create(
+            code="inv_worker",
+            defaults={"name": "Inventory Worker"},
+        )[0]
+        for codename in (
+            "inventory.add_movement",
+            "inventory.receive_purchase_orders",
+            "inventory.view_stock",
+            "inventory.view_item",
+        ):
+            perm, _ = Permission.objects.get_or_create(
+                codename=codename,
+                defaults={
+                    "name": codename,
+                    "category": Permission.PermissionCategory.INVENTORY,
+                },
+            )
+            role.permissions.add(perm)
+
+        self.user_a = User.objects.create_user(
+            username="inv-user-a",
+            password="pass",
+            role=role,
+            current_shop=self.shop_a,
+        )
+        self.user_a.shops.add(self.shop_a)
+
+        category = Category.objects.create(name="Parts")
+        self.item = InventoryItem.objects.create(
+            name="Battery",
+            sku="BAT-X",
+            item_type="component",
+            category=category,
+            purchase_price=100,
+            selling_price=200,
+            created_by=self.user_a,
+        )
+        # StockBalance for shop_b is auto-created by signal; fetch it
+        self.balance_b = StockBalance.objects.get(shop=self.shop_b, item=self.item)
+        self.balance_b.quantity = 50
+        self.balance_b.save(update_fields=["quantity"])
+
+        from inventory.models import Supplier as SupplierModel
+
+        supplier = SupplierModel.objects.create(name="Test Supplier")
+        self.po_shop_b = PurchaseOrder.objects.create(
+            shop=self.shop_b,
+            supplier=supplier,
+            created_by=self.user_a,
+        )
+        PurchaseOrderItem.objects.create(
+            purchase_order=self.po_shop_b,
+            item=self.item,
+            ordered_quantity=5,
+            unit_price=100,
+        )
+
+    def _auth_headers(self, user, shop):
+        payload = {
+            "user_id": user.id,
+            "username": user.username,
+            "exp": timezone.now() + timedelta(days=1),
+            "iat": timezone.now(),
+        }
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+        return {
+            "HTTP_AUTHORIZATION": f"Bearer {token}",
+            "HTTP_X_CURRENT_SHOP": str(shop.id),
+        }
+
+    def test_stock_movement_blocked_for_other_shop_balance(self):
+        """User from shop_a must NOT be able to adjust stock belonging to shop_b."""
+        before = self.balance_b.quantity
+
+        response = self.client.post(
+            "/api/inventory/stock-movement",
+            data=json.dumps(
+                {
+                    "stock_balance_id": self.balance_b.id,
+                    "movement_type": "manual_in",
+                    "quantity_change": 10,
+                    "notes": "IDOR test",
+                }
+            ),
+            content_type="application/json",
+            **self._auth_headers(self.user_a, self.shop_a),
+        )
+
+        self.assertEqual(response.status_code, 403, response.content)
+        self.balance_b.refresh_from_db()
+        self.assertEqual(self.balance_b.quantity, before)
+
+    def test_purchase_order_receive_blocked_for_other_shop(self):
+        """User from shop_a must NOT be able to receive a PO that belongs to shop_b."""
+        response = self.client.post(
+            f"/api/inventory/purchase-orders/{self.po_shop_b.id}/receive",
+            data=json.dumps(
+                {
+                    "items": [
+                        {
+                            "item_id": self.item.id,
+                            "quantity_received": 2,
+                            "unit_cost": 100,
+                        }
+                    ]
+                }
+            ),
+            content_type="application/json",
+            **self._auth_headers(self.user_a, self.shop_a),
+        )
+
+        self.assertEqual(response.status_code, 403, response.content)
+        self.po_shop_b.refresh_from_db()
+        self.assertNotEqual(
+            self.po_shop_b.status, "received", "PO status must not change"
+        )

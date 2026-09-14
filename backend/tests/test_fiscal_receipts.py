@@ -176,3 +176,56 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+    def test_receipt_amount_mismatch_saves_failed_receipt_instead_of_raising(self):
+        """Regression: ValueError from build_payment_receipt_snapshot must NOT
+        propagate out of create_or_update_payment_receipt.  Instead the function
+        must store a FAILED receipt so the outer @transaction.atomic (in
+        create_payment_for_order / pay_retail_sale) can commit the Payment row.
+        """
+        from finance.models import PaymentReceipt
+
+        order = self.create_order()
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("9999.99"),
+            payment_method=self.card,
+            order=order,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertTrue(receipt.error_message)
+        self.assertEqual(receipt.payment_id, payment.id)
+
+    def test_failed_receipt_does_not_prevent_payment_from_being_saved(self):
+        """Regression: payment row must survive even when fiscal receipt fails."""
+        from django.db import transaction as django_transaction
+
+        from finance.models import Payment as PaymentModel
+        from finance.models import PaymentReceipt
+
+        order = self.create_order()
+
+        with django_transaction.atomic():
+            payment = Payment.objects.create(
+                payment_type=Payment.PaymentType.INCOME,
+                status=Payment.PaymentStatus.COMPLETED,
+                amount=Decimal("99999.00"),
+                payment_method=self.card,
+                order=order,
+                payment_date=timezone.now(),
+                created_by=self.user,
+            )
+            receipt = create_or_update_payment_receipt(payment)
+
+        self.assertTrue(
+            PaymentModel.objects.filter(id=payment.id).exists(),
+            "Payment must be committed to DB even when receipt building fails",
+        )
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
