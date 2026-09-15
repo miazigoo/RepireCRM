@@ -12,7 +12,7 @@ from finance.fiscal_receipts import (
     receipt_snapshot_to_tbank,
     receipt_snapshot_to_yookassa,
 )
-from finance.models import Payment, PaymentMethod
+from finance.models import CashRegister, Payment, PaymentMethod, PaymentReceipt
 from inventory.models import Category, InventoryItem, RetailSale, RetailSaleItem
 from orders.models import AdditionalService, Order, OrderService
 from shops.models import Organization, Shop, ShopSettings
@@ -176,3 +176,46 @@ class FiscalReceiptTestCase(TestCase):
         self.assertEqual(receipt.items.get().vat_code, FiscalVatCode.VAT22)
         self.assertEqual(tbank_payload["Items"][0]["PaymentObject"], "commodity")
         self.assertEqual(tbank_payload["Items"][0]["Tax"], "vat22")
+
+    def test_fiscal_receipt_value_error_creates_failed_receipt_not_raise(self):
+        """ValueError in build_payment_receipt_snapshot must not propagate; a FAILED receipt is saved instead."""
+        cr = CashRegister.objects.create(name="Test Register", shop=self.shop)
+        # A payment linked only to a cash register (no order, no retail_sale) triggers
+        # ValueError("Платеж должен быть привязан к заказу или розничной продаже") inside
+        # build_payment_receipt_snapshot.  Before the fix this bubbled through @transaction.atomic
+        # and left order.prepayment / cash_register.balance unsynchronised.
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("1000"),
+            fee_amount=Decimal("0"),
+            payment_method=self.cash,
+            cash_register=cr,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        receipt = create_or_update_payment_receipt(payment)
+
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt.status, PaymentReceipt.Status.FAILED)
+        self.assertTrue(receipt.error_message)
+
+    def test_fiscal_receipt_value_error_does_not_roll_back_payment(self):
+        """Payment row must survive even when the receipt snapshot raises ValueError."""
+        cr = CashRegister.objects.create(name="Test Register 2", shop=self.shop)
+        payment = Payment.objects.create(
+            payment_type=Payment.PaymentType.INCOME,
+            status=Payment.PaymentStatus.COMPLETED,
+            amount=Decimal("500"),
+            fee_amount=Decimal("0"),
+            payment_method=self.cash,
+            cash_register=cr,
+            payment_date=timezone.now(),
+            created_by=self.user,
+        )
+        payment_id = payment.id
+
+        create_or_update_payment_receipt(payment)
+
+        self.assertTrue(Payment.objects.filter(id=payment_id).exists())
