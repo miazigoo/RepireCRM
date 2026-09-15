@@ -655,3 +655,91 @@ class InventoryApiTestCase(TestCase):
         self.assertEqual(response.status_code, 400, response.content)
         self.assertIn("уже добавлен", response.json()["error"])
         self.assertFalse(PurchaseRequest.objects.exists())
+
+
+class InventoryCrossShopSecurityTests(TestCase):
+    """Regression tests: IDOR guards on stock-movement and purchase-order receive."""
+
+    def setUp(self):
+        self.shop_a = Shop.objects.create(
+            name="Shop A", code="SECA", timezone="Europe/Moscow", currency="RUB"
+        )
+        self.shop_b = Shop.objects.create(
+            name="Shop B", code="SECB", timezone="Europe/Moscow", currency="RUB"
+        )
+
+        role, _ = Role.objects.get_or_create(
+            code="technician",
+            defaults={"name": "Technician"},
+        )
+        for codename in ("inventory.add_movement", "inventory.receive_purchase_orders"):
+            perm, _ = Permission.objects.get_or_create(
+                codename=codename,
+                defaults={
+                    "name": codename,
+                    "category": Permission.PermissionCategory.INVENTORY,
+                },
+            )
+            role.permissions.add(perm)
+
+        self.user_a = User.objects.create_user(
+            username="sec-user-shop-a",
+            password="pass12345",
+            role=role,
+            current_shop=self.shop_a,
+        )
+        self.user_a.shops.add(self.shop_a)
+
+    def auth_headers(self):
+        payload = {
+            "user_id": self.user_a.id,
+            "username": self.user_a.username,
+            "exp": timezone.now() + timedelta(days=1),
+            "iat": timezone.now(),
+        }
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+        return {
+            "HTTP_AUTHORIZATION": f"Bearer {token}",
+            "HTTP_X_CURRENT_SHOP": str(self.shop_a.id),
+        }
+
+    def test_stock_movement_blocked_for_foreign_shop_balance(self):
+        category = Category.objects.create(name="SecTestCat")
+        item = InventoryItem.objects.create(
+            name="TestItemSec",
+            sku="TSKU-SEC-01",
+            item_type="component",
+            category=category,
+            purchase_price=100,
+            selling_price=200,
+            created_by=self.user_a,
+        )
+        balance_b = StockBalance.objects.get(item=item, shop=self.shop_b)
+        response = self.client.post(
+            "/api/inventory/stock-movement",
+            data=json.dumps(
+                {
+                    "stock_balance_id": balance_b.id,
+                    "movement_type": "add",
+                    "quantity_change": 5,
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_receive_purchase_order_blocked_for_foreign_shop(self):
+        supplier = Supplier.objects.create(name="Sec Test Supplier")
+        purchase_order = PurchaseOrder.objects.create(
+            shop=self.shop_b,
+            supplier=supplier,
+            created_by=self.user_a,
+        )
+        response = self.client.post(
+            f"/api/inventory/purchase-orders/{purchase_order.id}/receive",
+            data=json.dumps({"items": []}),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+        self.assertEqual(response.status_code, 403)
